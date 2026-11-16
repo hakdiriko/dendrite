@@ -79,6 +79,7 @@ public:
         float eyesTire = 4.0f;   // how fast its eyes tire of hits (use per second at full drive; 12 and 10 s until 2.4, when a steady groove blinded it)
         float eyesBack = 6.0f;   // seconds for them to recover
         float calm = 42.0f;      // seconds for arousal to settle
+        float relief = 0.05f;    // how hard the rewarding dopamine neurons fire when a pain ends (1: as hard as the pain's) (2.5)
     };
     void setTaste (const Taste& t) noexcept
     {
@@ -204,6 +205,10 @@ private:
     std::vector<int16_t> role; // per neuron: Kenyon cell k (k), DAN d (-2 - d), MBON m (-10000 - m), else -1
     std::array<float, flydata::kenyonCount> kcTrace {};
     std::array<float, flydata::danCount> danTrace {};
+    std::array<float, flydata::kenyonCount> kcSpikes {};          // this 10 ms: which Kenyon cells fired
+    std::array<float, flydata::mbonCount> dopamineBefore {};      // dopamine bursts that reached each MBON a moment ago
+    std::array<float, flydata::mbonCount> dopamineTonic {};       // and its steady level, which teaches nothing
+    float reliefIn = 0.0f, reliefLeft = 0.0f;                      // the pain ended: relief comes a moment later
     std::array<float, flydata::mbonCount> mbonSpikes {}, mbonRate {}, dopamine {};
     float kickNext = 0.0f;
     int stepSpikes = 0;
@@ -217,6 +222,7 @@ private:
     float escape = 0.0f, groom = 0.0f, groomHabit = 0.0f, rub = 0.0f, lean = 0.0f, leanHabit = 0.0f, excited = 0.0f;
     float sinceJump = 10.0f, lurchLeft = 0.0f, lurchSize = 0.0f, throwLeft = 0.0f, freezeFrom = 0.0f, freezeLeft = 0.0f;
     float throwGlow = 0.0f, band = 0.0f, lurchSign = 1.0f, lurchLength = 0.9f, readiness = 0.0f;
+    static constexpr float reliefDelay = 0.3f, reliefLength = 0.5f, dopamineBeforeSec = 1.5f, tonicSec = 20.0f; // seconds
     static constexpr float fearFull = 0.35f; // this much weaker counts as full fear
     bool busyNow = false; // jumping or scratching, with hysteresis (for keep's diary and the lamps)
     Touch target, touch;

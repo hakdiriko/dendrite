@@ -29,6 +29,8 @@ for k, gl in enumerate(gloms): smell[k * BANDS // len(gloms)] += local(pn[glom_o
 kc = local(np.where(cc == 'Kenyon_Cell')[0]); mbonG = np.array([n for n in np.where(cc == 'MBON')[0] if n in pos])
 mbon = local(mbonG); danG = np.array([n for n in np.where(cc == 'DAN')[0] if n in pos]); dan = local(danG)
 ppl1 = local(np.array([k for k, c in enumerate(ct) if str(c).startswith('PPL1')]))
+# the rewarding dopamine neurons (PAM), for relief: the moment after pain ends is good (Tanimoto et al. 2004)
+pam = local(np.array([k for k, c in enumerate(ct) if str(c).startswith('PAM')]))
 # what each MBON tells the fly (Aso et al. 2014): glutamate = keep away (-1), acetylcholine or GABA = come closer (+1)
 mbonSign = [-1 if nt[n] == 'glutamate' else 1 for n in mbonG]
 # the plastic synapses: every KC -> MBON connection (positions in the CSR), and who they join
@@ -73,7 +75,7 @@ out.append(arr('senseNeuron', 'uint16_t', [n for v in inputs for n in v]))
 out.append(arr('escapeNeuron', 'uint16_t', esc)); out.append(arr('legNeuron', 'uint16_t', legs))
 out.append(arr('leftNeuron', 'uint16_t', dnL)); out.append(arr('rightNeuron', 'uint16_t', dnR))
 out.append(arr('kenyon', 'uint16_t', kc)); out.append(arr('mbon', 'uint16_t', mbon)); out.append(arr('dan', 'uint16_t', dan))
-out.append(arr('ppl1', 'uint16_t', ppl1)); out.append(arr('mbonSign', 'int8_t', mbonSign))
+out.append(arr('ppl1', 'uint16_t', ppl1)); out.append(arr('pam', 'uint16_t', pam)); out.append(arr('mbonSign', 'int8_t', mbonSign))
 out.append(arr('plastic', 'uint32_t', plastic)); out.append(arr('plasticKenyon', 'uint16_t', kcPos[rows[plastic]]))
 out.append(arr('plasticMbon', 'uint8_t', mbPos[Wk.indices[plastic]]))
 out.append(arr('dopamineDan', 'uint16_t', dmD)); out.append(arr('dopamineMbon', 'uint8_t', dmM))
@@ -98,7 +100,7 @@ constexpr int neurons = {N}, synapses = {Wk.nnz};
 constexpr int senses = 12; // B, A, CE, loom low, loom mid, loom high; each left then right
 constexpr int smells = {BANDS};  // then the smell bands, low to high, each a few glomeruli's projection neurons
 // the memory: the mushroom body's Kenyon cells, its output neurons (MBONs) and the dopamine neurons that teach them
-constexpr int kenyonCount = {len(kc)}, mbonCount = {len(mbon)}, danCount = {len(dan)}, ppl1Count = {len(ppl1)};
+constexpr int kenyonCount = {len(kc)}, mbonCount = {len(mbon)}, danCount = {len(dan)}, ppl1Count = {len(ppl1)}, pamCount = {len(pam)};
 constexpr int plasticCount = {len(plastic)}, dopamineCount = {len(dmD)};
 constexpr int escapeCount = {len(esc)}, legCount = {len(legs)}, leftCount = {len(dnL)}, rightCount = {len(dnR)};
 // rates are counted over these, as over the whole brain: every DNg11, and every descending neuron per side
@@ -114,7 +116,7 @@ extern const int16_t weight[synapses]; // synapse count, negative for inhibitory
 extern const uint16_t senseStart[senses + smells + 1];
 extern const uint16_t senseNeuron[];
 extern const uint16_t escapeNeuron[escapeCount], legNeuron[legCount], leftNeuron[leftCount], rightNeuron[rightCount];
-extern const uint16_t kenyon[kenyonCount], mbon[mbonCount], dan[danCount], ppl1[ppl1Count];
+extern const uint16_t kenyon[kenyonCount], mbon[mbonCount], dan[danCount], ppl1[ppl1Count], pam[pamCount];
 extern const int8_t mbonSign[mbonCount]; // -1 keep away (glutamate), +1 come closer (acetylcholine, GABA)
 extern const uint32_t plastic[plasticCount];  // KC -> MBON synapses, as positions in target/weight
 extern const uint16_t plasticKenyon[plasticCount]; // which Kenyon cell (index into kenyon)
@@ -128,5 +130,5 @@ extern const Anchor anchors[anchorCount];
 }} // namespace dendrite::flydata
 '''
 open(src + 'FlyData.h', 'w').write(h)
-print('kc', len(kc), 'mbon', len(mbon), 'dan', len(dan), 'ppl1', len(ppl1), 'plastic', len(plastic), 'dopamine', len(dmD), 'smell', [len(v) for v in smell])
+print('kc', len(kc), 'mbon', len(mbon), 'dan', len(dan), 'ppl1', len(ppl1), 'pam', len(pam), 'plastic', len(plastic), 'dopamine', len(dmD), 'smell', [len(v) for v in smell])
 print('neurons', N, 'synapses', Wk.nnz, 'senses', [len(v) for v in inputs], 'escape', len(esc), 'legs', legs, 'L/R', len(dnL), len(dnR))

@@ -155,6 +155,10 @@ void Fly::rest() noexcept
     untilSmell = untilLive = 0;
     kcTrace.fill (0.0f);
     danTrace.fill (0.0f);
+    kcSpikes.fill (0.0f);
+    dopamineBefore.fill (0.0f);
+    dopamineTonic.fill (0.0f);
+    reliefIn = reliefLeft = 0.0f;
     mbonSpikes.fill (0.0f);
     mbonRate.fill (0.0f);
     dopamine.fill (0.0f);
@@ -327,12 +331,25 @@ void Fly::live() noexcept
     for (int k = 0; k < flydata::dopamineCount; ++k)
         dopamine[flydata::dopamineMbon[k]] += flydata::dopamineShare[k] * danTrace[flydata::dopamineDan[k]];
     std::array<float, flydata::mbonCount> d {};
-    std::array<float, flydata::kenyonCount> active {};
+    std::array<float, flydata::kenyonCount> active {}, now {};
     for (int k = 0; k < flydata::kenyonCount; ++k)
+    {
         active[(size_t) k] = 1.0f - std::exp (-kcTrace[(size_t) k] / 5.0f);
+        now[(size_t) k] = 1.0f - std::exp (-kcSpikes[(size_t) k]);
+        kcSpikes[(size_t) k] = 0.0f;
+    }
+    std::array<float, flydata::mbonCount> before {};
     for (int m = 0; m < flydata::mbonCount; ++m)
+    {
+        // only a burst above its steady level teaches (dopamine neurons fire all the time; learning
+        // follows their phasic bursts, Schultz 1998, Cohn et al. 2015)
+        dopamineTonic[(size_t) m] += coeff (tonicSec, dt) * (dopamine[(size_t) m] - dopamineTonic[(size_t) m]);
+        dopamine[(size_t) m] = std::max (0.0f, dopamine[(size_t) m] - dopamineTonic[(size_t) m]);
         d[(size_t) m] = 1.0f - std::exp (-dopamine[(size_t) m] / 5.0f);
-    double sum = 0.0, heard = 0.0, heardAtBirth = 0.0;
+        before[(size_t) m] = 1.0f - std::exp (-dopamineBefore[(size_t) m] / 5.0f);
+    }
+    double sum = 0.0;
+    std::array<double, 2> heard {}, heardAtBirth {}; // through the keep-away MBONs, and the come-closer ones
     const float back = dt / taste.forget;
     for (int p = 0; p < flydata::plasticCount; ++p)
     {
@@ -340,18 +357,32 @@ void Fly::live() noexcept
         const float t = kcTrace[flydata::plasticKenyon[p]];
         auto& wp = w[flydata::plastic[p]];
         const float birth = wSynapse * (float) flydata::weight[flydata::plastic[p]];
-        heard += (double) (t * wp);
-        heardAtBirth += (double) (t * birth);
+        const int side = flydata::mbonSign[flydata::plasticMbon[p]] > 0 ? 1 : 0;
+        heard[(size_t) side] += (double) (t * wp);
+        heardAtBirth[(size_t) side] += (double) (t * birth);
         // where dopamine meets an active Kenyon cell, the synapse weakens; slowly it comes back
         if (dm > 1.0e-4f && t > 1.0e-3f)
             wp *= 1.0f - dt * taste.learn * dm * active[flydata::plasticKenyon[p]];
+        // the other way round, dopamine first and the Kenyon cell after, it strengthens back toward
+        // birth (Handler et al. 2019: the order decides the sign, through two dopamine receptors)
+        const float b = before[flydata::plasticMbon[p]], k = now[flydata::plasticKenyon[p]];
+        if (b > 1.0e-4f && k > 1.0e-3f)
+            wp += dt * taste.learn * b * k * (birth - wp);
         wp += (birth - wp) * back;
         sum += (double) wp;
     }
     memory = (float) (sum / (double) plasticBirth);
+    // what reached the MBONs now is a moment ago for the next 10 ms
+    const float beforeA = coeff (dopamineBeforeSec, dt);
+    for (int m = 0; m < flydata::mbonCount; ++m)
+        dopamineBefore[(size_t) m] += beforeA * (dopamine[(size_t) m] - dopamineBefore[(size_t) m]);
     // fear: what it smells now reaches its MBONs weaker than it would have at birth, because
     // these Kenyon cells were active when it got hurt before
-    fearNow = heardAtBirth > 1.0e-3 ? (float) (1.0 - heard / heardAtBirth) : 0.0f;
+    // reach its come-closer MBONs (the punished compartments) weaker than at birth; what weakened its
+    // keep-away MBONs (the rewarded ones, PAM's) counts the other way (Aso et al. 2014: the fly
+    // goes where the balance of the two sends it). Dopamine everywhere at once cancels out.
+    const auto lost = [&] (int k) { return heardAtBirth[(size_t) k] > 1.0e-3 ? (float) (1.0 - heard[(size_t) k] / heardAtBirth[(size_t) k]) : 0.0f; };
+    fearNow = std::max (0.0f, lost (1) - lost (0));
     fear += coeff (0.2f, dt) * (clamp01 (fearNow / fearFull) - fear);
 }
 
@@ -429,9 +460,29 @@ void Fly::step() noexcept
         kickNext -= (float) neurons;
         // a jump hurts: the punishing dopamine neurons fire
         if (escape > 30.0f)
+        {
             for (int k = 0; k < flydata::ppl1Count; ++k)
                 if (uniform() < 0.05f)
                     v[flydata::ppl1[k]] = vThreshold + 1.0f;
+            reliefIn = reliefDelay;
+            reliefLeft = 0.0f;
+        }
+        // and when it ends, relief: a moment later the rewarding dopamine neurons (PAM) fire
+        // (Tanimoto et al. 2004: what a fly smells just after a shock ends, it comes to like)
+        else if (reliefIn > 0.0f)
+        {
+            reliefIn -= dtSec;
+            if (reliefIn <= 0.0f)
+                reliefLeft = reliefLength;
+        }
+        if (reliefLeft > 0.0f)
+        {
+            reliefLeft -= dtSec;
+            const float p = 0.05f * taste.relief;
+            for (int k = 0; k < flydata::pamCount; ++k)
+                if (uniform() < p)
+                    v[flydata::pam[k]] = vThreshold + 1.0f;
+        }
     }
     // the senses fire their neurons, Poisson
     for (int k = 0; k < inputs; ++k)
@@ -460,7 +511,10 @@ void Fly::step() noexcept
             spikes[(size_t) n].fetch_add (1, std::memory_order_relaxed);
             const int r = role[(size_t) n];
             if (r >= 0)
+            {
                 kcTrace[(size_t) r] += 1.0f;
+                kcSpikes[(size_t) r] += 1.0f;
+            }
             else if (r <= -10000)
                 mbonSpikes[(size_t) (-10000 - r)] += 1.0f;
             else if (r <= -2)

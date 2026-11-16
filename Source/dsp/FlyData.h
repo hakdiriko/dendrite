@@ -12,7 +12,7 @@ constexpr int neurons = 11705, synapses = 1034261;
 constexpr int senses = 12; // B, A, CE, loom low, loom mid, loom high; each left then right
 constexpr int smells = 32;  // then the smell bands, low to high, each a few glomeruli's projection neurons
 // the memory: the mushroom body's Kenyon cells, its output neurons (MBONs) and the dopamine neurons that teach them
-constexpr int kenyonCount = 2459, mbonCount = 96, danCount = 331, ppl1Count = 16;
+constexpr int kenyonCount = 2459, mbonCount = 96, danCount = 331, ppl1Count = 16, pamCount = 307;
 constexpr int plasticCount = 28761, dopamineCount = 2016;
 constexpr int escapeCount = 8, legCount = 2, leftCount = 236, rightCount = 243;
 // rates are counted over these, as over the whole brain: every DNg11, and every descending neuron per side
@@ -28,7 +28,7 @@ extern const int16_t weight[synapses]; // synapse count, negative for inhibitory
 extern const uint16_t senseStart[senses + smells + 1];
 extern const uint16_t senseNeuron[];
 extern const uint16_t escapeNeuron[escapeCount], legNeuron[legCount], leftNeuron[leftCount], rightNeuron[rightCount];
-extern const uint16_t kenyon[kenyonCount], mbon[mbonCount], dan[danCount], ppl1[ppl1Count];
+extern const uint16_t kenyon[kenyonCount], mbon[mbonCount], dan[danCount], ppl1[ppl1Count], pam[pamCount];
 extern const int8_t mbonSign[mbonCount]; // -1 keep away (glutamate), +1 come closer (acetylcholine, GABA)
 extern const uint32_t plastic[plasticCount];  // KC -> MBON synapses, as positions in target/weight
 extern const uint16_t plasticKenyon[plasticCount]; // which Kenyon cell (index into kenyon)
