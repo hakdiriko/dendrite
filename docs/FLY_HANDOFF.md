@@ -188,15 +188,17 @@ Spikes propagate through a CSR matrix (`rowStart`, `target`, and `w`, a mutable 
 - It tracks the brain's spike rate between 40k and 140k spikes/s over 120 s.
 - Sense gain is × (1 − 0.35·fatigue).
 
-**Learning (every 10 ms):**
+**Learning (every 10 ms; both ways since 2.5):**
 - When escape is above 30 Hz, the 16 PPL1 DANs are forced to fire (5% per step): this is the shock.
-- DAN spike traces (τ 0.5 s) reach each MBON through the connectome's DAN to MBON matrix, normalised per MBON.
-- For each plastic synapse: w ·= 1 − dt·0.06·(1 − e^(−dop/5))·(1 − e^(−KCtrace/5)), with the KC trace τ 1 s.
-- Forgetting: w += (w_birth − w)·dt/600 s.
+- When it ends, relief: 0.3 s later the 307 PAM DANs are forced to fire for 0.5 s at 5% × `Taste::relief` (0.05) per step (Tanimoto et al. 2004). Hand-wired, as the shock is.
+- DAN spike traces (τ 0.5 s) reach each MBON through the connectome's DAN to MBON matrix, normalised per MBON. Only the **burst** teaches: each MBON's dopamine minus its own 20 s average (2.5). Before 2.5 the DANs' steady firing (driven by the restless kicks) depressed every synapse all the time, which is what pinned fear at 1.0 within two minutes.
+- Forward (KC active, then dopamine): w ·= 1 − dt·learn·d·(1 − e^(−KCtrace/5)), with the KC trace τ 1 s and d = 1 − e^(−burst/5).
+- Backward (dopamine first, the KC fires after; Handler et al. 2019): w += dt·learn·d_before·(1 − e^(−KC spikes this 10 ms))·(w_birth − w), with d_before the burst trace over 1.5 s. Never above birth.
+- Forgetting: w += (w_birth − w)·dt/640 s.
 
 **Signals the learning produces:**
 - *memory*: the plastic weight sum against at birth.
-- *fear*: 1 − (current KC drive into the MBONs ÷ the same drive at birth), smoothed over 0.2 s. It says how much of what it smells now once hurt.
+- *fear* (2.5): how much weaker what it smells now reaches its come-closer MBONs than at birth, minus the same for its keep-away MBONs (the punished compartments against the rewarded ones; dopamine everywhere at once cancels out), over 0.35 for full fear, smoothed over 0.2 s. `tools/fly/fear.py`: 0.3 to 0.4 after five minutes on both loops, and it rises when the music changes (was 1.0 and 0.99).
 - *feeling*: (come-closer MBONs − keep-away MBONs) ÷ (sum + 2). Glutamate MBONs count as keep-away; ACh and GABA MBONs count as come-closer (Aso et al. 2014).
 
 **Persistence:**
@@ -227,7 +229,7 @@ Hakan's goal for the fly: **precise in time, moving with the music, and more tha
 - *escape*: the rate of DNp01/02/04/11, smoothed over 30 ms;
 - *groom*: the 2 most active DNg11, over 150 ms;
 - *rub*: the difference between those two legs;
-- *lean*: left DNs minus right DNs, relative to its 6 s habit;
+- *lean* (2.5): DNa01 + DNa02 left minus right (`steerLeft`, `steerRight`, confirmed in the FlyWire annotations), per neuron in Hz, smoothed over 1 s, relative to its 6 s habit, /8 Hz for full. On a groove panned bar by bar it follows the pan (correlation 0.64); before 2.5 it was every descending neuron's left minus right;
 - *excited*: left plus right.
 
 **The jump:**
@@ -267,12 +269,15 @@ Hakan's goal for the fly: **precise in time, moving with the music, and more tha
 
 ## 7. Cost and checks
 
-- About 11% of one core for the fly with the echo on a modern x86 (offline renderer, -O3).
-  - The 2.2 brain without the inner life costs about 7.5%; 2.1 cost about 5%.
+- `tools/fly/matrix.cpp` (2.5) drives the Engine with a fake transport through 27 cases: 70 to 174 bpm, 3/4, 6/8, 7/8, stopped, tempo changes, loop jumps (on and off the bar), silence around music, mono, one side, 44.1 to 192 kHz, ragged and fixed block sizes. It checks finite and bounded output, moves on the 16th grid, a move in every musical part, none in silence, silence that stays silent, and the cost per block in thread CPU time. All pass in 2.5.
+- Cost on the cloud machine (2.5): about 12.5% of one core for the whole plug-in at 48 kHz (2.4.3: about 13%), 20 to 25% on bare keys, 23% at 192 kHz. The slowest block is 50% of a 128-sample buffer and 27% of a 512-sample one. With 32-sample blocks the 10 ms learning lands in one block (up to 3x that block's length), harmless at real buffer sizes.
+- Where it goes (fly alone): the step's spike delivery about 3.4%, the neuron update 1.5%, the spike search 1.2%, the Poisson senses 0.8%, learning 2.2%, reflexes 0.1% (was 1.4% before the 2.5 lookup table).
+- **The plan's 5% target is not met.** A cut by reach (neurons that can reach an output or the memory and hear the senses) keeps 11,556 of 11,705, so it cannot get there; only a cut that changes the brain can (by synapse weight, or a coarser step), and that has to pass the real vs scrambled vs stand-in measurement.
 - `FlyData.cpp` is 11 MB of source. MSVC, Xcode and GCC compile it in CI without trouble.
 - Local checks before every push:
   - pluginval at strictness 10;
-  - `tools/discovery_audit.py` with 0 FAIL. Its 2 or 3 WARNs are MONO_BREAK from the space lean.
+  - `tools/discovery_audit.py` with 0 FAIL. Its 2 or 3 WARNs are MONO_BREAK from the space lean;
+  - `build/flymatrix` (PASS) and `tools/fly/fear.py` (PASS).
 - CI builds Windows and Linux on push; a manual dispatch adds macOS.
 
 ## 8. What was measured (Hakan's Warm Saw Keys loop, 3.78 s, repeated)
@@ -326,10 +331,10 @@ A preference model (Bradley-Terry over his picks) or a simple evolution strategy
 ## 10. Open problems and next steps
 
 1. ~~Memory not saved with the set.~~ Done in 2.3.0 (Hakan said yes on 2026-11-14), with a right-click for a new fly.
-2. **Fear saturates on one loop over long sessions** (at the current rate, toward mostly dives after several minutes). Forgetting brings it back when the music changes. Watch whether he finds the late phase repetitive.
+2. ~~Fear saturates on one loop over long sessions.~~ 2.5: only bursts teach, learning goes both ways, relief after each shock; fear settles at 0.3 to 0.4. Side effect: with fear no longer near 1, up and down moves are about even (the groove had mostly dives), so the groove has more, shorter moves (38 against 25 in 5 minutes). Hakan's re-listen decides.
 3. **The scratch's amount** still follows the grooming DN's timing, which is locked to the loop (about 90% alike pass to pass). Its place now varies. A sequential grooming model (Seeds et al. 2014: hierarchical suppression) would be the biological way to vary it.
 4. **The antennal lobe** is bypassed (it runs away in this model). A proper fix: add the local inhibitory neurons with weights scaled, or a gain-control step on the ORNs.
-5. **CPU 11%.** Further cuts are possible: KCs that fire less than once a minute, and the arousal-scaled kick rate.
+5. **CPU about 12%** (section 7). Reach does not cut it; a weight-based cut or a coarser step would, if the brain share survives.
 6. **Determinism.** Fixed RNG seed, so renders repeat exactly. Live, it diverges with the timing of the input, which is fine.
 7. **As a separate product (DLC):**
    - The fly needs only the `Touch` interface: per-sample parameter offsets on the host effect.
