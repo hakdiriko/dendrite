@@ -93,15 +93,16 @@ public:
     // The song's clock (2.4): the beat now, in quarter notes, and the tempo. Its brain decides what
     // to do and how hard; its body does it on the grid, as a real fly's steering commands only take
     // hold at one phase of the wingbeat (the halteres keep that time). Here the song is the wingbeat.
-    void setClock (double beat, double bpm) noexcept
+    void setClock (double beat, double bpm, double barBeats = 4.0) noexcept
     {
         beatNow = beat;
         bpmNow = bpm;
+        barNow = barBeats;
     }
     // false: the 2.3 fly (moves whenever its neurons say so, one sine lurch of the tape)
     void setMusical (bool on) noexcept { musical = on; }
     // what its body can do with the tape; each bends the repeats by exact intervals, for exact note values
-    enum Move { none, hop, leap, duck, dive, rush };
+    enum Move { none, hop, leap, duck, dive, rush, hold };
 
     // false: the 2.1.0 fly (no restlessness, no moods, no learning), for comparison
     void setInnerLife (bool on) noexcept { innerLife = on; }
@@ -223,7 +224,7 @@ private:
     // its body in time (2.4)
     void startMove (float size, float f) noexcept;
     bool musical = true;
-    double beatNow = 0.0, bpmNow = 120.0;
+    double beatNow = 0.0, bpmNow = 120.0, barNow = 4.0;
     long long lastTick = -1;
     bool armed = false;
     float armedSize = 0.0f, armedFear = 0.0f;
@@ -232,6 +233,10 @@ private:
     int legCount = 0, legAt = 0, moveNow = none;
     float stretch = 1.0f, moveSize = 0.0f; // the heads' distance against the grid's (1 / tape speed)
     float sinceMove16 = 64.0f;
+    float pulse = 0.5f;               // how full the 16th grid is with hits (hats, drums): 0 bare chords .. 1 a groove
+    bool slotHit = false;
+    float busyShare = 0.0f;           // how much of the last eight bars it spent moving
+    std::array<int, 2> lastMoves {};  // the two moves before this one
     float throw16 = 0.0f, freezeIn16 = -1.0f, freeze16 = 0.0f;
     float heldBand = 0.0f, heldBandHz = 1000.0f, heldLean = 0.0f, heldFeed = 0.0f;
     float touchGlide = 0.005f;

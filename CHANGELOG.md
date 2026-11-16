@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.4.2 (the fly reads the room)
+
+Hakan's marks on 2.4.1: the groove yes again, the bare keys no again, however calm.
+
+- **It hears whether there is a pulse.** It counts how many 16ths of the last two bars had a hit in the top of the spectrum (hats, a rim, a kick's click). In a groove (most 16ths filled) it dances as in 2.4.1; nothing changes there.
+- **On bare material it is gentle.** With chords and rests and nothing to lean on, every move is naked. There it rests about five times longer, never rushes or dives, and half of its moves leave the tape alone: a **hold**, a throw of a dotted 8th and a held breath for a beat. On the keys loop: 9 moves in 48 bars (was 21), moving 5% of the time (was 18%).
+
+## 2.4.1 (the fly keeps time, calmer)
+
+Hakan's marks on 2.4: the timekeeping fly was a yes on a full groove and a no on sparse keys. The difference was how much it moved: 18% of the time on the groove, 32% on the keys, ending in dive after dive.
+
+- **A budget.** Over any eight bars it moves for at most about a fifth of the time (a third with the itch at 1/4 bar). On the keys it now moves 18% of the time, like the groove he liked.
+- **Big moves land on the one.** Leaps, rushes and dives wait for the bar line (the half bar when wide awake); hops and ducks still take an 8th.
+- **No three in a row.** A third identical move becomes its small opposite (three dives become dive, dive, hop).
+- The fly follows the host's time signature for its bar lines.
+
 ## 2.4.0 (the fly keeps time)
 
 Hakan: "it feels like their only function is to fuck around... the goal of the fly should be being precise, time-wise... and that thing it does only with the tape drives me nuts."

@@ -52,8 +52,8 @@ juce::String FlyBrain::doingLine() const
     juce::StringArray words;
     if (d.flyJump.load (relaxed) > 0.0f)
     {
-        static const char* const moves[] = { "jumps", "hops", "leaps", "ducks", "dives", "rushes" };
-        const int move = juce::jlimit (0, 5, d.flyMove.load (relaxed));
+        static const char* const moves[] = { "jumps", "hops", "leaps", "ducks", "dives", "rushes", "holds" };
+        const int move = juce::jlimit (0, 6, d.flyMove.load (relaxed));
         const float st = d.flySemitones.load (relaxed);
         juce::String w = moves[move];
         if (move == 0 || std::abs (st) > 0.05f)

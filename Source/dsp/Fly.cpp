@@ -174,6 +174,10 @@ void Fly::rest() noexcept
     target = touch = Touch {};
     lastTick = -1;
     sinceMove16 = 64.0f;
+    busyShare = 0.0f;
+    pulse = 0.5f;
+    slotHit = false;
+    lastMoves = {};
     armed = false;
     legCount = legAt = 0;
     moveNow = none;
@@ -531,6 +535,58 @@ void Fly::startMove (float size, float f) noexcept
         if (size > 0.7f)
             freezeIn16 = 2.0f;
     }
+    // on bare material: nothing long, and half the time no tape at all, only a throw and a held breath
+    if (1.0f - clamp01 ((pulse - 0.2f) / 0.2f) > 0.5f)
+    {
+        if (uniform() < 0.5f)
+        {
+            moveNow = hold;
+            leg (0, 0.0f, 6.0f, 1.0f);
+            legCount = 1;
+            throw16 = 3.0f;
+            freezeIn16 = 4.0f;
+        }
+        else if (moveNow == rush || moveNow == leap)
+        {
+            moveNow = hop;
+            leg (0, -0.25f, 1.0f, 0.75f);
+            leg (1, 0.125f, 2.0f, 1.0f);
+            legCount = 2;
+            throw16 = 1.0f;
+        }
+        else if (moveNow == dive)
+        {
+            moveNow = duck;
+            leg (0, 0.125f, 2.0f, 1.25f);
+            leg (1, -0.25f, 1.0f, 1.0f);
+            legCount = 2;
+            throw16 = 2.0f;
+            freezeIn16 = -1.0f;
+        }
+    }
+    // a third time the same move becomes its small opposite (a fly never repeats an escape exactly)
+    if (moveNow == lastMoves[0] && moveNow == lastMoves[1])
+    {
+        const bool wasDown = moveNow == dive || moveNow == duck;
+        if (wasDown)
+        {
+            moveNow = hop;
+            leg (0, -0.25f, 1.0f, 0.75f);
+            leg (1, 0.125f, 2.0f, 1.0f);
+            throw16 = 1.0f;
+        }
+        else
+        {
+            moveNow = duck;
+            leg (0, 0.125f, 2.0f, 1.25f);
+            leg (1, -0.25f, 1.0f, 1.0f);
+            throw16 = 2.0f;
+        }
+        legCount = 2;
+        freezeIn16 = -1.0f;
+    }
+    lastMoves[1] = lastMoves[0];
+    lastMoves[0] = moveNow;
     if (innerLife)
         arousal += 0.12f * size * (1.0f - arousal);
 }
@@ -597,10 +653,19 @@ void Fly::reflexes() noexcept
         lastTick = tickNow;
         const float per16 = dt * (float) (bpmNow / 60.0 * 4.0);
         const bool moving = legAt < legCount;
-        // between moves it leaves the music alone: about a bar when half awake, a beat when wide awake
+        // between moves it leaves the music alone: about a bar when half awake, a beat when wide awake;
+        // and over eight bars it moves for at most about a fifth of the time (a third when wide awake),
+        // which is where Hakan's yes and no fell (round 2.4: 18% on the groove yes, 32% on the keys no)
         sinceMove16 = moving ? 0.0f : sinceMove16 + per16;
-        const float rest16 = 4.0f * (6.0f - 5.0f * awakeNow);
-        if (wantsJump && ! armed && ! moving && sinceMove16 >= rest16)
+        busyShare += ((moving ? 1.0f : 0.0f) - busyShare) * std::min (1.0f, per16 / (32.0f * (float) barNow));
+        // On bare material (chords with rests, no pulse to lean on) every move is naked, so it moves
+        // far less and more gently; inside a groove it can dance. The pulse is how many 16ths of the
+        // last two bars had a hit in the top of the spectrum (its high looming eyes).
+        slotHit = slotHit || std::max (drive[10], drive[11]) > 1.0f;
+        const float exposed = 1.0f - clamp01 ((pulse - 0.2f) / 0.2f);
+        const float rest16 = 4.0f * (6.0f - 5.0f * awakeNow) * (1.0f + 4.0f * exposed);
+        const float budget = (0.08f + 0.24f * awakeNow) * (1.0f - 0.6f * exposed);
+        if (wantsJump && ! armed && ! moving && sinceMove16 >= rest16 && busyShare < budget)
         {
             armed = true;
             armedSize = std::min (1.0f, escape / 80.0f * (innerLife ? 0.7f + 0.6f * arousal : 1.0f));
@@ -609,9 +674,14 @@ void Fly::reflexes() noexcept
         }
         if (tick)
         {
+            pulse += ((slotHit ? 1.0f : 0.0f) - pulse) / 32.0f;
+            slotHit = false;
+            // small moves on a 16th (wide awake) or an 8th; big ones wait for a bar line (or the half bar)
             const int grid = awakeNow > 0.75f ? 1 : 2;
             const bool big = armedSize * taste.lurch / 0.4f > 0.5f;
-            if (armed && tickNow % (big ? 2 : grid) == 0)
+            const long long bar16 = std::max (4LL, std::llround (4.0 * barNow));
+            const long long bigGrid = awakeNow > 0.75f ? std::max (4LL, bar16 / 2) : bar16;
+            if (armed && tickNow % (big ? bigGrid : grid) == 0)
             {
                 armed = false;
                 startMove (armedSize, armedFear);
