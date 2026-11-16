@@ -130,6 +130,7 @@ public:
         float feeling = 0.0f;                      // its MBONs: -1 keep away .. 1 come closer
         float fear = 0.0f;                         // 0..1: how much of what it smells now once hurt
         int move = 0;                              // which Move it is in the middle of
+        int phraseBar = 0;                         // 3.0: which bar of its 8-bar phrase it feels it is in
     };
     const Doing& doing() const noexcept { return now; }
     uint16_t takeSpikes (int neuron) noexcept { return spikes[(size_t) neuron].exchange (0, std::memory_order_relaxed); }
@@ -259,6 +260,15 @@ private:
     static constexpr float fearFull = 0.35f; // this much weaker counts as full fear
     bool busyNow = false; // jumping or scratching, with hysteresis (for keep's diary and the lamps)
     Touch target, touch;
+
+    // its sense of place (3.0): where it is in the bar and the phrase, and what it last did, through
+    // the visual projection neurons that reach its Kenyon cells
+    void place() noexcept; // every step, after the senses
+    long long anchorBar = 0, lastBar = -1;
+    std::array<float, flydata::smells> smellBar {}; // this bar's smell, summed
+    std::array<std::array<float, flydata::smells>, 4> smellBars {}; // the last four bars' smell
+    int smellBarCount = 0, barsKept = 0;
+    float novelty = 0.0f;
 
     // its body in time (2.4)
     void startMove (float size, float f) noexcept;

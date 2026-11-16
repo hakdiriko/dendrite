@@ -86,6 +86,7 @@ It is **not trained**. "Training" so far only means it learns during use; taste 
 | `Source/ui/FlyBrain.*` | The view: a small brain in the strip; click it for a drawer with the brain large, labels, the doing-line and the moods line. The UI thread owns window sizing (Editor, `grewForDrawer`). |
 | `tools/fly/` | Offline Python: `sim.py` (whole brain, reflexes), `sim2.py` (whole brain with inner life), `families.py`, `touch.py`, `prune.py` / `prune2.py` (the cut), `export.py` (writes FlyData), README with credits. |
 | `tools/render/render.cpp` | Offline renderer without JUCE. `--fly-log fly.csv` logs one row per 256 samples: seconds, jump, semitones, throwing, frozen, scratch, scratchHz, turn, arousal, fatigue, memory, feeling, fear. `--still` plays the 2.1 fly (no inner life). `--repeat N` loops the input. |
+| `tools/fly/cut3.py` | The 3.0 cut by weighted reach, and the place inputs (`place3.json`). Then `python3 export.py keep3.npy place3.json`. The data, `keep3.npy` and `place3.json` are kept in the project files under `fly/data/`. Results: `docs/FLY_PHASE3.md`. |
 | `tools/fly/probe/` | The instruments (Phase 0, 2026-11-16): `brain_share.py` plays the material set (`material.py`) with the real fly, a scrambled fly, a no-brain stand-in and the real fly with other chance, and reports how much the brain does. Renderer probes: `--fly-dump`, `--scramble`, `--seed`, `--surrogate`, `--stats`, `--bar`. Results: `docs/FLY_BASELINE.md`. |
 | `tools/snapshot/` | Renders the window to PNG or frames; `DENDRITE_FLY_OPEN=t` opens the drawer at t seconds. |
 
