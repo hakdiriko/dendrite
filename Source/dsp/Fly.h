@@ -133,6 +133,34 @@ public:
     const Doing& doing() const noexcept { return now; }
     uint16_t takeSpikes (int neuron) noexcept { return spikes[(size_t) neuron].exchange (0, std::memory_order_relaxed); }
 
+    // Tools only (tools/fly/probe, build/render --fly-dump --scramble --surrogate): instruments that
+    // ask whether the brain matters. The plug-in never turns them on, and off they cost nothing.
+    static constexpr int inputCount = flydata::senses + flydata::smells;
+    static constexpr int standLags = 6; // the stand-in hears six 50 ms bins: the last 300 ms
+    struct Probe
+    {
+        int steps = 0;                                   // brain steps summed since the last clear
+        std::array<float, inputCount> drive {}, heard {}; // the senses as measured, and as they reach the neurons (tired, moods)
+        float escape = 0.0f, groom = 0.0f, lean = 0.0f, excited = 0.0f; // its output neurons, as the reflexes read them
+    };
+    void setProbing (bool on) noexcept { probing = on; }
+    const Probe& probe() const noexcept { return probeSum; }
+    void clearProbe() noexcept { probeSum = Probe {}; }
+    // shuffles every non-plastic synapse strength among the connections (fixed seed); forget() undoes it
+    void scramble (uint64_t seed);
+    // the same fly with other chance (its restless kicks, its readiness, which sense neurons fire): a
+    // second real fly, to show how alike two real flies play; takes hold at the next rest()
+    void reseed (uint64_t seed) noexcept { rngSeed = seed; }
+    // The no-brain stand-in: a linear filter from what reaches the senses over the last 300 ms to the
+    // four outputs (escape, groom, lean, excited), fitted by tools/fly/probe/brain_share.py. While it is
+    // set the brain does not run at all; the body, the senses and the clock are the same.
+    struct StandIn
+    {
+        // per output: weights for lag 0 (the 50 ms ending now) inputs 0..43, then lag 1, ..., then a constant
+        std::array<std::array<float, inputCount * standLags + 1>, 4> w {};
+    };
+    void standIn (const StandIn* s) noexcept { stand = s; }
+
 private:
     void step() noexcept; // 0.5 ms of brain
     void reflexes() noexcept;
@@ -158,7 +186,7 @@ private:
     std::array<std::array<uint16_t, neurons>, delaySlots> fired {};
     std::array<int, delaySlots> firedCount {};
     int slot = 0;
-    uint64_t rng = 0x666C792E322E3031ull;
+    uint64_t rng = 0x666C792E322E3031ull, rngSeed = 0x666C792E322E3031ull;
     std::array<std::atomic<uint16_t>, neurons> spikes {};
 
     // the senses
@@ -185,6 +213,7 @@ private:
     std::array<Eye, 6> eyes;      // low, mid, high per side
     static constexpr int inputs = flydata::senses + flydata::smells;
     std::array<float, inputs> drive {}, fresh {};
+    std::array<float, inputs> heardNow {}; // what reached the sense neurons this step (fire chance)
     std::array<float, 6> scale {};
     float scaleUp = 0.0f, scaleDown = 0.0f;
 
@@ -241,5 +270,16 @@ private:
     float heldBand = 0.0f, heldBandHz = 1000.0f, heldLean = 0.0f, heldFeed = 0.0f;
     float touchGlide = 0.005f;
     Doing now;
+
+    // the instruments (tools only)
+    bool probing = false;
+    Probe probeSum;
+    const StandIn* stand = nullptr;
+    static constexpr int standSubs = 5 * standLags; // 10 ms sub-bins, five to a 50 ms bin
+    std::array<std::array<float, inputs>, standSubs> standRing {};
+    std::array<float, inputs> standAcc {};
+    std::array<float, 4> standOut {};
+    int standSteps = 0, standAt = 0;
+    void standStep() noexcept;
 };
 } // namespace dendrite

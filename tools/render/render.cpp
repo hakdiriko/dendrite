@@ -25,6 +25,14 @@
 //                [--loop-transport]  (with --repeat: the song position jumps back at each
 //                                     repeat, like Live's loop brace)
 //                [--itch-log itches.csv]  (one row per itch: when, heads, the 14 numbers)
+//                [--bar beats]  (quarter notes per bar, as the host says: 3 for 3/4, 3 for 6/8)
+//                [--fly-dump dir]  (tools/fly/probe: every 50 ms, every neuron's spikes, the senses and
+//                                   the outputs, as .npy files with a meta.json)
+//                [--scramble seed]  (the fly with every non-plastic synapse strength shuffled)
+//                [--seed N]  (the same fly with other chance: its kicks, readiness and sense spikes)
+//                [--surrogate standin.txt]  (no brain: a linear filter from the senses to the outputs,
+//                                            fitted by tools/fly/probe/brain_share.py fit)
+//                [--stats stats.json]  (the slowest audio block, against the block's own length)
 //                out.wav may be "-" to write nothing
 #include <sstream>
 #include <array>
@@ -109,6 +117,59 @@ bool readWav (const char* path, Audio& a)
     return false;
 }
 
+// a .npy file whose row count is written when it is closed
+struct Npy
+{
+    std::FILE* f = nullptr;
+    std::string descr;
+    int cols = 0;
+    long rows = 0;
+    bool open (const std::string& path, const char* type, int columns)
+    {
+        f = std::fopen (path.c_str(), "wb");
+        descr = type;
+        cols = columns;
+        header();
+        return f != nullptr;
+    }
+    void header()
+    {
+        if (f == nullptr)
+            return;
+        std::string h = "{'descr': '" + descr + "', 'fortran_order': False, 'shape': (" + std::to_string (rows) + ", "
+                      + std::to_string (cols) + "), }";
+        h.resize (128 - 10 - 1, ' ');
+        h += '\n';
+        std::fwrite ("\x93NUMPY\x01\x00", 1, 8, f);
+        const uint16_t len = (uint16_t) h.size();
+        std::fwrite (&len, 2, 1, f);
+        std::fwrite (h.data(), 1, h.size(), f);
+    }
+    void write (const void* data, size_t bytes)
+    {
+        std::fwrite (data, 1, bytes, f);
+        ++rows;
+    }
+    void close()
+    {
+        if (f == nullptr)
+            return;
+        std::fseek (f, 0, SEEK_SET);
+        header();
+        std::fclose (f);
+        f = nullptr;
+    }
+};
+
+template <typename T, size_t N>
+std::string jsonList (const T (&a)[N])
+{
+    std::string s = "[";
+    for (size_t i = 0; i < N; ++i)
+        s += (i ? "," : "") + std::to_string ((long long) a[i]);
+    return s + "]";
+}
+
 bool writeWav (const char* path, const Audio& a)
 {
     std::ofstream f (path, std::ios::binary);
@@ -162,6 +223,9 @@ int main (int argc, char** argv)
     size_t onePass = 0;
     unsigned long long genome = 1;
     std::vector<std::pair<double, double>> throws;
+    double barBeats = 4.0;
+    std::string dumpDir, surrogateFile, statsFile;
+    long long scrambleSeed = -1, flySeed = -1;
     for (int i = 3; i < argc; ++i)
     {
         const std::string k = argv[i];
@@ -189,6 +253,12 @@ int main (int argc, char** argv)
         else if (k == "--loop-transport") loopTransport = true;
         else if (k == "--genome") genome = std::stoull (next());
         else if (k == "--itch-log") itchLog = next();
+        else if (k == "--bar") barBeats = std::stod (next());
+        else if (k == "--fly-dump") dumpDir = next();
+        else if (k == "--scramble") scrambleSeed = std::stoll (next());
+        else if (k == "--seed") flySeed = std::stoll (next());
+        else if (k == "--surrogate") surrogateFile = next();
+        else if (k == "--stats") statsFile = next();
         else if (k == "--throw")
         {
             const std::string v = next();
@@ -252,6 +322,44 @@ int main (int argc, char** argv)
         }
         engine.itchFly().setTaste (t);
     }
+    auto& fly = engine.itchFly();
+    if (scrambleSeed >= 0)
+        fly.scramble ((uint64_t) scrambleSeed);
+    if (flySeed >= 0)
+        fly.reseed (0x9E3779B97F4A7C15ull * (uint64_t) (flySeed + 1)); // never zero (xorshift)
+    static dendrite::Fly::StandIn standIn;
+    if (! surrogateFile.empty())
+    {
+        std::FILE* sf = std::fopen (surrogateFile.c_str(), "r");
+        int got = 0;
+        for (auto& row : standIn.w)
+            for (auto& x : row)
+                got += sf != nullptr && std::fscanf (sf, "%f", &x) == 1 ? 1 : 0;
+        if (sf)
+            std::fclose (sf);
+        if (got != (int) (standIn.w.size() * standIn.w[0].size()))
+        {
+            std::fprintf (stderr, "surrogate: %s has %d numbers, wants %zu\n", surrogateFile.c_str(), got,
+                          standIn.w.size() * standIn.w[0].size());
+            return 1;
+        }
+        fly.standIn (&standIn);
+    }
+    Npy spikesNpy, sensesNpy, heardNpy, outNpy;
+    constexpr int outCols = 14;
+    if (! dumpDir.empty())
+    {
+        fly.setProbing (true);
+        const auto at = [&] (const char* name) { return dumpDir + "/" + name; };
+        if (! spikesNpy.open (at ("spikes.npy"), "|u1", dendrite::Fly::neurons))
+        {
+            std::fprintf (stderr, "cannot write into %s (make the folder first)\n", dumpDir.c_str());
+            return 1;
+        }
+        sensesNpy.open (at ("senses.npy"), "<f4", dendrite::Fly::inputCount);
+        heardNpy.open (at ("heard.npy"), "<f4", dendrite::Fly::inputCount);
+        outNpy.open (at ("outputs.npy"), "<f4", outCols);
+    }
     std::FILE* flog = flyLog.empty() ? nullptr : std::fopen (flyLog.c_str(), "w");
     engine.setControls (feed, space, false, itch, false);
     engine.prepare ((float) in.sampleRate);
@@ -281,7 +389,12 @@ int main (int argc, char** argv)
         itch = 0;
         std::fprintf (stderr, "touch: %zu rows\n", touchRows.size());
     }
-    const int block = ! probe.empty() ? 1 : touchRows.empty() ? 256 : 32;
+    const int block = ! probe.empty() ? 1 : ! dumpDir.empty() ? std::max (1, (int) std::lround (in.sampleRate * 0.005)) : touchRows.empty() ? 256 : 32;
+    int blocksInBin = 0, binSamples = 0;
+    double slowest = 0.0, slowestLate = 0.0, spent = 0.0;
+    long blocks = 0;
+    std::vector<float> loads;
+    loads.reserve (in.left.size() / (size_t) block + 1);
     std::ofstream probeFile;
     if (! probe.empty())
         probeFile.open (probe, std::ios::binary);
@@ -289,6 +402,7 @@ int main (int argc, char** argv)
     dendrite::HostTime time;
     time.bpm = bpm;
     time.playing = playing;
+    time.barBeats = barBeats;
     const auto started = std::chrono::steady_clock::now();
     int itches = 0;
     bool itching = false;
@@ -324,7 +438,45 @@ int main (int argc, char** argv)
             t.freeze = at (6); t.throwing = at (7) > 0.5f; t.lift = at (8);
             engine.touchFromOutside (true, t);
         }
+        const auto blockStart = std::chrono::steady_clock::now();
         engine.process (out.left.data() + pos, out.right.data() + pos, n, time);
+        {
+            const double took = std::chrono::duration<double> (std::chrono::steady_clock::now() - blockStart).count() / n;
+            slowest = std::max (slowest, took);
+            if (seconds >= 1.0)
+            {
+                slowestLate = std::max (slowestLate, took);
+                loads.push_back ((float) (took * in.sampleRate));
+            }
+            spent += took * n;
+            ++blocks;
+        }
+        binSamples += n;
+        if (! dumpDir.empty() && ++blocksInBin == 10)
+        {
+            blocksInBin = 0;
+            const auto& p = fly.probe();
+            const float steps = (float) std::max (1, p.steps);
+            std::vector<uint8_t> row ((size_t) dendrite::Fly::neurons);
+            for (int k = 0; k < dendrite::Fly::neurons; ++k)
+                row[(size_t) k] = (uint8_t) std::min<int> (255, fly.takeSpikes (k));
+            spikesNpy.write (row.data(), row.size());
+            std::array<float, dendrite::Fly::inputCount> a {};
+            for (int k = 0; k < dendrite::Fly::inputCount; ++k)
+                a[(size_t) k] = p.drive[(size_t) k] / steps;
+            sensesNpy.write (a.data(), sizeof (a));
+            for (int k = 0; k < dendrite::Fly::inputCount; ++k)
+                a[(size_t) k] = p.heard[(size_t) k] / steps;
+            heardNpy.write (a.data(), sizeof (a));
+            const auto& d = engine.view().fly;
+            const double endSec = (double) (pos + (size_t) n) / in.sampleRate;
+            const float o[outCols] = { (float) endSec, (float) (time.ppq + (double) n / in.sampleRate * bpm / 60.0),
+                                       p.escape / steps, p.groom / steps, p.lean / steps, p.excited / steps, d.feeling, d.fear,
+                                       d.arousal, d.fatigue, (float) d.move, d.jump, d.scratch, d.throwing ? 1.0f : 0.0f };
+            outNpy.write (o, sizeof (o));
+            fly.clearProbe();
+            binSamples = 0;
+        }
         if (flog != nullptr && pos % 256 == 0)
         {
             const auto& d = engine.view().fly;
@@ -367,6 +519,40 @@ int main (int argc, char** argv)
     }
     const double elapsed = std::chrono::duration<double> (std::chrono::steady_clock::now() - started).count();
     std::fprintf (stderr, "itches: %d (at%s s)\n", itches, itchTimes.c_str());
+    if (! dumpDir.empty())
+    {
+        spikesNpy.close();
+        sensesNpy.close();
+        heardNpy.close();
+        outNpy.close();
+        namespace fd = dendrite::flydata;
+        std::ofstream m (dumpDir + "/meta.json");
+        m << "{\"sampleRate\": " << in.sampleRate << ", \"bin\": " << (double) (10 * block) / in.sampleRate << ", \"bpm\": " << bpm
+          << ", \"barBeats\": " << barBeats << ", \"loopSeconds\": " << (double) onePass / in.sampleRate
+          << ", \"repeat\": " << repeat << ", \"scramble\": " << scrambleSeed << ", \"seed\": " << flySeed << ", \"surrogate\": " << (surrogateFile.empty() ? "false" : "true")
+          << ",\n \"outputs\": [\"seconds\", \"beat\", \"escape\", \"groom\", \"lean\", \"excited\", \"feeling\", \"fear\", \"arousal\", \"fatigue\", \"move\", \"jump\", \"scratch\", \"throwing\"]"
+          << ",\n \"senseStart\": " << jsonList (fd::senseStart) << ",\n \"kenyon\": " << jsonList (fd::kenyon)
+          << ",\n \"mbon\": " << jsonList (fd::mbon) << ",\n \"mbonSign\": " << jsonList (fd::mbonSign)
+          << ",\n \"dan\": " << jsonList (fd::dan) << ",\n \"ppl1\": " << jsonList (fd::ppl1)
+          << ",\n \"escape\": " << jsonList (fd::escapeNeuron) << ",\n \"groom\": " << jsonList (fd::legNeuron)
+          << ",\n \"left\": " << jsonList (fd::leftNeuron) << ",\n \"right\": " << jsonList (fd::rightNeuron) << "}\n";
+    }
+    if (! statsFile.empty())
+    {
+        // seconds of work per second of audio: 1.0 would be one whole core
+        std::ofstream st (statsFile);
+        st << "{\"block\": " << block << ", \"sampleRate\": " << in.sampleRate << ", \"blocks\": " << blocks
+           << ", \"meanLoad\": " << spent / ((double) total / in.sampleRate)
+           << ", \"slowestLoad\": " << slowest * in.sampleRate << ", \"slowestLoadAfter1s\": " << slowestLate * in.sampleRate;
+        // one block in a thousand slower than this (a slowest block alone can be the machine, not the fly)
+        if (! loads.empty())
+        {
+            const size_t at = std::min (loads.size() - 1, loads.size() * 999 / 1000);
+            std::nth_element (loads.begin(), loads.begin() + (long) at, loads.end());
+            st << ", \"load999\": " << loads[at];
+        }
+        st << "}\n";
+    }
     std::fprintf (stderr, "rendered %.1f s in %.2f s (%.0fx real time)\n", (double) total / in.sampleRate, elapsed,
                   (double) total / in.sampleRate / elapsed);
     if (hlog)

@@ -134,7 +134,7 @@ void Fly::rest() noexcept
     refractory.fill (0.0f);
     firedCount.fill (0);
     slot = 0;
-    rng = 0x666C792E322E3031ull;
+    rng = rngSeed;
     for (auto& e : ears)
     {
         e.hp.clear();
@@ -188,6 +188,11 @@ void Fly::rest() noexcept
     heldBandHz = 1000.0f;
     now = Doing {};
     untilStep = 0.0f;
+    for (auto& sub : standRing)
+        sub.fill (0.0f);
+    standAcc.fill (0.0f);
+    standOut.fill (0.0f);
+    standSteps = standAt = 0;
 }
 
 const Touch& Fly::process (float left, float right) noexcept
@@ -241,6 +246,8 @@ const Touch& Fly::process (float left, float right) noexcept
             smell();
         }
         step();
+        if (stand != nullptr)
+            standStep();
         reflexes();
         if (--untilLive <= 0)
         {
@@ -391,6 +398,16 @@ void Fly::step() noexcept
             hit[k] = std::min (0.5f, rate * gain * d * f * dtSec); // the chance its neurons fire this step
         }
     }
+    for (int k = 0; k < inputs; ++k)
+        heardNow[(size_t) k] = hit[k];
+    if (probing)
+        for (int k = 0; k < inputs; ++k)
+        {
+            probeSum.drive[(size_t) k] += drive[(size_t) k];
+            probeSum.heard[(size_t) k] += hit[k];
+        }
+    if (stand != nullptr)
+        return; // no brain: the stand-in answers in standStep()
 
     // spikes arriving now, 2.5 ms after they left
     const int arrive = slot;
@@ -635,12 +652,28 @@ void Fly::reflexes() noexcept
 
     escape += coeff (0.03f, dt) * (escRate - escape);
     groom += coeff (0.15f, dt) * (groomRate - groom);
-    groomHabit += coeff (4.0f, dt) * (groom - groomHabit);
-    rub += coeff (0.08f, dt) * ((float) (legA - legB) / dt - rub);
     const float turnNow = l - r;
     lean += coeff (0.25f, dt) * (turnNow - lean);
-    leanHabit += coeff (6.0f, dt) * (lean - leanHabit);
     excited += coeff (0.4f, dt) * (l + r - excited);
+    if (stand != nullptr)
+    {
+        // the stand-in's filter takes the place of the four output signals (its legs do not rub)
+        escape = standOut[0];
+        groom = standOut[1];
+        lean = standOut[2];
+        excited = standOut[3];
+    }
+    groomHabit += coeff (4.0f, dt) * (groom - groomHabit);
+    rub += coeff (0.08f, dt) * ((float) (legA - legB) / dt - rub);
+    leanHabit += coeff (6.0f, dt) * (lean - leanHabit);
+    if (probing)
+    {
+        ++probeSum.steps;
+        probeSum.escape += escape;
+        probeSum.groom += groom;
+        probeSum.lean += lean;
+        probeSum.excited += excited;
+    }
 
     // the jump: the giant fiber's path firing hard. Wound up, it jumps sooner and harder; tired,
     // it waits longer between jumps. What it remembers chooses the jump: the more of what it hears
@@ -840,5 +873,67 @@ void Fly::reflexes() noexcept
     now.memory = memory;
     now.feeling = feeling;
     now.fear = fear;
+}
+void Fly::scramble (uint64_t seed)
+{
+    // tools only (allocates): the same strengths, the same signs among them, on random connections
+    std::vector<bool> plasticAt ((size_t) flydata::synapses, false);
+    for (int p = 0; p < flydata::plasticCount; ++p)
+        plasticAt[flydata::plastic[p]] = true;
+    std::vector<uint32_t> at;
+    at.reserve ((size_t) flydata::synapses);
+    for (uint32_t s = 0; s < (uint32_t) flydata::synapses; ++s)
+        if (! plasticAt[s])
+            at.push_back (s);
+    uint64_t x = seed;
+    const auto next = [&x] {
+        x += 0x9E3779B97F4A7C15ull; // splitmix64
+        uint64_t z = x;
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+        return z ^ (z >> 31);
+    };
+    for (size_t i = at.size() - 1; i > 0; --i)
+    {
+        const size_t j = (size_t) (next() % (uint64_t) (i + 1));
+        std::swap (w[at[i]], w[at[j]]);
+    }
+}
+
+void Fly::standStep() noexcept
+{
+    for (int k = 0; k < inputs; ++k)
+        standAcc[(size_t) k] += heardNow[(size_t) k];
+    if (++standSteps < 20)
+        return;
+    // every 10 ms: a sub-bin into the ring, then six sliding 50 ms means and the filter
+    for (int k = 0; k < inputs; ++k)
+        standRing[(size_t) standAt][(size_t) k] = standAcc[(size_t) k] / (float) standSteps;
+    standAcc.fill (0.0f);
+    standSteps = 0;
+    standAt = (standAt + 1) % standSubs;
+    for (int o = 0; o < 4; ++o)
+        standOut[(size_t) o] = stand->w[(size_t) o][(size_t) (inputs * standLags)];
+    for (int lag = 0; lag < standLags; ++lag)
+    {
+        std::array<float, inputs> mean {};
+        for (int s = 0; s < 5; ++s)
+        {
+            const auto& sub = standRing[(size_t) ((standAt - 1 - 5 * lag - s + 2 * standSubs) % standSubs)];
+            for (int k = 0; k < inputs; ++k)
+                mean[(size_t) k] += 0.2f * sub[(size_t) k];
+        }
+        for (int o = 0; o < 4; ++o)
+        {
+            const auto& wo = stand->w[(size_t) o];
+            float sum = 0.0f;
+            for (int k = 0; k < inputs; ++k)
+                sum += wo[(size_t) (lag * inputs + k)] * mean[(size_t) k];
+            standOut[(size_t) o] += sum;
+        }
+    }
+    standOut[0] = std::max (0.0f, standOut[0]);
+    standOut[1] = std::max (0.0f, standOut[1]);
+    standOut[3] = std::max (0.0f, standOut[3]);
 }
 } // namespace dendrite
