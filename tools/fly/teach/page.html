@@ -1,0 +1,555 @@
+<title>Teach the fly</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Fragment+Mono&display=swap">
+<style>
+/* Layout: one column like a channel strip, the loop's grid on top, the pads under the hands, the record below. */
+:root {
+  --bg: #f3f2ef; --panel: #e9e7e2; --line: #d3d0c8; --fg: #1d1c1a; --dim: #6c6860;
+  --itch: #b3241b; --itch-soft: #b3241b22; --ok: #2f6b45; --warn: #9a6a12;
+  --display: "Urbanist", "Segoe UI", system-ui, sans-serif;
+  --mono: "Fragment Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141413; --panel: #1d1c1b; --line: #33312e; --fg: #ecebe7; --dim: #9a958b;
+  --itch: #d8463b; --itch-soft: #d8463b2a; --ok: #6fbf8a; --warn: #e0b04a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141413; --panel: #1d1c1b; --line: #33312e; --fg: #ecebe7; --dim: #9a958b;
+  --itch: #d8463b; --itch-soft: #d8463b2a; --ok: #6fbf8a; --warn: #e0b04a; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--display); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px }
+main { max-width: 880px; margin: 0 auto; display: grid; gap: 22px }
+h1 { font-size: 26px; font-weight: 600; margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+h1 b { font-weight: 700 }
+h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim); margin: 0 0 10px }
+p { margin: 0; max-width: 64ch }
+.lede { color: var(--dim) }
+.num, input[type=number], select, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums }
+section { min-width: 0 }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
+button { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer }
+button:hover { border-color: var(--dim) }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--itch); outline-offset: 2px }
+button[aria-pressed=true] { border-color: var(--fg); background: var(--bg) }
+button:disabled { opacity: 0.45; cursor: default }
+label.ctl { display: grid; gap: 2px; font-size: 13px; color: var(--dim) }
+input[type=range] { width: 140px; accent-color: var(--fg) }
+input[type=number], select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; width: 84px }
+select { width: auto }
+
+.deck { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 16px }
+.transport { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between }
+#play { font-size: 17px; font-weight: 600; padding: 10px 22px; border-radius: 999px; background: var(--fg); color: var(--bg); border-color: var(--fg) }
+#play.on { background: var(--itch); border-color: var(--itch); color: #fff }
+.where { font-family: var(--mono); font-size: 14px; color: var(--dim) }
+.where b { color: var(--fg); font-weight: 400 }
+canvas#grid { width: 100%; height: 92px; display: block; border-radius: 8px; background: var(--bg) }
+
+.pads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+.pads .gap { grid-column: span 4; height: 0 }
+.pad { text-align: left; display: grid; gap: 2px; padding: 10px 11px; border-radius: 10px; background: var(--bg); position: relative; min-height: 78px; user-select: none; touch-action: none }
+.pad .k { font-family: var(--mono); font-size: 12px; color: var(--dim); position: absolute; right: 10px; top: 8px }
+.pad .n { font-weight: 600; font-size: 16px }
+.pad .d { font-size: 12px; color: var(--dim); line-height: 1.3 }
+.pad.wait { border-color: var(--itch); box-shadow: inset 0 0 0 1px var(--itch) }
+.pad.wait .k { color: var(--itch) }
+.pad.on { background: var(--itch); border-color: var(--itch); color: #fff }
+.pad.on .d, .pad.on .k { color: #ffffffcc }
+@media (prefers-reduced-motion: no-preference) { .pad.wait { animation: wait 0.5s ease-in-out infinite alternate } }
+@keyframes wait { from { background: var(--bg) } to { background: var(--itch-soft) } }
+@media (max-width: 560px) { .pads { grid-template-columns: repeat(2, minmax(0, 1fr)) } .pads .gap { grid-column: span 2 } }
+
+.pieces { display: flex; flex-wrap: wrap; gap: 8px }
+.drop { border: 1px dashed var(--line); border-radius: 8px; padding: 7px 12px; color: var(--dim); cursor: pointer }
+.drop.over { border-color: var(--itch); color: var(--fg) }
+.settings { display: flex; flex-wrap: wrap; gap: 18px; align-items: end }
+
+.meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+@media (max-width: 560px) { .meters { grid-template-columns: 1fr } }
+.meter { display: grid; gap: 6px }
+.meter .v { font-family: var(--mono); font-size: 20px }
+.meter .v small { color: var(--dim); font-size: 13px }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden }
+.bar i { display: block; height: 100%; background: var(--fg); width: 0 }
+.meter.done .bar i { background: var(--ok) }
+.meter .l { font-size: 13px; color: var(--dim) }
+
+.takes { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: 14px }
+th { text-align: left; font-weight: 500; color: var(--dim); font-size: 12px; padding: 4px 8px 6px 0; border-bottom: 1px solid var(--line) }
+td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap }
+td.num { text-align: right } th.num { text-align: right }
+td button { padding: 2px 8px; font-size: 13px }
+.empty { color: var(--dim); font-size: 14px; padding: 8px 0 }
+.note { font-size: 13px; color: var(--dim) }
+.note.bad { color: var(--itch) }
+.gate { display: grid; gap: 10px }
+textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; width: 100%; min-height: 64px; resize: vertical }
+details summary { cursor: pointer; color: var(--dim); font-size: 14px }
+details p { margin-top: 8px; font-size: 14px }
+</style>
+
+<main>
+  <header style="display:grid;gap:8px">
+    <h1><b>dendrite</b> · teach the fly</h1>
+    <p class="lede">Play the fly's moves on dendrite's own echo, over a loop. Every move you make, and every moment you leave alone, is what the fly will learn from. A take starts with Play and is saved when you stop.</p>
+  </header>
+
+  <section>
+    <h2>Loop</h2>
+    <div class="pieces" id="pieces"></div>
+    <div class="settings" style="margin-top:12px">
+      <label class="ctl">bpm <input type="number" id="bpm" min="50" max="220" step="0.01"></label>
+      <label class="ctl">meter <select id="meter"><option value="4">4/4</option><option value="3">3/4</option><option value="3x">6/8</option></select></label>
+      <label class="ctl">feed <input type="range" id="feed" min="0" max="1" step="0.01" value="0.5"></label>
+      <label class="ctl">space <input type="range" id="space" min="0" max="1" step="0.01" value="0.4"></label>
+      <label class="ctl">time <select id="time"><option value="0">dotted</option><option value="1">triplet</option><option value="2">half</option></select></label>
+    </div>
+    <p class="note" id="pieceNote" style="margin-top:8px"></p>
+  </section>
+
+  <section class="deck" aria-label="The echo">
+    <div class="transport">
+      <button id="play" aria-keyshortcuts="Enter">Play</button>
+      <div class="where" id="where">bar <b>–</b> · take <b>–</b></div>
+    </div>
+    <canvas id="grid" aria-label="The loop's sixteenths, where your moves started"></canvas>
+    <div class="pads" id="pads"></div>
+    <p class="note" id="engineNote">Small moves start on the next 16th, big ones on the next half bar, exactly as the fly's body does. Throw and freeze last while you hold them.</p>
+  </section>
+
+  <section>
+    <h2>Teaching data</h2>
+    <div class="meters" id="meters"></div>
+    <p class="note" style="margin-top:10px">The target from the plan: ten pieces, two takes of 32 bars each, 300 moves in all. Two of the pieces will be kept back as the fly's exam.</p>
+  </section>
+
+  <section>
+    <h2>Takes</h2>
+    <div class="takes" id="takes"><p class="empty">Your takes will appear here. Press Play, play some moves, press Stop.</p></div>
+    <div class="row" style="margin-top:10px">
+      <button id="download">Download all takes</button>
+      <span class="note" id="saveNote"></span>
+    </div>
+  </section>
+
+  <section class="gate">
+    <h2>Does it feel like playing dendrite?</h2>
+    <p class="note">This is the gate for this step. Say it after a few takes, in your own words if you like.</p>
+    <div class="row" id="feels">
+      <button data-v="yes" aria-pressed="false">Yes</button>
+      <button data-v="almost" aria-pressed="false">Almost</button>
+      <button data-v="no" aria-pressed="false">No</button>
+    </div>
+    <textarea id="words" placeholder="What feels wrong, slow or missing"></textarea>
+    <div class="row"><button id="sendVerdict">Save my answer</button><span class="note" id="verdictNote"></span></div>
+  </section>
+
+  <details>
+    <summary>How it works</summary>
+    <p>The sound is dendrite's own echo, the same C++ code as the plug-in, compiled to WebAssembly and running in your browser. The itch is off. The keys play the fly's body: the moves the fly makes in 2.4.3, with its choices fixed (rush runs double time for a beat, dive stays down for a half note). The log keeps every key at the exact sample it took hold, so each take can be rendered again offline and compared. Takes are saved to this page's own store, where Claude reads them.</p>
+    <p>Your own loops: a WAV plays exactly; other formats are converted to 48 kHz. Keep the files in C:\Claude-Playground\dendrite\loops so the teaching run can find them by name.</p>
+  </details>
+</main>
+
+<script>
+/*__WAV_JS__*/
+</script>
+<script>
+/*__RIG_CORE_SCRIPT__*/
+</script>
+<script>
+const WASM_B64 = "__WASM_B64__";
+const BUILTIN = __PIECES__;
+const RIG_CORE = String.raw`/*__RIG_CORE__*/`;
+const MOVES = ['none', 'hop', 'leap', 'duck', 'dive', 'rush', 'hold', 'sink'];
+const PADS = [
+  { key: 'a', move: 1, n: 'hop', d: 'up an octave for a 16th' },
+  { key: 's', move: 3, n: 'duck', d: 'down an octave for an 8th' },
+  { key: 'd', move: 7, n: 'sink', d: 'octave and fifth down, snaps back' },
+  { key: 'f', move: 6, n: 'hold', d: 'a throw and a held breath' },
+  { key: 'j', move: 2, n: 'leap', d: 'octave and a fifth up · half bar', big: true },
+  { key: 'k', move: 4, n: 'dive', d: 'into half time · half bar', big: true },
+  { key: 'l', move: 5, n: 'rush', d: 'double time for a beat · half bar', big: true },
+  { key: 'g', hold: 'freeze', n: 'freeze', d: 'the loop holds while held' },
+  { key: ' ', hold: 'throw', n: 'throw', d: 'throws into the echo while held', label: 'space' },
+];
+const $ = (id) => document.getElementById(id);
+const b64bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+// ---------- pieces
+const pieces = BUILTIN.map((p) => ({ ...p, builtin: true, bytes: null, audio: null }));
+let piece = null;
+async function sha256(bytes) {
+  try { const h = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
+  catch { return 'unknown'; }
+}
+function guessBpm(seconds, beatsPerBar) {
+  let best = null;
+  for (const bars of [1, 2, 4, 8, 16, 32]) {
+    const bpm = bars * beatsPerBar * 60 / seconds;
+    if (bpm >= 80 && bpm <= 176 && (!best || Math.abs(bpm - 124) < Math.abs(best - 124))) best = bpm;
+  }
+  return best ? Math.round(best * 100) / 100 : 120;
+}
+async function prepare(p) {
+  if (p.audio) return;
+  if (p.builtin) p.bytes = b64bytes(p.b64);
+  p.sha256 = await sha256(p.bytes);
+  try { p.audio = readWav(p.bytes); p.resampled = false; }
+  catch {
+    const ctx = new OfflineAudioContext(2, 1, 48000);
+    const buf = await ctx.decodeAudioData(p.bytes.slice().buffer);
+    p.audio = { sampleRate: 48000, left: buf.getChannelData(0), right: buf.getChannelData(buf.numberOfChannels > 1 ? 1 : 0) };
+    p.resampled = true;
+  }
+  p.frames = p.audio.left.length;
+  if (!p.bpm) p.bpm = guessBpm(p.frames / p.audio.sampleRate, 4);
+}
+function meterOf(p) { return p.meter || '4'; }
+function barBeats(p) { return meterOf(p) === '4' ? 4 : 3; } // 6/8 is three quarter notes a bar
+function renderPieces() {
+  const box = $('pieces'); box.textContent = '';
+  for (const p of pieces) {
+    const b = document.createElement('button');
+    b.textContent = p.name; b.setAttribute('aria-pressed', String(p === piece));
+    b.onclick = () => choose(p);
+    box.append(b);
+  }
+  const drop = document.createElement('label'); drop.className = 'drop'; drop.textContent = '+ your loop';
+  const input = document.createElement('input'); input.type = 'file'; input.accept = 'audio/*,.wav,.aif,.aiff,.flac,.mp3'; input.hidden = true; input.multiple = true;
+  input.onchange = () => addFiles(input.files);
+  drop.append(input);
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); };
+  box.append(drop);
+}
+async function addFiles(files) {
+  let last = null;
+  for (const f of files) {
+    const p = { name: f.name.replace(/\.[^.]+$/, ''), file: f.name, builtin: false, bytes: new Uint8Array(await f.arrayBuffer()) };
+    const m = p.name.match(/(\d{2,3}(?:\.\d+)?)\s*bpm/i);
+    if (m) p.bpm = +m[1];
+    try { await prepare(p); pieces.push(p); last = p; }
+    catch (e) { $('pieceNote').textContent = `${f.name} could not be read (${e.message}). Try a WAV.`; $('pieceNote').className = 'note bad'; }
+  }
+  if (last) choose(last);
+}
+async function choose(p) {
+  if (recording) return;
+  await prepare(p);
+  piece = p;
+  $('bpm').value = p.bpm; $('meter').value = meterOf(p);
+  $('bpm').disabled = $('meter').disabled = !!p.builtin;
+  const secs = p.frames / p.audio.sampleRate, beats = secs * p.bpm / 60;
+  const bars = beats / barBeats(p);
+  $('pieceNote').className = 'note';
+  $('pieceNote').textContent = `${secs.toFixed(2)} s at ${(p.audio.sampleRate / 1000).toFixed(1)} kHz, ${Math.round(bars * 100) / 100} bars at this tempo` +
+    (Math.abs(bars - Math.round(bars)) > 0.02 ? '. The loop does not end on a bar line at this tempo: check the bpm.' : '.') +
+    (p.resampled ? ' Converted to 48 kHz.' : '');
+  if (Math.abs(bars - Math.round(bars)) > 0.02) $('pieceNote').className = 'note bad';
+  renderPieces();
+  if (audio) await audio.load(p);
+  drawGrid();
+}
+$('bpm').onchange = () => { if (!piece || piece.builtin) return; piece.bpm = Math.max(50, Math.min(220, +$('bpm').value || 120)); choose(piece); };
+$('meter').onchange = () => { if (!piece || piece.builtin) return; piece.meter = $('meter').value; choose(piece); };
+
+// ---------- audio: the rig in an AudioWorklet (or on the main thread if the worklet is refused)
+let wasmModule = null, audio = null;
+const WORKLET = RIG_CORE + `
+class Proc extends AudioWorkletProcessor {
+  constructor() { super(); this.rig = null; this.q = []; this.k = 0;
+    this.port.onmessage = (e) => { const d = e.data;
+      if (d.type === 'init') { try { this.rig = new TeachRig(new WebAssembly.Module(d.bytes)); this.rig.init(d.sr); this.port.postMessage({ type: 'ready' }); }
+                               catch (err) { this.port.postMessage({ type: 'error', message: String(err) }); } }
+      else if (d.type === 'loop') { this.rig.setLoop(d.left, d.right, d.bpm, d.bar); this.port.postMessage({ type: 'loaded' }); }
+      else this.q.push(d); }; }
+  process(inputs, outputs) {
+    if (!this.rig) return true;
+    for (const m of this.q) this.rig.apply(m); this.q.length = 0;
+    const out = outputs[0]; this.rig.render(out[0], out[1] || out[0]);
+    if (++this.k % 4 === 0 || this.rig.log.length || this.rig.starts.length) {
+      const s = this.rig.state(); s.type = 'state'; s.time = currentTime;
+      s.log = this.rig.log.splice(0); s.starts = this.rig.starts.splice(0); this.port.postMessage(s); }
+    return true; } }
+registerProcessor('teach-rig', Proc);`;
+
+function makeAudio(sr) {
+  const ctx = new AudioContext({ sampleRate: sr, latencyHint: 'interactive' });
+  const a = { ctx, sr, send: null, onState: null, mode: '' };
+  a.start = async () => {
+    try {
+      try { await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }))); }
+      catch { await ctx.audioWorklet.addModule('data:text/javascript;base64,' + btoa(unescape(encodeURIComponent(WORKLET)))); }
+      const node = new AudioWorkletNode(ctx, 'teach-rig', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
+      node.connect(ctx.destination);
+      const reply = new Promise((ok, no) => {
+        node.port.onmessage = (e) => { const d = e.data;
+          if (d.type === 'ready') ok(); else if (d.type === 'error') no(new Error(d.message));
+          else if (d.type === 'state') a.onState && a.onState(d); else if (d.type === 'loaded') a.loaded && a.loaded(); };
+        setTimeout(() => no(new Error('the audio thread did not answer')), 4000);
+      });
+      node.port.postMessage({ type: 'init', bytes: b64bytes(WASM_B64), sr }); // bytes, not the compiled module: some browsers cannot send a module to the audio thread
+      await reply;
+      a.send = (m) => node.port.postMessage(m);
+      a.sendLoop = (m) => new Promise((ok) => { a.loaded = ok; node.port.postMessage(m); });
+      a.mode = 'audio thread';
+    } catch (err) {
+      // the main thread fallback: same rig, larger buffers
+      const rig = new TeachRig(wasmModule); rig.init(sr);
+      const q = []; const sp = ctx.createScriptProcessor(1024, 0, 2);
+      const l = new Float32Array(128), r = new Float32Array(128);
+      sp.onaudioprocess = (e) => {
+        const L = e.outputBuffer.getChannelData(0), R = e.outputBuffer.getChannelData(1);
+        for (let k = 0; k < 1024; k += 128) {
+          for (const m of q) rig.apply(m); q.length = 0;
+          rig.render(l, r); L.set(l, k); R.set(r, k);
+        }
+        const s = rig.state(); s.time = ctx.currentTime; s.log = rig.log.splice(0); s.starts = rig.starts.splice(0);
+        a.onState && a.onState(s);
+      };
+      sp.connect(ctx.destination);
+      a.send = (m) => q.push(m);
+      a.sendLoop = async (m) => rig.setLoop(m.left, m.right, m.bpm, m.bar);
+      console.warn('teach: the audio worklet was refused, running on the main thread:', err);
+      a.mode = 'main thread';
+    }
+  };
+  a.load = async (p) => a.sendLoop({ type: 'loop', left: p.audio.left, right: p.audio.right, bpm: p.bpm, bar: barBeats(p) });
+  return a;
+}
+async function ensureAudio() {
+  if (!wasmModule) wasmModule = await WebAssembly.compile(b64bytes(WASM_B64));
+  const sr = piece.audio.sampleRate;
+  if (audio && audio.sr === sr) { if (audio.ctx.state !== 'running') await audio.ctx.resume(); return; }
+  if (audio) await audio.ctx.close();
+  audio = makeAudio(sr);
+  await audio.start();
+  audio.onState = onState;
+  await audio.load(piece);
+  if (audio.mode !== 'audio thread') { $('engineNote').textContent = 'This browser runs the echo on the page itself instead of its audio thread: it works, with a little more delay between key and sound.'; }
+}
+
+// ---------- the take
+let recording = false, take = null, last = { beat: 0, moving: 0, waiting: 0, throwing: 0, frozen: 0, time: 0 };
+const held = { throw: false, freeze: false };
+function controls() { return [+$('feed').value, +$('space').value, +$('time').value]; }
+function onState(s) {
+  last = s;
+  if (take) {
+    for (const e of s.log) take.events.push(e);
+    for (const st of s.starts) take.starts.push(st);
+    take.frames = Math.max(take.frames, s.frame);
+  }
+  paintPads();
+}
+async function startTake() {
+  if (!piece) return;
+  $('play').disabled = true;
+  try { await ensureAudio(); }
+  catch (e) { $('engineNote').textContent = 'The echo could not start: ' + e.message; $('engineNote').className = 'note bad'; $('play').disabled = false; return; }
+  $('play').disabled = false;
+  take = { id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, startedAt: new Date().toISOString(),
+           piece, events: [], starts: [], frames: 0, bpm: piece.bpm, bar: barBeats(piece) };
+  recording = true;
+  audio.send({ a: 'take', v: controls() });
+  $('play').textContent = 'Stop'; $('play').classList.add('on');
+  renderPieces();
+}
+async function stopTake() {
+  if (!recording) return;
+  for (const k of ['throw', 'freeze']) if (held[k]) { held[k] = false; audio.send({ a: k, v: 0 }); }
+  audio.send({ a: 'stop' });
+  recording = false;
+  $('play').textContent = 'Play'; $('play').classList.remove('on');
+  const t = take;
+  await new Promise((ok) => setTimeout(ok, 120)); // the stop comes back through the log
+  take = null;
+  renderPieces();
+  const bars = t.frames * t.bpm / 60 / piece.audio.sampleRate / t.bar;
+  if (bars < 4) { $('saveNote').textContent = 'Takes shorter than four bars are not kept.'; return; }
+  await saveTake(t, bars);
+}
+$('play').onclick = () => (recording ? stopTake() : startTake());
+for (const id of ['feed', 'space', 'time']) $(id).oninput = () => { if (recording) audio.send({ a: 'controls', v: controls() }); };
+
+// ---------- pads and keys
+function renderPads() {
+  const box = $('pads');
+  PADS.forEach((p, i) => {
+    if (i === 4 || i === 7) { const g = document.createElement('div'); g.className = 'gap'; box.append(g); }
+    const b = document.createElement('button'); b.className = 'pad'; b.id = 'pad-' + p.n;
+    b.innerHTML = `<span class="k"></span><span class="n"></span><span class="d"></span>`;
+    b.querySelector('.k').textContent = p.label || p.key.toUpperCase();
+    b.querySelector('.n').textContent = p.n; b.querySelector('.d').textContent = p.d;
+    if (p.hold) {
+      b.onpointerdown = (e) => { e.preventDefault(); press(p, true); };
+      b.onpointerup = b.onpointerleave = b.onpointercancel = () => press(p, false);
+    } else b.onpointerdown = (e) => { e.preventDefault(); press(p, true); };
+    b.onkeydown = (e) => { if (e.key === ' ' || e.key === 'Enter') e.preventDefault(); };
+    box.append(b);
+  });
+}
+function press(p, down) {
+  if (!recording) { if (down) $('engineNote').textContent = 'Press Play first: the moves play on a running loop.'; return; }
+  if (p.hold) { if (held[p.hold] === down) return; held[p.hold] = down; audio.send({ a: p.hold, v: down ? 1 : 0 }); }
+  else if (down) audio.send({ a: 'cue', v: p.move });
+  paintPads();
+}
+function paintPads() {
+  for (const p of PADS) {
+    const el = $('pad-' + p.n); if (!el) continue;
+    const on = p.hold ? (p.hold === 'throw' ? held.throw : held.freeze || !!last.frozen) : last.moving === p.move;
+    el.classList.toggle('on', recording && !!on);
+    el.classList.toggle('wait', recording && !p.hold && last.waiting === p.move);
+  }
+}
+addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) $('play').click(); return; }
+  const p = PADS.find((q) => q.key === e.key.toLowerCase());
+  if (!p) return;
+  e.preventDefault();
+  if (!e.repeat) press(p, true);
+});
+addEventListener('keyup', (e) => {
+  const p = PADS.find((q) => q.key === e.key.toLowerCase());
+  if (p && p.hold) press(p, false);
+});
+addEventListener('blur', () => { for (const p of PADS) if (p.hold) press(p, false); });
+
+// ---------- the grid: the loop in 16ths, where your moves started this take
+const grid = $('grid'), g2 = grid.getContext('2d');
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function drawGrid() {
+  const dpr = devicePixelRatio || 1, w = grid.clientWidth, h = grid.clientHeight;
+  if (grid.width !== Math.round(w * dpr)) { grid.width = Math.round(w * dpr); grid.height = Math.round(h * dpr); }
+  g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, w, h);
+  if (!piece) return;
+  const beatsLoop = piece.frames / piece.audio.sampleRate * piece.bpm / 60;
+  const n16 = Math.max(4, Math.round(beatsLoop * 4)), bb = barBeats(piece);
+  const fg = css('--fg'), dim = css('--line'), itch = css('--itch'), text = css('--dim');
+  const pad = 6, cw = (w - 2 * pad) / n16;
+  for (let i = 0; i < n16; i++) {
+    const x = pad + i * cw, bar = i % (bb * 4) === 0, beat = i % 4 === 0;
+    g2.fillStyle = bar ? fg : beat ? text : dim;
+    g2.fillRect(x, h - 14, 1, bar ? 10 : beat ? 7 : 4);
+    if (bar) { g2.fillStyle = text; g2.font = '11px "Fragment Mono", monospace'; g2.fillText(String(i / (bb * 4) + 1), x + 3, h - 4); }
+  }
+  // starts from this take (or the last one): older passes fainter, stacked by pass
+  const starts = (take ? take.starts : lastStarts) || [];
+  const passes = Math.max(1, Math.ceil((last.beat || 1) / beatsLoop));
+  for (const [beat, move] of starts) {
+    const pass = Math.floor(beat / beatsLoop), at = (beat % beatsLoop) * 4;
+    const age = passes - 1 - pass;
+    g2.globalAlpha = Math.max(0.12, 1 - age * 0.18);
+    const big = move === 2 || move === 4 || move === 5;
+    g2.fillStyle = itch;
+    const y = 10 + (move - 1) * 8;
+    g2.fillRect(pad + at * cw, y, Math.max(3, cw * (big ? 2 : 1) - 2), 6);
+  }
+  g2.globalAlpha = 1;
+  if (recording && audio) {
+    const beat = last.beat + Math.max(0, audio.ctx.currentTime - last.time) * piece.bpm / 60;
+    const x = pad + ((beat % beatsLoop) / beatsLoop) * (w - 2 * pad);
+    g2.fillStyle = fg; g2.fillRect(x, 4, 2, h - 18);
+    const bar = Math.floor(beat / bb) + 1;
+    $('where').innerHTML = `bar <b>${bar}</b>${bar <= 32 ? ' / 32' : ''} · take <b>${takes.length + 1}</b> · moves <b>${take ? take.starts.length : 0}</b>`;
+  }
+}
+let lastStarts = [];
+(function frame() { drawGrid(); requestAnimationFrame(frame); })();
+
+// ---------- the record: takes saved to the page's store
+let db = null, me = null, takes = [], localOnly = [];
+function takeDoc(t, bars) {
+  const p = t.piece;
+  return { format: 'dendrite-teach/1', id: t.id, by: me || 'unknown', startedAt: t.startedAt,
+    piece: { name: p.name, file: p.file || `${p.name}.wav`, builtin: !!p.builtin, sha256: p.sha256, frames: p.frames,
+             sampleRate: p.audio.sampleRate, resampled: !!p.resampled, bpm: t.bpm, barBeats: t.bar },
+    frames: t.frames, bars: Math.round(bars * 100) / 100, moves: t.starts.length,
+    moveNames: MOVES, events: t.events.map((e) => e.join(' ')), starts: t.starts.map(([b, m]) => [Math.round(b * 1e4) / 1e4, m]) };
+}
+async function saveTake(t, bars) {
+  lastStarts = t.starts.slice();
+  const doc = takeDoc(t, bars);
+  if (!db) { localOnly.unshift(doc); takes = [...localOnly]; renderTakes(); $('saveNote').textContent = 'Kept on this page only (the store is not reachable here). Download them before you close it.'; return; }
+  try { await db.collection('takes').doc(doc.id).set(doc); $('saveNote').textContent = `Take saved: ${doc.bars} bars, ${doc.moves} moves.`; }
+  catch (e) { localOnly.unshift(doc); takes = [...localOnly, ...takes]; renderTakes(); $('saveNote').textContent = 'Could not save (' + (e.code || e.message) + '). Kept on this page; download it.'; }
+}
+function renderTakes() {
+  const box = $('takes');
+  if (!takes.length) { box.innerHTML = '<p class="empty">Your takes will appear here. Press Play, play some moves, press Stop.</p>'; renderMeters(); return; }
+  const rows = takes.slice(0, 60).map((t) => {
+    const when = new Date(t.startedAt);
+    return `<tr><td>${esc(t.piece.name)}</td><td class="num">${t.piece.bpm}</td><td class="num">${t.bars}</td><td class="num">${t.moves}</td>` +
+      `<td class="mono">${when.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>` +
+      `<td><button data-del="${esc(t.id)}">Delete</button></td></tr>`;
+  }).join('');
+  box.innerHTML = `<table><thead><tr><th>piece</th><th class="num">bpm</th><th class="num">bars</th><th class="num">moves</th><th>when</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  box.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
+    const id = b.dataset.del;
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Sure?'; return; }
+    localOnly = localOnly.filter((t) => t.id !== id);
+    if (db) { try { await db.collection('takes').doc(id).delete(); } catch {} }
+    takes = takes.filter((t) => t.id !== id); renderTakes();
+  });
+  renderMeters();
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function renderMeters() {
+  const full = takes.filter((t) => t.bars >= 32);
+  const byPiece = {};
+  for (const t of full) byPiece[t.piece.sha256 + t.piece.name] = (byPiece[t.piece.sha256 + t.piece.name] || 0) + 1;
+  const piecesDone = Object.values(byPiece).filter((n) => n >= 2).length;
+  const moves = takes.reduce((s, t) => s + t.moves, 0);
+  const m = [
+    { v: piecesDone, of: 10, l: 'pieces with two takes of 32 bars' },
+    { v: full.length, of: 20, l: 'takes of 32 bars or more' },
+    { v: moves, of: 300, l: 'moves in all takes' },
+  ];
+  $('meters').innerHTML = m.map((x) => `<div class="meter${x.v >= x.of ? ' done' : ''}"><div class="v">${x.v} <small>/ ${x.of}</small></div>` +
+    `<div class="bar"><i style="width:${Math.min(100, 100 * x.v / x.of)}%"></i></div><div class="l">${x.l}</div></div>`).join('');
+}
+$('download').onclick = async () => {
+  const data = JSON.stringify({ format: 'dendrite-teach/1', takes }, null, 1);
+  try {
+    const dl = await claude.use('downloads');
+    if (!dl) throw new Error('downloads are not available here');
+    await dl.save({ filename: `dendrite-teach-${new Date().toISOString().slice(0, 10)}.json`, data });
+    $('saveNote').textContent = 'Downloaded.';
+  } catch (e) { $('saveNote').textContent = e.code === 'declined' ? 'Download cancelled.' : 'Could not download: ' + (e.message || e.code); }
+};
+
+// ---------- the gate
+let feels = null;
+$('feels').querySelectorAll('button').forEach((b) => b.onclick = () => {
+  feels = b.dataset.v; $('feels').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+});
+$('sendVerdict').onclick = async () => {
+  if (!feels && !$('words').value.trim()) { $('verdictNote').textContent = 'Pick Yes, Almost or No first.'; return; }
+  const doc = { feels, words: $('words').value.trim(), at: new Date().toISOString(), by: me || 'unknown', takes: takes.length };
+  if (!db) { $('verdictNote').textContent = 'The store is not reachable here. Tell Claude in the thread instead.'; return; }
+  try { await db.collection('verdicts').doc(`${Date.now()}`).set(doc); $('verdictNote').textContent = 'Saved. Claude will read it.'; }
+  catch (e) { $('verdictNote').textContent = 'Could not save (' + (e.code || e.message) + '). Tell Claude in the thread instead.'; }
+};
+
+// ---------- start
+(async () => {
+  renderPads(); renderPieces(); renderMeters();
+  await choose(pieces[0]);
+  try {
+    if (!window.claude || !claude.use) return;
+    const user = await claude.use('user');
+    if (user) { try { me = await user.id(); } catch {} }
+    db = await claude.use('db');
+    if (db) db.collection('takes').orderBy('startedAt', 'desc').limit(500).onSnapshot((snap) => {
+      takes = [...localOnly, ...snap.docs.map((d) => d.data())];
+      renderTakes();
+    }, () => {});
+  } catch {}
+})();
+</script>

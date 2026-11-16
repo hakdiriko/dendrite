@@ -323,6 +323,8 @@ Each round:
 
 A preference model (Bradley-Terry over his picks) or a simple evolution strategy fits the few dozen judgements he can give. Keep each round's variants and his pick in the repo (for example under `tools/fly/taste/`) so the training is reproducible.
 
+**Phase 2 of the second review's plan, the teach page (2026-11-16):** `tools/fly/teach/` (see its README). Hakan plays the body's moves by hand on the echo in WebAssembly; takes are saved in the page's artifact store (collection `takes`) and replay natively with `teach.py replay`. `Source/dsp/FlyBody.h` is the body without the brain; the fly does not use it yet. Gate: his "feels like playing the plug-in" (collection `verdicts`), then 10 pieces x 2 takes x 32 bars, 300 moves.
+
 ## 10. Open problems and next steps
 
 1. ~~Memory not saved with the set.~~ Done in 2.3.0 (Hakan said yes on 2026-11-14), with a right-click for a new fly.
