@@ -31,9 +31,27 @@ Fly::Fly()
         role[flydata::dan[d]] = (int16_t) (-2 - d);
     for (int m = 0; m < flydata::mbonCount; ++m)
         role[flydata::mbon[m]] = (int16_t) (-10000 - m);
+    does.assign ((size_t) neurons, 0);
+    for (auto n : flydata::escapeNeuron)
+        does[n] |= doesEscape;
+    does[flydata::legNeuron[0]] |= doesLegA;
+    does[flydata::legNeuron[1]] |= doesLegB;
+    for (auto n : flydata::leftNeuron)
+        does[n] |= doesLeft;
+    for (auto n : flydata::rightNeuron)
+        does[n] |= doesRight;
+    for (int q = 0; q < flydata::steerCount; ++q)
+    {
+        does[flydata::steerLeft[q]] |= doesSteerL;
+        does[flydata::steerRight[q]] |= doesSteerR;
+    }
     double birth = 0.0;
+    plasticAtBirth.resize ((size_t) flydata::plasticCount);
     for (int p = 0; p < flydata::plasticCount; ++p)
+    {
         birth += (double) flydata::weight[flydata::plastic[p]];
+        plasticAtBirth[(size_t) p] = wSynapse * (float) flydata::weight[flydata::plastic[p]];
+    }
     plasticBirth = (float) std::max (1.0, birth * (double) wSynapse);
     forget();
 }
@@ -331,11 +349,11 @@ void Fly::live() noexcept
     for (int k = 0; k < flydata::dopamineCount; ++k)
         dopamine[flydata::dopamineMbon[k]] += flydata::dopamineShare[k] * danTrace[flydata::dopamineDan[k]];
     std::array<float, flydata::mbonCount> d {};
-    std::array<float, flydata::kenyonCount> active {}, now {};
+    std::array<float, flydata::kenyonCount> active {}, kcNow {};
     for (int k = 0; k < flydata::kenyonCount; ++k)
     {
         active[(size_t) k] = 1.0f - std::exp (-kcTrace[(size_t) k] / 5.0f);
-        now[(size_t) k] = 1.0f - std::exp (-kcSpikes[(size_t) k]);
+        kcNow[(size_t) k] = 1.0f - std::exp (-kcSpikes[(size_t) k]);
         kcSpikes[(size_t) k] = 0.0f;
     }
     std::array<float, flydata::mbonCount> before {};
@@ -356,7 +374,7 @@ void Fly::live() noexcept
         const float dm = d[flydata::plasticMbon[p]];
         const float t = kcTrace[flydata::plasticKenyon[p]];
         auto& wp = w[flydata::plastic[p]];
-        const float birth = wSynapse * (float) flydata::weight[flydata::plastic[p]];
+        const float birth = plasticAtBirth[(size_t) p];
         const int side = flydata::mbonSign[flydata::plasticMbon[p]] > 0 ? 1 : 0;
         heard[(size_t) side] += (double) (t * wp);
         heardAtBirth[(size_t) side] += (double) (t * birth);
@@ -365,7 +383,7 @@ void Fly::live() noexcept
             wp *= 1.0f - dt * taste.learn * dm * active[flydata::plasticKenyon[p]];
         // the other way round, dopamine first and the Kenyon cell after, it strengthens back toward
         // birth (Handler et al. 2019: the order decides the sign, through two dopamine receptors)
-        const float b = before[flydata::plasticMbon[p]], k = now[flydata::plasticKenyon[p]];
+        const float b = before[flydata::plasticMbon[p]], k = kcNow[flydata::plasticKenyon[p]];
         if (b > 1.0e-4f && k > 1.0e-3f)
             wp += dt * taste.learn * b * k * (birth - wp);
         wp += (birth - wp) * back;
@@ -439,12 +457,19 @@ void Fly::step() noexcept
         float* __restrict vp = v.data();
         float* __restrict gp = g.data();
         float* __restrict rp = refractory.data();
-        for (int n = 0; n < padded; ++n)
+        // and it notes which sixteen neurons may fire, so the spike search skips the rest
+        for (int c = 0; c < padded; c += 16)
         {
-            const float on = rp[n] > 0.5f ? 0.0f : 1.0f;
-            vp[n] += on * am * (vRest - vp[n] + gp[n]);
-            gp[n] *= 1.0f - on * (1.0f - ag);
-            rp[n] = std::max (0.0f, rp[n] - 1.0f);
+            int any = 0;
+            for (int n = c; n < c + 16; ++n)
+            {
+                const float on = rp[n] > 0.5f ? 0.0f : 1.0f;
+                vp[n] += on * am * (vRest - vp[n] + gp[n]);
+                gp[n] *= 1.0f - on * (1.0f - ag);
+                rp[n] = std::max (0.0f, rp[n] - 1.0f);
+                any |= vp[n] > vThreshold ? 1 : 0;
+            }
+            hot[(size_t) (c / 16)] = (uint8_t) any;
         }
     }
     // restless: a few small random kicks, about taste.restless per neuron per second (more when wound up),
@@ -455,6 +480,7 @@ void Fly::step() noexcept
         while (kickNext < (float) neurons)
         {
             v[(size_t) kickNext] += kickMv;
+            hot[(size_t) kickNext / 16] = 1;
             kickNext += meanGap * -std::log (uniform());
         }
         kickNext -= (float) neurons;
@@ -463,7 +489,10 @@ void Fly::step() noexcept
         {
             for (int k = 0; k < flydata::ppl1Count; ++k)
                 if (uniform() < 0.05f)
+                {
                     v[flydata::ppl1[k]] = vThreshold + 1.0f;
+                    hot[flydata::ppl1[k] / 16] = 1;
+                }
             reliefIn = reliefDelay;
             reliefLeft = 0.0f;
         }
@@ -481,7 +510,10 @@ void Fly::step() noexcept
             const float p = 0.05f * taste.relief;
             for (int k = 0; k < flydata::pamCount; ++k)
                 if (uniform() < p)
+                {
                     v[flydata::pam[k]] = vThreshold + 1.0f;
+                    hot[flydata::pam[k] / 16] = 1;
+                }
         }
     }
     // the senses fire their neurons, Poisson
@@ -496,14 +528,22 @@ void Fly::step() noexcept
             rng ^= rng >> 7;
             rng ^= rng << 17;
             if ((uint32_t) (rng >> 32) < limit)
+            {
                 v[flydata::senseNeuron[s]] = vThreshold + 1.0f;
+                hot[flydata::senseNeuron[s] / 16] = 1;
+            }
         }
     }
     auto& out = fired[(size_t) arrive];
     int count = 0;
-    for (int n = 0; n < neurons; ++n)
-        if (v[(size_t) n] > vThreshold) [[unlikely]]
+    for (int c = 0; c < padded / 16; ++c)
+    {
+        if (hot[(size_t) c] == 0)
+            continue;
+        for (int n = c * 16; n < std::min (neurons, c * 16 + 16); ++n)
         {
+            if (v[(size_t) n] <= vThreshold)
+                continue;
             v[(size_t) n] = vRest;
             g[(size_t) n] = 0.0f;
             refractory[(size_t) n] = (float) refractorySteps;
@@ -520,6 +560,7 @@ void Fly::step() noexcept
             else if (r <= -2)
                 danTrace[(size_t) (-2 - r)] += 1.0f;
         }
+    }
     firedCount[(size_t) arrive] = count;
     stepSpikes += count;
     slot = (slot + 1) % delaySlots;
@@ -673,19 +714,16 @@ void Fly::reflexes() noexcept
     int esc = 0, legA = 0, legB = 0, lefts = 0, rights = 0, steerL = 0, steerR = 0;
     for (int k = 0; k < count; ++k)
     {
-        const uint16_t n = out[(size_t) k];
-        for (auto e : flydata::escapeNeuron)
-            esc += e == n ? 1 : 0;
-        legA += flydata::legNeuron[0] == n ? 1 : 0;
-        legB += flydata::legNeuron[1] == n ? 1 : 0;
-        // descending neurons are sorted, so a binary search finds them
-        lefts += std::binary_search (std::begin (flydata::leftNeuron), std::end (flydata::leftNeuron), n) ? 1 : 0;
-        rights += std::binary_search (std::begin (flydata::rightNeuron), std::end (flydata::rightNeuron), n) ? 1 : 0;
-        for (int q = 0; q < flydata::steerCount; ++q)
-        {
-            steerL += flydata::steerLeft[q] == n ? 1 : 0;
-            steerR += flydata::steerRight[q] == n ? 1 : 0;
-        }
+        const uint8_t d = does[out[(size_t) k]];
+        if (d == 0)
+            continue;
+        esc += (d & doesEscape) ? 1 : 0;
+        legA += (d & doesLegA) ? 1 : 0;
+        legB += (d & doesLegB) ? 1 : 0;
+        lefts += (d & doesLeft) ? 1 : 0;
+        rights += (d & doesRight) ? 1 : 0;
+        steerL += (d & doesSteerL) ? 1 : 0;
+        steerR += (d & doesSteerR) ? 1 : 0;
     }
     const float dt = dtSec;
     const float escRate = (float) esc / ((float) flydata::escapeCount * dt);

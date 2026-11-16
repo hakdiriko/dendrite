@@ -203,6 +203,10 @@ private:
     bool innerLife = true;
     Taste taste;
     std::vector<int16_t> role; // per neuron: Kenyon cell k (k), DAN d (-2 - d), MBON m (-10000 - m), else -1
+    std::vector<float> plasticAtBirth; // each plastic synapse's weight at birth
+    std::vector<uint8_t> does; // per neuron, what its spike moves: the bits below
+    enum : uint8_t { doesEscape = 1, doesLegA = 2, doesLegB = 4, doesLeft = 8, doesRight = 16, doesSteerL = 32, doesSteerR = 64 };
+    std::array<uint8_t, padded / 16> hot {}; // per 16 neurons: may one of them fire this step?
     std::array<float, flydata::kenyonCount> kcTrace {};
     std::array<float, flydata::danCount> danTrace {};
     std::array<float, flydata::kenyonCount> kcSpikes {};          // this 10 ms: which Kenyon cells fired

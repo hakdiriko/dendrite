@@ -163,6 +163,9 @@ void FlyBrain::paint (juce::Graphics& g)
     const auto count = juce::String (flydata::neurons / 1000) + "," + juce::String (flydata::neurons % 1000).paddedLeft ('0', 3);
     g.drawText (count + " neurons of a fly's brain, wired as FlyWire mapped them", bottom,
                 juce::Justification::centredRight);
+    // and, honestly, which part is the fly and which part is ours
+    g.drawText ("it decides when, how hard, up or down; its moves on the grid are designed", bottom.translated (0.0f, -20.0f),
+                juce::Justification::centredRight);
 }
 
 void FlyBrain::mouseUp (const juce::MouseEvent& e)
