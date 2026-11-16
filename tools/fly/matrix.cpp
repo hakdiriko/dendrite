@@ -19,6 +19,9 @@
 #include <cstring>
 #include <functional>
 #include <random>
+#if defined(__SSE__) || defined(_M_X64)
+#include <xmmintrin.h>
+#endif
 #include <string>
 #include <vector>
 
@@ -233,6 +236,9 @@ Result run (const Case& c)
 
 int main (int argc, char** argv)
 {
+#if defined(__SSE__) || defined(_M_X64)
+    _mm_setcsr (_mm_getcsr() | 0x8040); // flush denormals to zero, as the plug-in does (JUCE's ScopedNoDenormals)
+#endif
     bool quick = false;
     std::string only;
     for (int i = 1; i < argc; ++i)
