@@ -670,7 +670,7 @@ void Fly::reflexes() noexcept
     const auto& out = fired[(size_t) ((slot + delaySlots - 1) % delaySlots)];
     const int count = firedCount[(size_t) ((slot + delaySlots - 1) % delaySlots)];
     // who fired this step, by what they do
-    int esc = 0, legA = 0, legB = 0, lefts = 0, rights = 0;
+    int esc = 0, legA = 0, legB = 0, lefts = 0, rights = 0, steerL = 0, steerR = 0;
     for (int k = 0; k < count; ++k)
     {
         const uint16_t n = out[(size_t) k];
@@ -681,6 +681,11 @@ void Fly::reflexes() noexcept
         // descending neurons are sorted, so a binary search finds them
         lefts += std::binary_search (std::begin (flydata::leftNeuron), std::end (flydata::leftNeuron), n) ? 1 : 0;
         rights += std::binary_search (std::begin (flydata::rightNeuron), std::end (flydata::rightNeuron), n) ? 1 : 0;
+        for (int q = 0; q < flydata::steerCount; ++q)
+        {
+            steerL += flydata::steerLeft[q] == n ? 1 : 0;
+            steerR += flydata::steerRight[q] == n ? 1 : 0;
+        }
     }
     const float dt = dtSec;
     const float escRate = (float) esc / ((float) flydata::escapeCount * dt);
@@ -691,8 +696,10 @@ void Fly::reflexes() noexcept
     groom += coeff (0.15f, dt) * (groomRate - groom);
     groomHabit += coeff (4.0f, dt) * (groom - groomHabit);
     rub += coeff (0.08f, dt) * ((float) (legA - legB) / dt - rub);
-    const float turnNow = l - r;
-    lean += coeff (0.25f, dt) * (turnNow - lean);
+    // its turn: the steering neurons, DNa01 and DNa02 on each side (2.5; until then every descending
+    // neuron's left against right, which mostly heard the music's level, not where it came from)
+    const float turnNow = (float) (steerL - steerR) / ((float) flydata::steerCount * dt);
+    lean += coeff (1.0f, dt) * (turnNow - lean);
     leanHabit += coeff (6.0f, dt) * (lean - leanHabit);
     excited += coeff (0.4f, dt) * (l + r - excited);
 
@@ -714,7 +721,7 @@ void Fly::reflexes() noexcept
     const bool wantsJump = escape > jumpAt && sinceJump >= jumpRest;
     const float gmNow = clamp01 ((groom - groomHabit + 0.5f) / 7.0f);
     const float moodNow = innerLife ? std::clamp ((feeling - feelingHabit) / 0.08f, -1.0f, 1.0f) : 0.0f;
-    const float leanSoft = std::clamp ((lean - leanHabit) / 0.8f, -1.0f, 1.0f);
+    const float leanSoft = std::clamp ((lean - leanHabit) / 8.0f, -1.0f, 1.0f);
     const float placeNow = std::clamp (rub / 40.0f, -1.2f, 1.2f) + (innerLife ? 0.8f * moodNow - 1.2f * fear : 0.0f);
     const float bandWish = taste.scratch * gmNow * std::sqrt (gmNow) * (innerLife ? (1.0f - 0.6f * fatigue) * (0.75f + 0.4f * moodNow) : 1.0f);
     if (musical)
@@ -867,7 +874,7 @@ void Fly::reflexes() noexcept
     const float mood = innerLife ? std::clamp ((feeling - feelingHabit) / 0.08f, -1.0f, 1.0f) : 0.0f;
     band = taste.scratch * gm * std::sqrt (gm) * (innerLife ? (1.0f - 0.6f * fatigue) * (0.75f + 0.4f * mood) : 1.0f);
     throwGlow += coeff (0.3f, dt) * ((throwing ? 1.0f : 0.0f) - throwGlow);
-    const float leanNow = std::clamp ((lean - leanHabit) / 0.8f, -1.0f, 1.0f);
+    const float leanNow = std::clamp ((lean - leanHabit) / 8.0f, -1.0f, 1.0f);
 
     target.speed = std::pow (2.0f, taste.lurch * lurch);
     target.feed = clamp01 (excited / 4.0f) * 0.18f - 0.05f;
