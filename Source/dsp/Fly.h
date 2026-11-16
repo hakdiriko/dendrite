@@ -102,7 +102,7 @@ public:
     // false: the 2.3 fly (moves whenever its neurons say so, one sine lurch of the tape)
     void setMusical (bool on) noexcept { musical = on; }
     // what its body can do with the tape; each bends the repeats by exact intervals, for exact note values
-    enum Move { none, hop, leap, duck, dive, rush, hold };
+    enum Move { none, hop, leap, duck, dive, rush, hold, sink };
 
     // false: the 2.1.0 fly (no restlessness, no moods, no learning), for comparison
     void setInnerLife (bool on) noexcept { innerLife = on; }

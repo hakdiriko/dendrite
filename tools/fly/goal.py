@@ -9,7 +9,7 @@
 import sys
 import numpy as np
 
-NAMES = ['none', 'hop', 'leap', 'duck', 'dive', 'rush', 'hold']
+NAMES = ['none', 'hop', 'leap', 'duck', 'dive', 'rush', 'hold', 'sink']
 
 
 def measure(path, bpm):

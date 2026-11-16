@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.3 (pure bends on bare material)
+
+From the honest review of 2.4: the duck and dive played held chords a minor sixth lower and the leap a major tenth higher (one of the two tape heads landed on those), which drums hide and bare keys expose.
+
+- **Sink**, the one bend the fly uses where there is no pulse: both heads fall by pure intervals (an octave, and an octave and a fifth) for an 8th, then the tape snaps back in a 32nd, too fast to hear as a pitch. On bare material its moves are now only hold and sink, taking turns.
+- **It scratches less there**: only its strongest scratching gets through (on the keys loop the band is open 31% of the time, was 48%).
+- Inside a groove nothing changes (the render Hakan said yes to is bit-identical).
+
 ## 2.4.2 (the fly reads the room)
 
 Hakan's marks on 2.4.1: the groove yes again, the bare keys no again, however calm.

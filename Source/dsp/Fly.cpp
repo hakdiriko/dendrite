@@ -546,19 +546,15 @@ void Fly::startMove (float size, float f) noexcept
             throw16 = 3.0f;
             freezeIn16 = 4.0f;
         }
-        else if (moveNow == rush || moveNow == leap)
+        else
         {
-            moveNow = hop;
-            leg (0, -0.25f, 1.0f, 0.75f);
-            leg (1, 0.125f, 2.0f, 1.0f);
-            legCount = 2;
-            throw16 = 1.0f;
-        }
-        else if (moveNow == dive)
-        {
-            moveNow = duck;
-            leg (0, 0.125f, 2.0f, 1.25f);
-            leg (1, -0.25f, 1.0f, 1.0f);
+            // sink: the one bend that keeps a chord a chord. Both heads fall by pure intervals (an
+            // octave, and an octave and a fifth) for an 8th, then the tape snaps back in a 32nd,
+            // too fast to be heard as a pitch. The other slides put one head on a sixth, a seventh
+            // or a tenth, which drums hide and held harmony does not.
+            moveNow = sink;
+            leg (0, 1.0f / 6.0f, 2.0f, 4.0f / 3.0f);
+            leg (1, -2.0f / 3.0f, 0.5f, 1.0f);
             legCount = 2;
             throw16 = 2.0f;
             freezeIn16 = -1.0f;
@@ -568,7 +564,28 @@ void Fly::startMove (float size, float f) noexcept
     if (moveNow == lastMoves[0] && moveNow == lastMoves[1])
     {
         const bool wasDown = moveNow == dive || moveNow == duck;
-        if (wasDown)
+        if (moveNow == sink || moveNow == hold)
+        {
+            // on bare material the two gentle moves take turns
+            const bool toHold = moveNow == sink;
+            moveNow = toHold ? hold : sink;
+            if (toHold)
+            {
+                leg (0, 0.0f, 6.0f, 1.0f);
+                legCount = 1;
+                throw16 = 3.0f;
+                freezeIn16 = 4.0f;
+            }
+            else
+            {
+                leg (0, 1.0f / 6.0f, 2.0f, 4.0f / 3.0f);
+                leg (1, -2.0f / 3.0f, 0.5f, 1.0f);
+                legCount = 2;
+                throw16 = 2.0f;
+                freezeIn16 = -1.0f;
+            }
+        }
+        else if (wasDown)
         {
             moveNow = hop;
             leg (0, -0.25f, 1.0f, 0.75f);
@@ -582,8 +599,11 @@ void Fly::startMove (float size, float f) noexcept
             leg (1, -0.25f, 1.0f, 1.0f);
             throw16 = 2.0f;
         }
-        legCount = 2;
-        freezeIn16 = -1.0f;
+        if (moveNow == hop || moveNow == duck)
+        {
+            legCount = 2;
+            freezeIn16 = -1.0f;
+        }
     }
     lastMoves[1] = lastMoves[0];
     lastMoves[0] = moveNow;
@@ -687,7 +707,7 @@ void Fly::reflexes() noexcept
                 startMove (armedSize, armedFear);
             }
             // the scratch, the lean and the feed change on the lines and hold between them
-            heldBand = bandWish > 0.12f ? bandWish : 0.0f;
+            heldBand = bandWish > 0.12f + 0.4f * exposed ? bandWish : 0.0f; // on bare material only its strongest scratching
             heldBandHz = std::clamp (emptyHz * std::pow (2.0f, placeNow), 150.0f, 7000.0f);
             if (tickNow % 2 == 0)
                 heldLean = taste.lean * leanSoft;
