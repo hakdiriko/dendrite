@@ -1,6 +1,6 @@
 # the fly's instruments
 
-Phase 0 of "The fly: second review and plan" (2026-11-16): make "does the brain matter?" a number anyone can re-run. Tools only; the plug-in sounds exactly as before (renders are bit-identical with the probes off, and the plug-in never turns them on).
+Phase 0 of "The fly: second review and plan" (2026-11-16): make "does the brain matter?" a number anyone can re-run. Tools only; the plug-in sounds exactly as before (fly logs are identical with the probes off, and the plug-in never turns them on).
 
 ```
 g++ -O3 -march=x86-64-v2 -std=c++20 -I Source tools/render/render.cpp Source/dsp/*.cpp -o build/render
@@ -38,3 +38,7 @@ Now also: moves per bar (`--bar`), fear at five minutes and at the end, the long
 ## The material set
 
 Twelve synthetic pieces (`material.py`: keys and groove from the taste rounds, a dub loop, drums with gaps, voice, a pad with no hits, sparse, dense, a 32-bar passage that changes section, 3/4, 6/8, 174 bpm). None is Hakan's: his playground loops folder was empty when this was built. `--own` takes any `name_<bpm>bpm.wav` (and `_3-4` or `_6-8`) from a folder.
+
+## The baseline
+
+`docs/FLY_BASELINE.md` (2026-11-16, the 2.4.3 fly). `baseline-2026-11-16.json` is its full report and `standin-2026-11-16.txt` the stand-in it fitted. To compare a later fly against them, write the json into a folder as `report.json` and run `brain_share.py same`, or read them side by side. `--seed N` on the renderer gives the fourth fly, the real one with other chance, which is the floor for every likeness.

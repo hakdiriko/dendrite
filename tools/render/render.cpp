@@ -32,9 +32,14 @@
 //                [--seed N]  (the same fly with other chance: its kicks, readiness and sense spikes)
 //                [--surrogate standin.txt]  (no brain: a linear filter from the senses to the outputs,
 //                                            fitted by tools/fly/probe/brain_share.py fit)
+//                [--denormals]  (let tiny numbers stay denormal, as renders did before 2026-11-16; the plug-in
+//                                flushes them to zero, and so does the renderer by default now)
 //                [--stats stats.json]  (the slowest audio block, against the block's own length)
 //                out.wav may be "-" to write nothing
 #include <sstream>
+#if defined(__SSE__) || defined(_M_X64)
+#include <xmmintrin.h>
+#endif
 #include <array>
 #include "dsp/Engine.h"
 
@@ -226,6 +231,7 @@ int main (int argc, char** argv)
     double barBeats = 4.0;
     std::string dumpDir, surrogateFile, statsFile;
     long long scrambleSeed = -1, flySeed = -1;
+    bool denormals = false;
     for (int i = 3; i < argc; ++i)
     {
         const std::string k = argv[i];
@@ -259,6 +265,7 @@ int main (int argc, char** argv)
         else if (k == "--seed") flySeed = std::stoll (next());
         else if (k == "--surrogate") surrogateFile = next();
         else if (k == "--stats") statsFile = next();
+        else if (k == "--denormals") denormals = true;
         else if (k == "--throw")
         {
             const std::string v = next();
@@ -273,6 +280,12 @@ int main (int argc, char** argv)
         }
     }
 
+#if defined(__SSE__) || defined(_M_X64)
+    // as the plug-in (juce::ScopedNoDenormals): tails decaying toward silence would otherwise run
+    // many times slower than in a host, and the timing would measure the CPU's denormal penalty
+    if (! denormals)
+        _mm_setcsr (_mm_getcsr() | 0x8040); // flush to zero, denormals are zero
+#endif
     Audio in;
     if (! readWav (argv[1], in))
     {

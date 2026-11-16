@@ -359,8 +359,8 @@ def same(a, b):
         if isinstance(x, dict):
             for k in set(x) | set(y):
                 walk(x.get(k), y.get(k), path + '.' + k)
-        elif x != y:
-            diffs.append((path, x, y))
+        elif x != y and not (isinstance(x, float) and isinstance(y, float) and np.isnan(x) and np.isnan(y)):
+            diffs.append((path, x, y))  # nan is nan (an output that never moved has no R squared)
     walk(sa, sb, '')
     for d in diffs[:40]:
         print('differs:', *d)

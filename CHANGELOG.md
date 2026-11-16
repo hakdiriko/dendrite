@@ -7,7 +7,9 @@ Phase 0 of the fly plan: "does the brain matter?" as a number anyone can re-run.
 - `build/render --fly-dump` writes every neuron's spikes, the senses and the outputs every 50 ms; `--scramble` shuffles the wiring's strengths; `--surrogate` swaps the brain for a fitted loudness filter; `--stats` measures the slowest audio block; `--bar` sets the time signature.
 - `tools/fly/probe/brain_share.py` plays twelve pieces with the real fly, a scrambled fly and the no-brain stand-in, five minutes each, and reports how much of the fly's behaviour its senses alone explain.
 - `tools/fly/probe/material.py`: the material set. `tools/fly/goal.py` also reports fear at five minutes, the longest run of one move, moves per bar and the slowest block.
-- The probes are off in the plug-in; renders with them off are bit-identical to before.
+- The probes are off in the plug-in. Fly logs with them off are identical to before.
+- The renderer now flushes denormals, as the plug-in does (`--denormals` turns that off). Before, silence-heavy material rendered several times slower, so the renderer's timing could not be trusted.
+- The baseline's own numbers are in `tools/fly/probe/baseline-2026-11-16.json`, and the stand-in it used is in `standin-2026-11-16.txt`, so later phases can diff against them.
 
 ## 2.4.3 (pure bends on bare material)
 
