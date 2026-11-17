@@ -1,0 +1,17 @@
+dendrite - install on macOS (11 or newer, Apple Silicon and Intel)
+=================================================================
+
+1. Quit your DAW.
+2. Copy dendrite.vst3 to      ~/Library/Audio/Plug-Ins/VST3/
+   Copy dendrite.component to ~/Library/Audio/Plug-Ins/Components/
+   (In Finder: Go > Go to Folder..., paste the path.)
+3. This build is not yet signed by Apple, so macOS blocks it the first time.
+   Open Terminal and paste this one line:
+
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/dendrite.vst3 ~/Library/Audio/Plug-Ins/Components/dendrite.component
+
+4. Ableton Live: Live > Settings > Plug-Ins, turn on "Use Audio Units v2"
+   and/or "Use VST3 Plug-In System Folders", click Rescan
+   (hold Option for a full rescan).
+
+The manual is dendrite-manual.pdf. Credits and licences: CREDITS.txt.

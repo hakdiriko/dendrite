@@ -1,0 +1,16 @@
+dendrite - install on Windows
+=============================
+
+Easiest: run dendrite-setup.exe. It puts dendrite.vst3 into
+C:\Program Files\Common Files\VST3\ (Windows asks for permission).
+
+By hand (the zip):
+1. Quit your DAW. Windows locks a loaded plug-in.
+2. Copy the folder dendrite.vst3 into C:\Program Files\Common Files\VST3\
+   Replace an older dendrite.vst3. Delete any viber.vst3 (dendrite's old name).
+3. Ableton Live: Options > Settings > Plug-Ins, turn on
+   "Use VST3 Plug-In System Folders", click Rescan
+   (hold Alt while clicking for a full rescan).
+4. Plug-Ins > VST3 > hakdiriko > dendrite, drag it onto a track.
+
+The manual is dendrite-manual.pdf. Credits and licences: CREDITS.txt.

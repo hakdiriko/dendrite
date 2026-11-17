@@ -53,13 +53,17 @@ Fly::Fly()
         plasticAtBirth[(size_t) p] = wSynapse * (float) flydata::weight[flydata::plastic[p]];
     }
     plasticBirth = (float) std::max (1.0, birth * (double) wSynapse);
+    for (int s = 0; s < flydata::synapses; ++s)
+        w[(size_t) s] = wSynapse * (float) flydata::weight[s];
     forget();
 }
 
 void Fly::forget() noexcept
 {
-    for (int s = 0; s < flydata::synapses; ++s)
-        w[(size_t) s] = wSynapse * (float) flydata::weight[s];
+    // only the KC to MBON synapses learn, so a new fly resets those 28,761 and not all million
+    // (forget runs on the audio thread when the window asks for a new fly)
+    for (int p = 0; p < flydata::plasticCount; ++p)
+        w[flydata::plastic[p]] = plasticAtBirth[(size_t) p];
     arousal = 0.3f;
     fatigue = 0.0f;
     memory = 1.0f;

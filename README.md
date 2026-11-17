@@ -3,7 +3,7 @@
 **A dub echo that grows around your head.** VST3 (plus AU on macOS), built with JUCE. Put it on a track and play.
 The repository is called `knit`; the plug-in is called **dendrite**, always lowercase (it was called viber until 0.2.0).
 
-**Status: in development, not released yet.** A dotted-eighth dub echo locked to the host tempo. Every repeat steps a little further out from the middle, so the echo grows from inside your head to all around it, while the mono sum stays a clean dub echo. It breathes with your playing, and when a part repeats too long it gets an itch: three of five heads (scream, laugh, manipulate, swarm, ghost) answer. It also keeps the last minute, so you can drag an itch straight into Live.
+**Status: released (2.5).** Download it from [afferent.page](https://afferent.page) or the [GitHub releases](https://github.com/hakdiriko/knit/releases). A dotted-eighth dub echo locked to the host tempo. Every repeat steps a little further out from the middle, so the echo grows from inside your head to all around it, while the mono sum stays a clean dub echo. It breathes with your playing, and when a part repeats too long it gets an itch: three of five heads (scream, laugh, manipulate, swarm, ghost) answer. It also keeps the last minute, so you can drag an itch straight into Live.
 
 | Control | What you hear |
 |---|---|
@@ -19,7 +19,9 @@ Made for Windows 11 and Ableton Live 12; macOS builds (VST3 and AU) are made too
 
 ## Get a build
 
-Every push builds the plug-in automatically. You never need to compile anything.
+Releases: pushing a tag `vX.Y.Z` (matching the version in `CMakeLists.txt`) builds Windows, macOS and Linux, validates all three with pluginval, and publishes a GitHub release with a Windows installer, zips for every system, the manual and `CREDITS.txt`.
+
+Every push also builds the plug-in automatically. You never need to compile anything.
 
 1. Open the [Actions tab](https://github.com/hakdiriko/knit/actions/workflows/build.yml) (you need to be signed in to GitHub).
 2. Click the newest run with a green tick.
@@ -57,3 +59,5 @@ Design decisions are in [DECISIONS.md](DECISIONS.md); changes per version in [CH
 © 2026 hakdiriko. All rights reserved. The source is public so it can be read and built, but no licence is granted to copy, modify or redistribute it.
 
 The fonts in `Resources/fonts/` (Urbanist and Fragment Mono) are under the SIL Open Font License; JUCE is used under its own licence.
+
+The fly's wiring comes from the FlyWire connectome (Dorkenwald et al. 2024, Schlegel et al. 2024), released under CC BY-NC 4.0: dendrite with the fly inside may only be distributed non-commercially unless FlyWire grants otherwise. Full credits: [packaging/CREDITS.txt](packaging/CREDITS.txt).

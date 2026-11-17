@@ -6,6 +6,10 @@
 - **A real turn.** The space leans by the fly's steering neurons, DNa01 and DNa02 on each side, instead of every descending neuron's left against right. They follow where the sound is (correlation 0.64 with a groove panned bar by bar).
 - **The material matrix** (`tools/fly/matrix.cpp`): 26 cases, every tempo from 70 to 174, 3/4, 6/8, 7/8, Live stopped, tempo changes, loop jumps, silence, mono, one side, 44.1 to 192 kHz, odd block sizes. All pass. `tools/fly/fear.py` measures the fear target.
 - **Cheaper bookkeeping**, with bit-for-bit the same sound: a lookup table for what each spike does, and the spike search skips quiet groups of neurons. About 10 to 12.5% of a core (was 13%); the slowest 128-sample block takes under 80% of its time. The plan's 5% target is not reached (see the handoff, section 7).
+- **Ready to download.** A `v*` tag now builds Windows, macOS and Linux, validates all three, and publishes a release: a Windows installer (puts `dendrite.vst3` in the system VST3 folder and removes an old `viber.vst3`), zips for each system with the manual, install notes and `CREDITS.txt`, and checksums.
+- **Credits.** The fly's data is FlyWire's, under CC BY-NC 4.0; `CREDITS.txt`, the manual's footer and the README now say so, with the papers to cite.
+- **A new fly without a hiccup.** Right-click "a new fly" reset all million synapses on the audio thread; only the 28,761 that learn ever change, so now only those are reset (the same fly, about 35 times less work in that one block).
+- The release also carries the fly's measuring tools (Phase 0) and the teach page (Phase 2); neither changes the sound.
 - **Honest words.** The manual's itch section described the 32-neuron creature of 2.0; it now says what the fly decides and what we built, and that what wakes it is mostly how hard the hits land. The drawer says it too.
 
 ## Fly instruments (tools only; the plug-in sounds exactly as 2.4.3)
