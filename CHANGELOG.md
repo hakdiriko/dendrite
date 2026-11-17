@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.1 (installers that look like dendrite)
+
+The plug-in sounds and behaves exactly as 2.5.0; only the way it arrives changes.
+
+- **Windows installer**: dendrite's own pictures on the welcome and finish pages (the light, its dendrites and the wordmark, drawn for every screen scaling), its icon on the setup file and in Apps, version and publisher details on the file, shorter pages, and a finish page that says how to rescan in Live. `tools/installer/make_art.py` draws the pictures.
+- **Mac installer** (`dendrite-x.y.z-macos.pkg`): VST3 and Audio Unit, each can be left out. Installed plug-ins carry no quarantine, so Mac users no longer need Terminal: one "Open Anyway" in System Settings the first time. Still not signed by Apple (that needs a paid Apple Developer account).
+
 ## 2.5.0 (the fly, hardened: Phase 1 of the second plan)
 
 - **Fear can fall.** The dopamine neurons fire steadily all the time, and until now that steady firing taught the memory as much as the jumps did, so fear climbed to 1.0 within two minutes on any loop and stayed. Now only bursts above each MBON's own level teach, learning goes both ways (dopamine before a Kenyon cell fires gives back, Handler et al. 2019), and a moment after each jump's sting the reward neurons (PAM) fire: relief (Tanimoto et al. 2004). Fear is now the balance of the punished against the rewarded compartments. After five minutes it sits at 0.3 to 0.4 on the groove and the keys, and rises when the music changes.

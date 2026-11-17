@@ -172,6 +172,19 @@ jobs:
           codesign --force --deep -s - pkg/stage/dendrite.vst3 pkg/stage/dendrite.component
           cp "$MANUAL" packaging/CREDITS.txt Resources/fonts/OFL-*.txt pkg/stage/
           cp packaging/INSTALL-mac.txt pkg/stage/INSTALL.txt
+          # the installer: files installed by Installer.app carry no quarantine, so an unsigned
+          # .pkg needs one "Open Anyway" in System Settings and no Terminal
+          mkdir -p pkg/root-vst3 pkg/root-au pkg/parts
+          ditto pkg/stage/dendrite.vst3 pkg/root-vst3/dendrite.vst3
+          ditto pkg/stage/dendrite.component pkg/root-au/dendrite.component
+          pkgbuild --root pkg/root-vst3 --install-location "/Library/Audio/Plug-Ins/VST3" \
+            --identifier com.hakdiriko.dendrite.pkg.vst3 --version "$v" pkg/parts/dendrite-vst3.pkg
+          pkgbuild --root pkg/root-au --install-location "/Library/Audio/Plug-Ins/Components" \
+            --identifier com.hakdiriko.dendrite.pkg.au --version "$v" pkg/parts/dendrite-au.pkg
+          sed "s/VERSION/$v/g" packaging/mac/distribution.xml > pkg/distribution.xml
+          productbuild --distribution pkg/distribution.xml --resources packaging/mac/resources \
+            --package-path pkg/parts "pkg/stage/dendrite-$v-macos.pkg"
+          cp "pkg/stage/dendrite-$v-macos.pkg" release/
           (cd pkg && ditto -c -k --keepParent stage "../release/dendrite-$v-macos-vst3-au.zip")
 
       - name: Package (Linux zip)
