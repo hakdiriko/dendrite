@@ -19,7 +19,7 @@ Made for Windows 11 and Ableton Live 12; macOS builds (VST3 and AU) are made too
 
 ## Get a build
 
-Releases: pushing a tag `vX.Y.Z` (matching the version in `CMakeLists.txt`) builds Windows, macOS and Linux, validates all three with pluginval, and publishes a GitHub release with a Windows installer, zips for every system, the manual and `CREDITS.txt`.
+Releases: on the Actions page, **Run workflow** on `main` with **publish** ticked (or push a tag `vX.Y.Z` matching the version in `CMakeLists.txt`). That builds Windows, macOS and Linux, validates all three with pluginval, and publishes a GitHub release with a Windows installer, zips for every system, the manual and `CREDITS.txt`.
 
 Every push also builds the plug-in automatically. You never need to compile anything.
 
