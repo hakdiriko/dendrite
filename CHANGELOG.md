@@ -19,6 +19,12 @@ Phase 0 of the fly plan: "does the brain matter?" as a number anyone can re-run.
 - The renderer now flushes denormals, as the plug-in does (`--denormals` turns that off). Before, silence-heavy material rendered several times slower, so the renderer's timing could not be trusted.
 - The baseline's own numbers are in `tools/fly/probe/baseline-2026-11-16.json`, and the stand-in it used is in `standin-2026-11-16.txt`, so later phases can diff against them.
 
+## Tools: the teach page (fly phase 2, the plug-in does not change)
+
+- **Teach the fly.** A one-page player where Hakan plays the fly's moves by hand on dendrite's own echo, over a loop: seven keys for the tape moves (hop, duck, sink, hold, leap, dive, rush), space to throw, G to freeze. The moves snap to the grid exactly as the fly's body does. Each take is saved with every key at the sample it took hold: the teaching data for the plan's phase 4.
+- The echo runs in the browser as WebAssembly (the plug-in's C++, 158 KB, in an AudioWorklet), within -79 dB of the native build and with the same move beats.
+- `Source/dsp/FlyBody.h`: the fly's body without its brain (not yet used by the fly itself). `tools/fly/teach/`: the page, the replay and the progress count.
+
 ## 2.4.3 (pure bends on bare material)
 
 From the honest review of 2.4: the duck and dive played held chords a minor sixth lower and the leap a major tenth higher (one of the two tape heads landed on those), which drums hide and bare keys expose.
