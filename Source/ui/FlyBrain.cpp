@@ -52,7 +52,16 @@ juce::String FlyBrain::doingLine() const
     juce::StringArray words;
     if (d.flyJump.load (relaxed) > 0.0f)
     {
-        juce::String w = "jumps  tape " + juce::String (d.flySemitones.load (relaxed), 1) + " st";
+        static const char* const moves[] = { "jumps", "hops", "leaps", "ducks", "dives", "rushes", "holds", "sinks" };
+        const int move = juce::jlimit (0, 7, d.flyMove.load (relaxed));
+        const float st = d.flySemitones.load (relaxed);
+        juce::String w = moves[move];
+        if (move == 0 || std::abs (st) > 0.05f)
+            w << "  tape " << juce::String (st, 1) << " st";
+        else if (move == dendrite::Fly::rush)
+            w << "  double time";
+        else if (move == dendrite::Fly::dive)
+            w << "  half time";
         if (d.flyThrowing.load (relaxed))
             w << "  throw";
         words.add (w);
@@ -154,16 +163,33 @@ void FlyBrain::paint (juce::Graphics& g)
     const auto count = juce::String (flydata::neurons / 1000) + "," + juce::String (flydata::neurons % 1000).paddedLeft ('0', 3);
     g.drawText (count + " neurons of a fly's brain, wired as FlyWire mapped them", bottom,
                 juce::Justification::centredRight);
+    // and, honestly, which part is the fly and which part is ours
+    g.drawText ("it decides when, how hard, up or down; its moves on the grid are designed", bottom.translated (0.0f, -20.0f),
+                juce::Justification::centredRight);
 }
 
 void FlyBrain::mouseUp (const juce::MouseEvent& e)
 {
+    if (e.mods.isPopupMenu())
+    {
+        // the one way to start over: a newborn fly, nothing learned, calm
+        juce::PopupMenu menu;
+        menu.addItem (1, "a new fly (it forgets what it learned)");
+        juce::Component::SafePointer<FlyBrain> self (this);
+        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMousePosition(),
+                            [self] (int chosen)
+                            {
+                                if (self != nullptr && chosen == 1)
+                                    self->processor.forgetFly();
+                            });
+        return;
+    }
     if (e.mouseWasClicked() && onToggle)
         onToggle();
 }
 
 juce::String FlyBrain::getTooltip()
 {
-    return open ? "close the fly" : "the fly: click to watch it think";
+    return open ? "close the fly (right-click: a new fly)" : "the fly: click to watch it think (right-click: a new fly)";
 }
 } // namespace dendrite::ui

@@ -2,7 +2,7 @@
 
 How dendrite's itch became a real fly's brain, how it works, and where it stands. It is written so another agent, thread or a separate product (Hakan has floated selling the fly as an add-on) can take it over cold. Keep it current: when the fly changes, change this file in the same commit.
 
-Last updated: 2026-11-13, version 2.2.0 (branch `claude/project-thread-vbjekz`, PR #10, not merged yet).
+Last updated: 2026-11-14, version 2.4.0 (section 5b is new: read it before the Reflexes section, which describes the 2.3 body, still there behind `setMusical (false)`). Main holds 2.2.1 (PR #9 and #10 merged on 2026-11-14). The fly is now worked on in its own project ("fly"); standard dendrite (echo, window) continues in the other project. The fly project touches only `Fly*`, `FlyData*`, `FlyBrain*`, `tools/fly/` and the small hooks that connect them (Engine, Echo's Touch, Processor's fly state).
 
 ## 0. Start here (first hour for whoever takes it over)
 
@@ -86,6 +86,7 @@ It is **not trained**. "Training" so far only means it learns during use; taste 
 | `Source/ui/FlyBrain.*` | The view: a small brain in the strip; click it for a drawer with the brain large, labels, the doing-line and the moods line. The UI thread owns window sizing (Editor, `grewForDrawer`). |
 | `tools/fly/` | Offline Python: `sim.py` (whole brain, reflexes), `sim2.py` (whole brain with inner life), `families.py`, `touch.py`, `prune.py` / `prune2.py` (the cut), `export.py` (writes FlyData), README with credits. |
 | `tools/render/render.cpp` | Offline renderer without JUCE. `--fly-log fly.csv` logs one row per 256 samples: seconds, jump, semitones, throwing, frozen, scratch, scratchHz, turn, arousal, fatigue, memory, feeling, fear. `--still` plays the 2.1 fly (no inner life). `--repeat N` loops the input. |
+| `tools/fly/probe/` | The instruments (Phase 0, 2026-11-16): `brain_share.py` plays the material set (`material.py`) with the real fly, a scrambled fly, a no-brain stand-in and the real fly with other chance, and reports how much the brain does. Renderer probes: `--fly-dump`, `--scramble`, `--seed`, `--surrogate`, `--stats`, `--bar`. Results: `docs/FLY_BASELINE.md`. |
 | `tools/snapshot/` | Renders the window to PNG or frames; `DENDRITE_FLY_OPEN=t` opens the drawer at t seconds. |
 
 **Separability (for an add-on).** The fly's whole boundary with dendrite is small:
@@ -188,20 +189,40 @@ Spikes propagate through a CSR matrix (`rowStart`, `target`, and `w`, a mutable 
 - It tracks the brain's spike rate between 40k and 140k spikes/s over 120 s.
 - Sense gain is × (1 − 0.35·fatigue).
 
-**Learning (every 10 ms):**
+**Learning (every 10 ms; both ways since 2.5):**
 - When escape is above 30 Hz, the 16 PPL1 DANs are forced to fire (5% per step): this is the shock.
-- DAN spike traces (τ 0.5 s) reach each MBON through the connectome's DAN to MBON matrix, normalised per MBON.
-- For each plastic synapse: w ·= 1 − dt·0.06·(1 − e^(−dop/5))·(1 − e^(−KCtrace/5)), with the KC trace τ 1 s.
-- Forgetting: w += (w_birth − w)·dt/600 s.
+- When it ends, relief: 0.3 s later the 307 PAM DANs are forced to fire for 0.5 s at 5% × `Taste::relief` (0.05) per step (Tanimoto et al. 2004). Hand-wired, as the shock is.
+- DAN spike traces (τ 0.5 s) reach each MBON through the connectome's DAN to MBON matrix, normalised per MBON. Only the **burst** teaches: each MBON's dopamine minus its own 20 s average (2.5). Before 2.5 the DANs' steady firing (driven by the restless kicks) depressed every synapse all the time, which is what pinned fear at 1.0 within two minutes.
+- Forward (KC active, then dopamine): w ·= 1 − dt·learn·d·(1 − e^(−KCtrace/5)), with the KC trace τ 1 s and d = 1 − e^(−burst/5).
+- Backward (dopamine first, the KC fires after; Handler et al. 2019): w += dt·learn·d_before·(1 − e^(−KC spikes this 10 ms))·(w_birth − w), with d_before the burst trace over 1.5 s. Never above birth.
+- Forgetting: w += (w_birth − w)·dt/640 s.
 
 **Signals the learning produces:**
 - *memory*: the plastic weight sum against at birth.
-- *fear*: 1 − (current KC drive into the MBONs ÷ the same drive at birth), smoothed over 0.2 s. It says how much of what it smells now once hurt.
+- *fear* (2.5): how much weaker what it smells now reaches its come-closer MBONs than at birth, minus the same for its keep-away MBONs (the punished compartments against the rewarded ones; dopamine everywhere at once cancels out), over 0.35 for full fear, smoothed over 0.2 s. `tools/fly/fear.py`: 0.3 to 0.4 after five minutes on both loops, and it rises when the music changes (was 1.0 and 0.99).
 - *feeling*: (come-closer MBONs − keep-away MBONs) ÷ (sum + 2). Glutamate MBONs count as keep-away; ACh and GABA MBONs count as come-closer (Aso et al. 2014).
 
 **Persistence:**
 - Memory and moods survive `prepare()` and `rest()`; `forget()` resets them.
-- They are **not saved** with the set. Reloading gives a newborn fly.
+- Since 2.3 they are **saved with the set** (`Fly::Memory`, 57,560 bytes, about 77 KB as base64 in a `fly` child of the state): every plastic synapse as a uint16 share of its birth weight, plus arousal, fatigue, the feeling habit and `lived` (seconds of inner life). Activity, senses and reflexes are not saved; a fly brought back wakes rested and remembering.
+- The audio thread seals it into a seqlock vault about every 2 s (`Processor::keepFly`); a loaded memory waits in `flyArriving` and is adopted between two blocks, as the creature's life is. An invalid or missing one leaves the current fly.
+- Right-click the brain (small or drawer): "a new fly (it forgets what it learned)" calls `Processor::forgetFly()`, done at the next block.
+
+### 5b. The body in time (2.4, the default)
+
+Hakan's goal for the fly: **precise in time, moving with the music, and more than one tape trick.** Measured by `tools/fly/goal.py` (see DECISIONS 2026-11-14).
+
+- `Fly::setClock (beat, bpm)` gets the host's position every sample (Engine). `reflexes()` finds the 16th lines (`floor (beat * 4)` changing).
+- The neurons arm a move (same escape threshold as before, plus a rest of `4 * (6 - 5 * awake)` 16ths since the last move ended). The move starts on the next line: any 16th when awake > 0.75, else an 8th; big moves always an 8th.
+- `startMove()` picks one of five moves from size, fear (down with probability fear) and arousal: hop, leap, duck, dive, rush. Each is up to three `Leg`s: a slope of `stretch` (heads' distance against the grid's, `speed = 1 / stretch`) per 16th, a length in 16ths, and an exact end value. Straight slides give constant pitch ratios: dotted head `1 - 3 * slope`, quarter head `1 - 4 * slope`. Holds sit at 1/2 (double time) or 2 (half time).
+- Since 2.4.1: a moving budget (`busyShare`, a leaky share of time spent moving over 8 bars, must be under `0.08 + 0.24 * awake` to arm), big moves on bar lines (half bars when wide awake, from `setClock`'s `barBeats`), and `lastMoves`: a third identical move becomes its small opposite. Hakan's 2.4 marks: groove yes at 18% moving, keys no at 32%.
+- Since 2.4.2: `pulse` (share of the last 32 16ths with `max (drive[10], drive[11]) > 1`, the high eye band) gives `exposed = 1 - clamp01 ((pulse - 0.2) / 0.2)`. Exposed material: rest x (1 + 4 x exposed), budget x (1 - 0.6 x exposed), and in `startMove` half the moves become `hold` (no tape: a 3/16 throw and a one-beat freeze), rush and leap become hop, dive becomes duck. The keys loop measures about 0.18, the groove loop about 0.75. Hakan's marks so far: groove yes (2.4, 2.4.1), bare keys no (2.4, 2.4.1); 2.4.2 on the keys is waiting for his mark.
+- Since 2.4.3: on exposed material `startMove` only makes `hold` or `sink` (slope +1/6 for 2 16ths, back at -2/3 in half a 16th: the only slope where both heads are pure octaves and fifths), alternating; the band opens only above `0.12 + 0.4 * exposed`.
+- **Known, from the review thread ("Review the fly honestly", 2026-11-16), not fixed yet:** move onsets are the same with the wiring scrambled (hits plus grid decide the timing, the brain only the size and the fear); the choice of move is a fear-weighted coin; fear only climbs on a loop (0.64 keys, 0.97 groove after 90 s). The planned answer: bar and phrase position as senses, more descending neurons read as the choice of move, and reward dopamine (PAM) so learning goes both ways. All three want a new cut of the connectome (section 4).
+- Throw lengths are 1, 2 or 3 16ths; freezes start on a beat and last 2 or 4 16ths.
+- The band (scratch) is sampled every 16th and held (off under 0.12); the lean every 8th; the feed every beat.
+- `Doing::move` and the fly log's 14th column carry the move.
+- Ideas not built yet: more outputs from the connectome as moves (the moonwalker neurons for a reversed echo, courtship song neurons for a tone of its own; both need a new cut, see section 4), bigger moves saved for bar and phrase ends, the band stepping through pitches of the music's key.
 
 ### Reflexes: neurons to Touch (`reflexes()`)
 
@@ -209,7 +230,7 @@ Spikes propagate through a CSR matrix (`rowStart`, `target`, and `w`, a mutable 
 - *escape*: the rate of DNp01/02/04/11, smoothed over 30 ms;
 - *groom*: the 2 most active DNg11, over 150 ms;
 - *rub*: the difference between those two legs;
-- *lean*: left DNs minus right DNs, relative to its 6 s habit;
+- *lean* (2.5): DNa01 + DNa02 left minus right (`steerLeft`, `steerRight`, confirmed in the FlyWire annotations), per neuron in Hz, smoothed over 1 s, relative to its 6 s habit, /8 Hz for full. On a groove panned bar by bar it follows the pan (correlation 0.64); before 2.5 it was every descending neuron's left minus right;
 - *excited*: left plus right.
 
 **The jump:**
@@ -249,13 +270,21 @@ Spikes propagate through a CSR matrix (`rowStart`, `target`, and `w`, a mutable 
 
 ## 7. Cost and checks
 
-- About 11% of one core for the fly with the echo on a modern x86 (offline renderer, -O3).
-  - The 2.2 brain without the inner life costs about 7.5%; 2.1 cost about 5%.
+- `tools/fly/matrix.cpp` (2.5) drives the Engine with a fake transport through 26 cases: 70 to 174 bpm, 3/4, 6/8, 7/8, stopped, tempo changes, loop jumps (on and off the bar), silence around music, mono, one side, 44.1 to 192 kHz, ragged and fixed block sizes. It checks finite and bounded output, moves on the 16th grid, a move in every musical part, none in silence, silence that stays silent, and the cost per block in thread CPU time. All pass in 2.5.
+- Cost on the cloud machine (2.5): 10 to 12.5% of one core for the whole plug-in at 48 kHz (2.4.3: about 13%; Phase 0's sparse piece 8%), 22% at 192 kHz. The slowest block is 79% of a 128-sample buffer and 33% of a 512-sample one (one run on a shared cloud machine). With 32-sample blocks the 10 ms learning lands in one block (up to 3x that block's length), harmless at real buffer sizes.
+- Where it goes (fly alone): the step's spike delivery about 3.4%, the neuron update 1.5%, the spike search 1.2%, the Poisson senses 0.8%, learning 2.2%, reflexes 0.1% (was 1.4% before the 2.5 lookup table).
+- Measure cost with denormals flushed, as the plug-in runs (JUCE's ScopedNoDenormals; Phase 0's renderer and `matrix.cpp` both do). Without that, quiet material looked several times dearer (Phase 0's sparse piece 55% of a core, 8% with them flushed).
+- Brain share on 2.5 (Phase 0's `brain_share.py`, 12 pieces, 5 minutes each): moves real 37.8, scrambled 11.3, stand-in 31.9, real with other chance 36.6; same move moments real~stand-in 25% against real~real 36% (2.4.3: 27% against 28%); fear at five minutes 0.25 real, 0 stand-in; the senses still explain 94% of escape. Full table: `/mnt/project-files/fly/phase1/brain-share-2.5.md`.
+- **The plan's 5% target is not met.** A cut by reach (neurons that can reach an output or the memory and hear the senses) keeps 11,556 of 11,705, so it cannot get there; only a cut that changes the brain can (by synapse weight, or a coarser step), and that has to pass the real vs scrambled vs stand-in measurement.
 - `FlyData.cpp` is 11 MB of source. MSVC, Xcode and GCC compile it in CI without trouble.
 - Local checks before every push:
   - pluginval at strictness 10;
-  - `tools/discovery_audit.py` with 0 FAIL. Its 2 or 3 WARNs are MONO_BREAK from the space lean.
+  - `tools/discovery_audit.py` with 0 FAIL. Its 2 or 3 WARNs are MONO_BREAK from the space lean;
+  - `build/flymatrix` (PASS) and `tools/fly/fear.py` (PASS).
 - CI builds Windows and Linux on push; a manual dispatch adds macOS.
+
+- Measure cost with flushed denormals (the renderer does since 2026-11-16, as the plug-in does). Without, silence-heavy material costs several times more and the numbers mean nothing.
+- Every phase measures the brain's share before and after: `python3 tools/fly/probe/brain_share.py run build/material OUT`, then `report OUT`; the baseline is `docs/FLY_BASELINE.md`.
 
 ## 8. What was measured (Hakan's Warm Saw Keys loop, 3.78 s, repeated)
 
@@ -283,7 +312,15 @@ Reports for Hakan are in the project files:
 
 ## 9. Training: status and plan
 
-**Not started.** What exists is live learning (the fly's own aversive plasticity during use).
+**Round 1 is out (2026-11-14), waiting for Hakan's pick.** It ran on `tools/fly/taste/loops/fly-keys_127bpm.wav` (made by `make_keys.py`, because the playground's loops folder was empty): six 90 s renders, in `C:\Claude-Playground\dendrite\listening\fly-taste-01\` on his computer and in the project files under `fly/taste/round01/`. Record his answer with `taste.py pick 1 <letter>`.
+
+**The workflow since round 3:** Hakan found six 90 s files too slow. Now a round is 4 variants (`--n 4`) and `tools/fly/taste/player.py NN <renders> out.html` builds one page (published as an Artifact) where all flies play the same 60 s (first 8 and last 8 passes of the loop), keys 1 to 4 switch between them at the same spot, and yes/ok/no marks make one line he pastes back. Rounds 1 and 2 are picked (see `rounds/*.json` with his words): he wants a calm fly with few, big tape bends and no saturating fear; the shipped 2.2 fly was "not quite my tempo".
+
+**Found while making the loop:** on dense material (the same keys with a kick on 1 and 3, a rim and eighth-note hats) the fly jumped once in 90 s, against 25 times on the sparse keys alone. Its looming detectors habituate (use 12 per second, 10 s to recover), so a steady groove blinds its eyes and only the scratch is left. This is the next thing to fix after the taste rounds settle: candidates are habituating each eye band to its own rhythm (so only what breaks the pattern looms) or a slower, shallower tiring.
+
+Tooling: `Fly::Taste` holds the eight numbers taste training moves (learn, forget, restless, jumpy, scratch, lurch, lean, calm; defaults = the shipped fly, renders bit-identical). `build/render --taste learn=0.1,jumpy=1.2` sets any of them. `tools/fly/taste/taste.py round <loop.wav> <outdir>` renders 6 blind variants (one is the current centre) and logs them in `tools/fly/taste/rounds/NN.json`; `taste.py pick NN <letter> [<letter>]` records Hakan's pick and moves `centre.json` 60% toward it in log space, the spread shrinking by 0.8 each round. When the centre settles, bake it into the `Taste` defaults.
+
+Before 2.3: What exists is live learning (the fly's own aversive plasticity during use).
 
 The planned taste training (agreed with Hakan as the next phase):
 - the wiring stays fixed;
@@ -297,13 +334,15 @@ Each round:
 
 A preference model (Bradley-Terry over his picks) or a simple evolution strategy fits the few dozen judgements he can give. Keep each round's variants and his pick in the repo (for example under `tools/fly/taste/`) so the training is reproducible.
 
+**Phase 2 of the second review's plan, the teach page (2026-11-16):** `tools/fly/teach/` (see its README). Hakan plays the body's moves by hand on the echo in WebAssembly; takes are saved in the page's artifact store (collection `takes`) and replay natively with `teach.py replay`. `Source/dsp/FlyBody.h` is the body without the brain; the fly does not use it yet. Gate: his "feels like playing the plug-in" (collection `verdicts`), then 10 pieces x 2 takes x 32 bars, 300 moves.
+
 ## 10. Open problems and next steps
 
-1. **Memory not saved with the set.** The creature (2.0a) saved its life in the plug-in state. The fly could save its 28,761 plastic weights (about 115 KB as float, or quantised) plus its moods. This was asked of Hakan on 2026-11-13; no answer yet.
-2. **Fear saturates on one loop over long sessions** (at the current rate, toward mostly dives after several minutes). Forgetting brings it back when the music changes. Watch whether he finds the late phase repetitive.
+1. ~~Memory not saved with the set.~~ Done in 2.3.0 (Hakan said yes on 2026-11-14), with a right-click for a new fly.
+2. ~~Fear saturates on one loop over long sessions.~~ 2.5: only bursts teach, learning goes both ways, relief after each shock; fear settles at 0.3 to 0.4. Side effect: with fear no longer near 1, up and down moves are about even (the groove had mostly dives), so the groove has more, shorter moves (38 against 25 in 5 minutes). Hakan's re-listen decides.
 3. **The scratch's amount** still follows the grooming DN's timing, which is locked to the loop (about 90% alike pass to pass). Its place now varies. A sequential grooming model (Seeds et al. 2014: hierarchical suppression) would be the biological way to vary it.
 4. **The antennal lobe** is bypassed (it runs away in this model). A proper fix: add the local inhibitory neurons with weights scaled, or a gain-control step on the ORNs.
-5. **CPU 11%.** Further cuts are possible: KCs that fire less than once a minute, and the arousal-scaled kick rate.
+5. **CPU about 12%** (section 7). Reach does not cut it; a weight-based cut or a coarser step would, if the brain share survives.
 6. **Determinism.** Fixed RNG seed, so renders repeat exactly. Live, it diverges with the timing of the input, which is fine.
 7. **As a separate product (DLC):**
    - The fly needs only the `Touch` interface: per-sample parameter offsets on the host effect.

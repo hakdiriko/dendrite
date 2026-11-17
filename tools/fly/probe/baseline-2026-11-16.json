@@ -1,0 +1,2779 @@
+{
+ "standin": {
+  "validation_r2": {
+   "escape": 0.9416,
+   "groom": 0.9247,
+   "lean": 0.473,
+   "excited": 0.7505
+  }
+ },
+ "pieces": {
+  "keys": {
+   "bpm": 127,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9908,
+      "excited": 0.7139,
+      "groom": 0.9553,
+      "lean": 0.3974
+     },
+     "explained_raw": {
+      "escape": 0.9871,
+      "excited": 0.6903,
+      "groom": 0.9433,
+      "lean": 0.4021
+     },
+     "memory": {
+      "kc_hz": 0.235,
+      "kc_active_per_bin": 0.011,
+      "kc_ever": 0.8475,
+      "all_hz": 7.5434
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.6465,
+      "outputs": 0.3861,
+      "kenyon": 0.3156,
+      "mbon": 0.2277
+     }
+    },
+    "goal": {
+     "moves": 31,
+     "per_bar": 0.191,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 17,
+      "sink": 13
+     },
+     "commonest": 0.55,
+     "phrase_alike": 0.78,
+     "idle": 0.74,
+     "fear_5min": 1.0,
+     "fear_end": 0.937,
+     "same_in_a_row": 2,
+     "scratching": 0.235,
+     "slowest_block": 3.38,
+     "block_999": 0.699,
+     "mean_load": 0.122
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9557,
+      "excited": 0.883,
+      "groom": NaN,
+      "lean": 0.9093
+     },
+     "explained_raw": {
+      "escape": 0.9315,
+      "excited": 0.7499,
+      "groom": NaN,
+      "lean": 0.9063
+     },
+     "memory": {
+      "kc_hz": 0.9522,
+      "kc_active_per_bin": 0.0314,
+      "kc_ever": 0.5893,
+      "all_hz": 6.7801
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.6465,
+      "outputs": 0.3574,
+      "kenyon": 0.3643,
+      "mbon": 0.1892
+     }
+    },
+    "goal": {
+     "moves": 15,
+     "per_bar": 0.093,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 5,
+      "sink": 9
+     },
+     "commonest": 0.6,
+     "phrase_alike": 0.96,
+     "idle": 0.98,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 10.649,
+     "block_999": 0.661,
+     "mean_load": 0.121
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9997,
+      "excited": 0.9997,
+      "groom": 1.0,
+      "lean": 0.9977
+     },
+     "explained_raw": {
+      "escape": 0.9989,
+      "excited": 0.9977,
+      "groom": 0.9986,
+      "lean": 0.996
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.6465,
+      "outputs": 0.0312,
+      "kenyon": 0.0312,
+      "mbon": 0.0312
+     }
+    },
+    "goal": {
+     "moves": 30,
+     "per_bar": 0.185,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 14,
+      "sink": 15
+     },
+     "commonest": 0.5,
+     "phrase_alike": 0.84,
+     "idle": 0.75,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.227,
+     "slowest_block": 2.238,
+     "block_999": 0.474,
+     "mean_load": 0.051
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9916,
+      "excited": 0.7338,
+      "groom": 0.9597,
+      "lean": 0.3693
+     },
+     "explained_raw": {
+      "escape": 0.9887,
+      "excited": 0.7088,
+      "groom": 0.9501,
+      "lean": 0.3649
+     },
+     "memory": {
+      "kc_hz": 0.2337,
+      "kc_active_per_bin": 0.011,
+      "kc_ever": 0.8422,
+      "all_hz": 7.4835
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.6465,
+      "outputs": 0.408,
+      "kenyon": 0.309,
+      "mbon": 0.2195
+     }
+    },
+    "goal": {
+     "moves": 32,
+     "per_bar": 0.198,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 16,
+      "sink": 15
+     },
+     "commonest": 0.5,
+     "phrase_alike": 0.79,
+     "idle": 0.74,
+     "fear_5min": 0.992,
+     "fear_end": 0.958,
+     "same_in_a_row": 2,
+     "scratching": 0.238,
+     "slowest_block": 2.42,
+     "block_999": 0.683,
+     "mean_load": 0.123
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.688,
+    "same_moments": 0.097
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.722,
+    "same_moments": 0.355
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.9,
+    "same_moments": 0.29
+   }
+  },
+  "groove": {
+   "bpm": 127,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.955,
+      "excited": 0.4884,
+      "groom": 0.7938,
+      "lean": 0.0408
+     },
+     "explained_raw": {
+      "escape": 0.9231,
+      "excited": -1.4348,
+      "groom": 0.5126,
+      "lean": 0.0109
+     },
+     "memory": {
+      "kc_hz": 0.6508,
+      "kc_active_per_bin": 0.0308,
+      "kc_ever": 0.9719,
+      "all_hz": 9.5967
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.9275,
+      "outputs": 0.3594,
+      "kenyon": 0.3992,
+      "mbon": 0.1758
+     }
+    },
+    "goal": {
+     "moves": 29,
+     "per_bar": 0.179,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 3,
+      "leap": 6,
+      "duck": 7,
+      "dive": 13
+     },
+     "commonest": 0.45,
+     "phrase_alike": 0.6,
+     "idle": 0.61,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.284,
+     "slowest_block": 2.798,
+     "block_999": 1.028,
+     "mean_load": 0.142
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.8301,
+      "excited": 0.8965,
+      "groom": NaN,
+      "lean": 0.7301
+     },
+     "explained_raw": {
+      "escape": 0.6924,
+      "excited": -0.8665,
+      "groom": NaN,
+      "lean": 0.6815
+     },
+     "memory": {
+      "kc_hz": 1.393,
+      "kc_active_per_bin": 0.0493,
+      "kc_ever": 0.647,
+      "all_hz": 8.3276
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.9275,
+      "outputs": 0.3306,
+      "kenyon": 0.4227,
+      "mbon": 0.1673
+     }
+    },
+    "goal": {
+     "moves": 6,
+     "per_bar": 0.037,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 1,
+      "leap": 1,
+      "duck": 4
+     },
+     "commonest": 0.67,
+     "phrase_alike": 0.99,
+     "idle": 0.99,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 5.003,
+     "block_999": 1.05,
+     "mean_load": 0.136
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9989,
+      "excited": 0.996,
+      "groom": 1.0,
+      "lean": 0.9955
+     },
+     "explained_raw": {
+      "escape": 0.9943,
+      "excited": 0.9416,
+      "groom": 0.9925,
+      "lean": 0.9807
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.9275,
+      "outputs": 0.0312,
+      "kenyon": 0.0312,
+      "mbon": 0.0312
+     }
+    },
+    "goal": {
+     "moves": 23,
+     "per_bar": 0.142,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 14,
+      "leap": 3,
+      "duck": 6
+     },
+     "commonest": 0.61,
+     "phrase_alike": 0.85,
+     "idle": 0.65,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.332,
+     "slowest_block": 3.381,
+     "block_999": 0.839,
+     "mean_load": 0.05
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6122,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9546,
+      "excited": 0.4969,
+      "groom": 0.7846,
+      "lean": 0.1318
+     },
+     "explained_raw": {
+      "escape": 0.9091,
+      "excited": -2.1522,
+      "groom": 0.4073,
+      "lean": 0.1139
+     },
+     "memory": {
+      "kc_hz": 0.6487,
+      "kc_active_per_bin": 0.0307,
+      "kc_ever": 0.9703,
+      "all_hz": 9.5756
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.9275,
+      "outputs": 0.3551,
+      "kenyon": 0.3969,
+      "mbon": 0.1624
+     }
+    },
+    "goal": {
+     "moves": 29,
+     "per_bar": 0.179,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 7,
+      "leap": 3,
+      "duck": 7,
+      "dive": 12
+     },
+     "commonest": 0.41,
+     "phrase_alike": 0.58,
+     "idle": 0.62,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.281,
+     "slowest_block": 2.58,
+     "block_999": 1.055,
+     "mean_load": 0.143
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.402,
+    "same_moments": 0.069
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.337,
+    "same_moments": 0.034
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.793,
+    "same_moments": 0.207
+   }
+  },
+  "dubloop": {
+   "bpm": 120,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6040,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9639,
+      "excited": 0.4299,
+      "groom": 0.5965,
+      "lean": 0.1524
+     },
+     "explained_raw": {
+      "escape": 0.9493,
+      "excited": -0.4701,
+      "groom": 0.0138,
+      "lean": 0.0882
+     },
+     "memory": {
+      "kc_hz": 0.3571,
+      "kc_active_per_bin": 0.0166,
+      "kc_ever": 0.9679,
+      "all_hz": 9.2019
+     },
+     "place": {
+      "chance": 0.0625,
+      "sixteenths": 16,
+      "senses": 0.795,
+      "outputs": 0.4096,
+      "kenyon": 0.2772,
+      "mbon": 0.2626
+     }
+    },
+    "goal": {
+     "moves": 30,
+     "per_bar": 0.199,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 4,
+      "leap": 7,
+      "duck": 5,
+      "dive": 11,
+      "rush": 3
+     },
+     "commonest": 0.37,
+     "phrase_alike": 0.59,
+     "idle": 0.69,
+     "fear_5min": 0.972,
+     "fear_end": 0.994,
+     "same_in_a_row": 2,
+     "scratching": 0.189,
+     "slowest_block": 2.023,
+     "block_999": 1.02,
+     "mean_load": 0.14
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6040,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.8606,
+      "excited": 0.7925,
+      "groom": NaN,
+      "lean": 0.5199
+     },
+     "explained_raw": {
+      "escape": 0.7849,
+      "excited": -4.0766,
+      "groom": NaN,
+      "lean": 0.3265
+     },
+     "memory": {
+      "kc_hz": 0.6025,
+      "kc_active_per_bin": 0.022,
+      "kc_ever": 0.5718,
+      "all_hz": 7.7045
+     },
+     "place": {
+      "chance": 0.0625,
+      "sixteenths": 16,
+      "senses": 0.795,
+      "outputs": 0.3805,
+      "kenyon": 0.3772,
+      "mbon": 0.251
+     }
+    },
+    "goal": {
+     "moves": 2,
+     "per_bar": 0.013,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "duck": 1
+     },
+     "commonest": 0.5,
+     "phrase_alike": 1.0,
+     "idle": 1.0,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 1,
+     "scratching": 0.0,
+     "slowest_block": 1.803,
+     "block_999": 0.98,
+     "mean_load": 0.125
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6040,
+     "bin": 0.05,
+     "explained": {
+      "escape": 1.0,
+      "excited": 0.9999,
+      "groom": 1.0,
+      "lean": 1.0
+     },
+     "explained_raw": {
+      "escape": 0.998,
+      "excited": 0.9269,
+      "groom": 0.9487,
+      "lean": 0.964
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0625,
+      "sixteenths": 16,
+      "senses": 0.795,
+      "outputs": 0.0625,
+      "kenyon": 0.0625,
+      "mbon": 0.0625
+     }
+    },
+    "goal": {
+     "moves": 34,
+     "per_bar": 0.225,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 12,
+      "leap": 15,
+      "duck": 7
+     },
+     "commonest": 0.44,
+     "phrase_alike": 0.91,
+     "idle": 0.83,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.118,
+     "slowest_block": 2.439,
+     "block_999": 0.269,
+     "mean_load": 0.049
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6040,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9614,
+      "excited": 0.4151,
+      "groom": 0.5999,
+      "lean": 0.1102
+     },
+     "explained_raw": {
+      "escape": 0.9371,
+      "excited": -0.5652,
+      "groom": -0.1337,
+      "lean": 0.1018
+     },
+     "memory": {
+      "kc_hz": 0.3684,
+      "kc_active_per_bin": 0.0171,
+      "kc_ever": 0.9719,
+      "all_hz": 9.2664
+     },
+     "place": {
+      "chance": 0.0625,
+      "sixteenths": 16,
+      "senses": 0.795,
+      "outputs": 0.4026,
+      "kenyon": 0.302,
+      "mbon": 0.2503
+     }
+    },
+    "goal": {
+     "moves": 33,
+     "per_bar": 0.219,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 5,
+      "leap": 6,
+      "duck": 6,
+      "dive": 12,
+      "rush": 4
+     },
+     "commonest": 0.36,
+     "phrase_alike": 0.59,
+     "idle": 0.68,
+     "fear_5min": 0.99,
+     "fear_end": 0.971,
+     "same_in_a_row": 2,
+     "scratching": 0.195,
+     "slowest_block": 4.213,
+     "block_999": 1.026,
+     "mean_load": 0.144
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.5,
+    "same_moments": 0.033
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.663,
+    "same_moments": 0.167
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.955,
+    "same_moments": 0.233
+   }
+  },
+  "drums": {
+   "bpm": 120,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9846,
+      "excited": 0.8151,
+      "groom": 0.9225,
+      "lean": 0.4846
+     },
+     "explained_raw": {
+      "escape": 0.9755,
+      "excited": 0.7777,
+      "groom": 0.825,
+      "lean": 0.5749
+     },
+     "memory": {
+      "kc_hz": 0.4061,
+      "kc_active_per_bin": 0.0193,
+      "kc_ever": 0.9858,
+      "all_hz": 8.6819
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.3578,
+      "outputs": 0.0559,
+      "kenyon": 0.0262,
+      "mbon": 0.0362
+     }
+    },
+    "goal": {
+     "moves": 35,
+     "per_bar": 0.219,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 6,
+      "leap": 7,
+      "duck": 4,
+      "dive": 17,
+      "rush": 1
+     },
+     "commonest": 0.49,
+     "phrase_alike": 0.51,
+     "idle": 0.51,
+     "fear_5min": 1.0,
+     "fear_end": 0.958,
+     "same_in_a_row": 2,
+     "scratching": 0.388,
+     "slowest_block": 5.193,
+     "block_999": 1.055,
+     "mean_load": 0.144
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9115,
+      "excited": 0.8132,
+      "groom": NaN,
+      "lean": 0.8801
+     },
+     "explained_raw": {
+      "escape": 0.8438,
+      "excited": 0.4543,
+      "groom": NaN,
+      "lean": 0.8653
+     },
+     "memory": {
+      "kc_hz": 0.8194,
+      "kc_active_per_bin": 0.0291,
+      "kc_ever": 0.5832,
+      "all_hz": 7.6512
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.3578,
+      "outputs": 0.0425,
+      "kenyon": 0.0372,
+      "mbon": 0.0269
+     }
+    },
+    "goal": {
+     "moves": 12,
+     "per_bar": 0.075,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 2,
+      "leap": 1,
+      "duck": 4,
+      "dive": 5
+     },
+     "commonest": 0.42,
+     "phrase_alike": 0.9,
+     "idle": 0.94,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 3.605,
+     "block_999": 0.992,
+     "mean_load": 0.136
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9999,
+      "excited": 0.9997,
+      "groom": 0.9998,
+      "lean": 0.9991
+     },
+     "explained_raw": {
+      "escape": 0.998,
+      "excited": 0.9931,
+      "groom": 0.9932,
+      "lean": 0.993
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.3578,
+      "outputs": 0.0078,
+      "kenyon": 0.0078,
+      "mbon": 0.0078
+     }
+    },
+    "goal": {
+     "moves": 49,
+     "per_bar": 0.306,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 4,
+      "leap": 24,
+      "duck": 5,
+      "rush": 16
+     },
+     "commonest": 0.49,
+     "phrase_alike": 0.82,
+     "idle": 0.52,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.439,
+     "slowest_block": 2.408,
+     "block_999": 0.864,
+     "mean_load": 0.048
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9855,
+      "excited": 0.8231,
+      "groom": 0.9209,
+      "lean": 0.5162
+     },
+     "explained_raw": {
+      "escape": 0.9807,
+      "excited": 0.7689,
+      "groom": 0.856,
+      "lean": 0.5917
+     },
+     "memory": {
+      "kc_hz": 0.3949,
+      "kc_active_per_bin": 0.0188,
+      "kc_ever": 0.9837,
+      "all_hz": 8.6212
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.3578,
+      "outputs": 0.0512,
+      "kenyon": 0.0316,
+      "mbon": 0.0319
+     }
+    },
+    "goal": {
+     "moves": 30,
+     "per_bar": 0.188,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 5,
+      "leap": 6,
+      "duck": 3,
+      "dive": 16
+     },
+     "commonest": 0.53,
+     "phrase_alike": 0.55,
+     "idle": 0.51,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.389,
+     "slowest_block": 2.769,
+     "block_999": 1.023,
+     "mean_load": 0.136
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.586,
+    "same_moments": 0.086
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.649,
+    "same_moments": 0.486
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.786,
+    "same_moments": 0.343
+   }
+  },
+  "voice": {
+   "bpm": 120,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9873,
+      "excited": 0.8932,
+      "groom": 0.9194,
+      "lean": 0.7605
+     },
+     "explained_raw": {
+      "escape": 0.9857,
+      "excited": 0.8378,
+      "groom": 0.8862,
+      "lean": 0.7671
+     },
+     "memory": {
+      "kc_hz": 0.5584,
+      "kc_active_per_bin": 0.0252,
+      "kc_ever": 0.9569,
+      "all_hz": 8.1383
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.2794,
+      "outputs": 0.1597,
+      "kenyon": 0.0928,
+      "mbon": 0.0712
+     }
+    },
+    "goal": {
+     "moves": 25,
+     "per_bar": 0.156,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 11,
+      "sink": 13
+     },
+     "commonest": 0.52,
+     "phrase_alike": 0.79,
+     "idle": 0.88,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.081,
+     "slowest_block": 3.856,
+     "block_999": 1.047,
+     "mean_load": 0.151
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9146,
+      "excited": 0.8995,
+      "groom": NaN,
+      "lean": 0.8716
+     },
+     "explained_raw": {
+      "escape": 0.878,
+      "excited": 0.7788,
+      "groom": NaN,
+      "lean": 0.8422
+     },
+     "memory": {
+      "kc_hz": 1.0218,
+      "kc_active_per_bin": 0.0342,
+      "kc_ever": 0.6429,
+      "all_hz": 6.6638
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.2794,
+      "outputs": 0.1322,
+      "kenyon": 0.1369,
+      "mbon": 0.0647
+     }
+    },
+    "goal": {
+     "moves": 8,
+     "per_bar": 0.05,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 3,
+      "sink": 4
+     },
+     "commonest": 0.5,
+     "phrase_alike": 0.98,
+     "idle": 0.99,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 6.139,
+     "block_999": 1.103,
+     "mean_load": 0.138
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9997,
+      "excited": 0.9987,
+      "groom": 0.9998,
+      "lean": 0.9987
+     },
+     "explained_raw": {
+      "escape": 0.9986,
+      "excited": 0.9781,
+      "groom": 0.9789,
+      "lean": 0.9904
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.2794,
+      "outputs": 0.0078,
+      "kenyon": 0.0078,
+      "mbon": 0.0078
+     }
+    },
+    "goal": {
+     "moves": 25,
+     "per_bar": 0.156,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 13,
+      "sink": 11
+     },
+     "commonest": 0.52,
+     "phrase_alike": 0.7,
+     "idle": 0.84,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.143,
+     "slowest_block": 2.646,
+     "block_999": 0.204,
+     "mean_load": 0.053
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6400,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9883,
+      "excited": 0.8881,
+      "groom": 0.9143,
+      "lean": 0.7736
+     },
+     "explained_raw": {
+      "escape": 0.9848,
+      "excited": 0.8494,
+      "groom": 0.8817,
+      "lean": 0.7646
+     },
+     "memory": {
+      "kc_hz": 0.5516,
+      "kc_active_per_bin": 0.0248,
+      "kc_ever": 0.9545,
+      "all_hz": 8.1063
+     },
+     "place": {
+      "chance": 0.0078,
+      "sixteenths": 128,
+      "senses": 0.2794,
+      "outputs": 0.1597,
+      "kenyon": 0.0944,
+      "mbon": 0.0603
+     }
+    },
+    "goal": {
+     "moves": 26,
+     "per_bar": 0.163,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 14,
+      "sink": 11
+     },
+     "commonest": 0.54,
+     "phrase_alike": 0.78,
+     "idle": 0.88,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.083,
+     "slowest_block": 2.734,
+     "block_999": 1.342,
+     "mean_load": 0.141
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.54,
+    "same_moments": 0.08
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.88,
+    "same_moments": 0.52
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.788,
+    "same_moments": 0.36
+   }
+  },
+  "sparse": {
+   "bpm": 96,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6200,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9965,
+      "excited": 0.7663,
+      "groom": 0.9801,
+      "lean": 0.8154
+     },
+     "explained_raw": {
+      "escape": 0.9968,
+      "excited": 0.7539,
+      "groom": 0.9787,
+      "lean": 0.799
+     },
+     "memory": {
+      "kc_hz": 0.1875,
+      "kc_active_per_bin": 0.0083,
+      "kc_ever": 0.9427,
+      "all_hz": 2.888
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.2045,
+      "outputs": 0.1758,
+      "kenyon": 0.1345,
+      "mbon": 0.1
+     }
+    },
+    "goal": {
+     "moves": 21,
+     "per_bar": 0.169,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 9,
+      "sink": 11
+     },
+     "commonest": 0.52,
+     "phrase_alike": 0.89,
+     "idle": 0.8,
+     "fear_5min": 0.603,
+     "fear_end": 0.602,
+     "same_in_a_row": 2,
+     "scratching": 0.157,
+     "slowest_block": 1.884,
+     "block_999": 1.02,
+     "mean_load": 0.109
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6200,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9822,
+      "excited": 0.9892,
+      "groom": NaN,
+      "lean": 0.9463
+     },
+     "explained_raw": {
+      "escape": 0.981,
+      "excited": 0.9834,
+      "groom": NaN,
+      "lean": 0.9435
+     },
+     "memory": {
+      "kc_hz": 0.7472,
+      "kc_active_per_bin": 0.0216,
+      "kc_ever": 0.6556,
+      "all_hz": 2.7311
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.2045,
+      "outputs": 0.1716,
+      "kenyon": 0.1523,
+      "mbon": 0.1013
+     }
+    },
+    "goal": {
+     "moves": 16,
+     "per_bar": 0.129,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 8,
+      "sink": 7
+     },
+     "commonest": 0.5,
+     "phrase_alike": 0.93,
+     "idle": 0.96,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 3.244,
+     "block_999": 1.029,
+     "mean_load": 0.106
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6200,
+     "bin": 0.05,
+     "explained": {
+      "escape": 1.0,
+      "excited": 1.0,
+      "groom": 0.9991,
+      "lean": 1.0
+     },
+     "explained_raw": {
+      "escape": 0.9998,
+      "excited": 0.9996,
+      "groom": 0.999,
+      "lean": 0.9997
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.2045,
+      "outputs": 0.0156,
+      "kenyon": 0.0156,
+      "mbon": 0.0156
+     }
+    },
+    "goal": {
+     "moves": 21,
+     "per_bar": 0.169,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 11,
+      "sink": 9
+     },
+     "commonest": 0.52,
+     "phrase_alike": 0.91,
+     "idle": 0.82,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.146,
+     "slowest_block": 3.66,
+     "block_999": 0.489,
+     "mean_load": 0.056
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6200,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9966,
+      "excited": 0.7752,
+      "groom": 0.98,
+      "lean": 0.8116
+     },
+     "explained_raw": {
+      "escape": 0.9966,
+      "excited": 0.7619,
+      "groom": 0.9791,
+      "lean": 0.7977
+     },
+     "memory": {
+      "kc_hz": 0.186,
+      "kc_active_per_bin": 0.0082,
+      "kc_ever": 0.9386,
+      "all_hz": 2.8313
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.2045,
+      "outputs": 0.1739,
+      "kenyon": 0.1323,
+      "mbon": 0.1065
+     }
+    },
+    "goal": {
+     "moves": 21,
+     "per_bar": 0.169,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 11,
+      "sink": 9
+     },
+     "commonest": 0.52,
+     "phrase_alike": 0.89,
+     "idle": 0.81,
+     "fear_5min": 0.602,
+     "fear_end": 0.619,
+     "same_in_a_row": 2,
+     "scratching": 0.152,
+     "slowest_block": 3.649,
+     "block_999": 1.031,
+     "mean_load": 0.115
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.848,
+    "same_moments": 0.333
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.905,
+    "same_moments": 0.619
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.81,
+    "same_moments": 0.762
+   }
+  },
+  "dense": {
+   "bpm": 140,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6102,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.953,
+      "excited": 0.2572,
+      "groom": 0.2661,
+      "lean": 0.1357
+     },
+     "explained_raw": {
+      "escape": 0.9357,
+      "excited": -2.6581,
+      "groom": -0.8685,
+      "lean": 0.0574
+     },
+     "memory": {
+      "kc_hz": 0.2172,
+      "kc_active_per_bin": 0.0104,
+      "kc_ever": 0.8926,
+      "all_hz": 9.8071
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.899,
+      "outputs": 0.2288,
+      "kenyon": 0.2389,
+      "mbon": 0.1596
+     }
+    },
+    "goal": {
+     "moves": 34,
+     "per_bar": 0.191,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 5,
+      "leap": 6,
+      "duck": 5,
+      "dive": 16,
+      "rush": 2
+     },
+     "commonest": 0.47,
+     "phrase_alike": 0.53,
+     "idle": 0.71,
+     "fear_5min": 0.999,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.128,
+     "slowest_block": 2.896,
+     "block_999": 1.11,
+     "mean_load": 0.149
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6102,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.8346,
+      "excited": 0.6833,
+      "groom": NaN,
+      "lean": 0.1969
+     },
+     "explained_raw": {
+      "escape": 0.7494,
+      "excited": -6.6147,
+      "groom": NaN,
+      "lean": -0.3655
+     },
+     "memory": {
+      "kc_hz": 0.3564,
+      "kc_active_per_bin": 0.0136,
+      "kc_ever": 0.5307,
+      "all_hz": 8.215
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.899,
+      "outputs": 0.2117,
+      "kenyon": 0.3133,
+      "mbon": 0.1278
+     }
+    },
+    "goal": {
+     "moves": 14,
+     "per_bar": 0.079,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 2,
+      "leap": 1,
+      "duck": 9,
+      "dive": 2
+     },
+     "commonest": 0.64,
+     "phrase_alike": 0.94,
+     "idle": 0.97,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 2.153,
+     "block_999": 1.052,
+     "mean_load": 0.137
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6102,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9995,
+      "excited": 0.9889,
+      "groom": 0.9994,
+      "lean": 0.9951
+     },
+     "explained_raw": {
+      "escape": 0.997,
+      "excited": 0.8153,
+      "groom": 0.8709,
+      "lean": 0.9696
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.899,
+      "outputs": 0.0312,
+      "kenyon": 0.0312,
+      "mbon": 0.0312
+     }
+    },
+    "goal": {
+     "moves": 36,
+     "per_bar": 0.202,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 15,
+      "leap": 15,
+      "duck": 6
+     },
+     "commonest": 0.42,
+     "phrase_alike": 0.92,
+     "idle": 0.93,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.026,
+     "slowest_block": 3.676,
+     "block_999": 0.86,
+     "mean_load": 0.058
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6102,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9552,
+      "excited": 0.2805,
+      "groom": 0.2383,
+      "lean": 0.1191
+     },
+     "explained_raw": {
+      "escape": 0.9276,
+      "excited": -2.1315,
+      "groom": -0.8196,
+      "lean": -0.0316
+     },
+     "memory": {
+      "kc_hz": 0.2121,
+      "kc_active_per_bin": 0.0101,
+      "kc_ever": 0.8845,
+      "all_hz": 9.7275
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.899,
+      "outputs": 0.2101,
+      "kenyon": 0.2196,
+      "mbon": 0.1501
+     }
+    },
+    "goal": {
+     "moves": 31,
+     "per_bar": 0.174,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 6,
+      "leap": 6,
+      "duck": 3,
+      "dive": 15,
+      "rush": 1
+     },
+     "commonest": 0.48,
+     "phrase_alike": 0.58,
+     "idle": 0.73,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.136,
+     "slowest_block": 5.742,
+     "block_999": 1.021,
+     "mean_load": 0.128
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.244,
+    "same_moments": 0.059
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.531,
+    "same_moments": 0.059
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.896,
+    "same_moments": 0.147
+   }
+  },
+  "sections": {
+   "bpm": 127,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 7256,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9586,
+      "excited": 0.6082,
+      "groom": 0.9495,
+      "lean": 0.5268
+     },
+     "explained_raw": {
+      "escape": 0.9493,
+      "excited": 0.5252,
+      "groom": 0.8871,
+      "lean": 0.5123
+     },
+     "memory": {
+      "kc_hz": 0.3896,
+      "kc_active_per_bin": 0.0177,
+      "kc_ever": 0.9711,
+      "all_hz": 5.1261
+     },
+     "place": {
+      "chance": 0.002,
+      "sixteenths": 512,
+      "senses": 0.306,
+      "outputs": 0.0309,
+      "kenyon": 0.03,
+      "mbon": 0.0157
+     }
+    },
+    "goal": {
+     "moves": 41,
+     "per_bar": 0.214,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 4,
+      "leap": 6,
+      "duck": 9,
+      "dive": 13,
+      "rush": 2,
+      "hold": 6,
+      "sink": 1
+     },
+     "commonest": 0.32,
+     "phrase_alike": 0.62,
+     "idle": 0.76,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.095,
+     "slowest_block": 2.29,
+     "block_999": 1.031,
+     "mean_load": 0.121
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 7256,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9076,
+      "excited": 0.9598,
+      "groom": NaN,
+      "lean": 0.9486
+     },
+     "explained_raw": {
+      "escape": 0.889,
+      "excited": 0.8457,
+      "groom": NaN,
+      "lean": 0.8811
+     },
+     "memory": {
+      "kc_hz": 0.5756,
+      "kc_active_per_bin": 0.02,
+      "kc_ever": 0.6417,
+      "all_hz": 3.499
+     },
+     "place": {
+      "chance": 0.002,
+      "sixteenths": 512,
+      "senses": 0.306,
+      "outputs": 0.0356,
+      "kenyon": 0.0469,
+      "mbon": 0.0154
+     }
+    },
+    "goal": {
+     "moves": 6,
+     "per_bar": 0.031,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "duck": 2,
+      "hold": 2,
+      "sink": 1
+     },
+     "commonest": 0.33,
+     "phrase_alike": 0.99,
+     "idle": 0.99,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 3.699,
+     "block_999": 0.988,
+     "mean_load": 0.109
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 7256,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9918,
+      "excited": 0.984,
+      "groom": 0.9983,
+      "lean": 0.976
+     },
+     "explained_raw": {
+      "escape": 0.9815,
+      "excited": 0.8956,
+      "groom": 0.9317,
+      "lean": 0.9207
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.002,
+      "sixteenths": 512,
+      "senses": 0.306,
+      "outputs": 0.002,
+      "kenyon": 0.002,
+      "mbon": 0.002
+     }
+    },
+    "goal": {
+     "moves": 48,
+     "per_bar": 0.25,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 7,
+      "leap": 20,
+      "duck": 7,
+      "rush": 3,
+      "hold": 5,
+      "sink": 6
+     },
+     "commonest": 0.42,
+     "phrase_alike": 0.78,
+     "idle": 0.86,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.081,
+     "slowest_block": 2.941,
+     "block_999": 0.215,
+     "mean_load": 0.051
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 7256,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9556,
+      "excited": 0.6053,
+      "groom": 0.9453,
+      "lean": 0.5392
+     },
+     "explained_raw": {
+      "escape": 0.9468,
+      "excited": 0.5321,
+      "groom": 0.8903,
+      "lean": 0.4939
+     },
+     "memory": {
+      "kc_hz": 0.3864,
+      "kc_active_per_bin": 0.0176,
+      "kc_ever": 0.9772,
+      "all_hz": 5.1153
+     },
+     "place": {
+      "chance": 0.002,
+      "sixteenths": 512,
+      "senses": 0.306,
+      "outputs": 0.0383,
+      "kenyon": 0.0369,
+      "mbon": 0.0102
+     }
+    },
+    "goal": {
+     "moves": 37,
+     "per_bar": 0.193,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 5,
+      "leap": 6,
+      "duck": 1,
+      "dive": 15,
+      "rush": 3,
+      "hold": 4,
+      "sink": 3
+     },
+     "commonest": 0.41,
+     "phrase_alike": 0.61,
+     "idle": 0.76,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.097,
+     "slowest_block": 2.277,
+     "block_999": 0.976,
+     "mean_load": 0.114
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.024,
+    "same_moments": 0.024
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.365,
+    "same_moments": 0.244
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.344,
+    "same_moments": 0.22
+   }
+  },
+  "waltz": {
+   "bpm": 92,
+   "barBeats": 3,
+   "real": {
+    "analysis": {
+     "bins": 6260,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9764,
+      "excited": 0.3783,
+      "groom": 0.9418,
+      "lean": 0.3418
+     },
+     "explained_raw": {
+      "escape": 0.9679,
+      "excited": 0.1596,
+      "groom": 0.9037,
+      "lean": 0.3359
+     },
+     "memory": {
+      "kc_hz": 0.5114,
+      "kc_active_per_bin": 0.0239,
+      "kc_ever": 0.9813,
+      "all_hz": 7.9107
+     },
+     "place": {
+      "chance": 0.0208,
+      "sixteenths": 48,
+      "senses": 0.7042,
+      "outputs": 0.2818,
+      "kenyon": 0.3141,
+      "mbon": 0.1374
+     }
+    },
+    "goal": {
+     "moves": 31,
+     "per_bar": 0.194,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 4,
+      "leap": 5,
+      "duck": 3,
+      "dive": 15,
+      "rush": 4
+     },
+     "commonest": 0.48,
+     "phrase_alike": 0.2,
+     "idle": 0.49,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.372,
+     "slowest_block": 11.315,
+     "block_999": 1.223,
+     "mean_load": 0.147
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6260,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9081,
+      "excited": 0.9307,
+      "groom": NaN,
+      "lean": 0.9351
+     },
+     "explained_raw": {
+      "escape": 0.8682,
+      "excited": 0.7581,
+      "groom": NaN,
+      "lean": 0.9134
+     },
+     "memory": {
+      "kc_hz": 1.1419,
+      "kc_active_per_bin": 0.0393,
+      "kc_ever": 0.649,
+      "all_hz": 6.745
+     },
+     "place": {
+      "chance": 0.0208,
+      "sixteenths": 48,
+      "senses": 0.7042,
+      "outputs": 0.2767,
+      "kenyon": 0.3444,
+      "mbon": 0.154
+     }
+    },
+    "goal": {
+     "moves": 15,
+     "per_bar": 0.094,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 5,
+      "leap": 1,
+      "duck": 8,
+      "dive": 1
+     },
+     "commonest": 0.53,
+     "phrase_alike": 0.96,
+     "idle": 0.96,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 3.971,
+     "block_999": 1.08,
+     "mean_load": 0.128
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6260,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9981,
+      "excited": 0.9928,
+      "groom": 0.9999,
+      "lean": 0.9931
+     },
+     "explained_raw": {
+      "escape": 0.9957,
+      "excited": 0.9728,
+      "groom": 0.9954,
+      "lean": 0.9852
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0208,
+      "sixteenths": 48,
+      "senses": 0.7042,
+      "outputs": 0.0208,
+      "kenyon": 0.0208,
+      "mbon": 0.0208
+     }
+    },
+    "goal": {
+     "moves": 54,
+     "per_bar": 0.338,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 5,
+      "leap": 24,
+      "duck": 9,
+      "rush": 16
+     },
+     "commonest": 0.44,
+     "phrase_alike": 0.23,
+     "idle": 0.52,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.398,
+     "slowest_block": 2.421,
+     "block_999": 0.88,
+     "mean_load": 0.059
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6260,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9783,
+      "excited": 0.4111,
+      "groom": 0.9422,
+      "lean": 0.3068
+     },
+     "explained_raw": {
+      "escape": 0.9719,
+      "excited": 0.235,
+      "groom": 0.8904,
+      "lean": 0.307
+     },
+     "memory": {
+      "kc_hz": 0.5157,
+      "kc_active_per_bin": 0.0241,
+      "kc_ever": 0.9833,
+      "all_hz": 7.9519
+     },
+     "place": {
+      "chance": 0.0208,
+      "sixteenths": 48,
+      "senses": 0.7042,
+      "outputs": 0.2687,
+      "kenyon": 0.3329,
+      "mbon": 0.1396
+     }
+    },
+    "goal": {
+     "moves": 35,
+     "per_bar": 0.219,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 4,
+      "leap": 8,
+      "duck": 6,
+      "dive": 14,
+      "rush": 3
+     },
+     "commonest": 0.4,
+     "phrase_alike": 0.2,
+     "idle": 0.49,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.371,
+     "slowest_block": 3.572,
+     "block_999": 1.102,
+     "mean_load": 0.142
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.166,
+    "same_moments": 0.032
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.874,
+    "same_moments": 0.258
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.766,
+    "same_moments": 0.161
+   }
+  },
+  "sixeight": {
+   "bpm": 120,
+   "barBeats": 3,
+   "real": {
+    "analysis": {
+     "bins": 6060,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9493,
+      "excited": 0.7887,
+      "groom": 0.8194,
+      "lean": 0.0202
+     },
+     "explained_raw": {
+      "escape": 0.9055,
+      "excited": -1.0109,
+      "groom": 0.4629,
+      "lean": -0.0361
+     },
+     "memory": {
+      "kc_hz": 0.2841,
+      "kc_active_per_bin": 0.0138,
+      "kc_ever": 0.8963,
+      "all_hz": 8.8741
+     },
+     "place": {
+      "chance": 0.0417,
+      "sixteenths": 24,
+      "senses": 0.7333,
+      "outputs": 0.2492,
+      "kenyon": 0.1997,
+      "mbon": 0.129
+     }
+    },
+    "goal": {
+     "moves": 24,
+     "per_bar": 0.119,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 3,
+      "leap": 9,
+      "duck": 5,
+      "dive": 7
+     },
+     "commonest": 0.38,
+     "phrase_alike": 0.42,
+     "idle": 0.66,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.282,
+     "slowest_block": 3.357,
+     "block_999": 1.108,
+     "mean_load": 0.147
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6060,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.8593,
+      "excited": 0.9538,
+      "groom": NaN,
+      "lean": 0.7046
+     },
+     "explained_raw": {
+      "escape": 0.8023,
+      "excited": 0.4131,
+      "groom": NaN,
+      "lean": 0.6262
+     },
+     "memory": {
+      "kc_hz": 0.6279,
+      "kc_active_per_bin": 0.0232,
+      "kc_ever": 0.5462,
+      "all_hz": 7.3776
+     },
+     "place": {
+      "chance": 0.0417,
+      "sixteenths": 24,
+      "senses": 0.7333,
+      "outputs": 0.2703,
+      "kenyon": 0.2802,
+      "mbon": 0.1386
+     }
+    },
+    "goal": {
+     "moves": 6,
+     "per_bar": 0.03,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 1,
+      "leap": 1,
+      "duck": 4
+     },
+     "commonest": 0.67,
+     "phrase_alike": 0.99,
+     "idle": 0.99,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 4.569,
+     "block_999": 1.685,
+     "mean_load": 0.146
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6060,
+     "bin": 0.05,
+     "explained": {
+      "escape": 1.0,
+      "excited": 1.0,
+      "groom": 1.0,
+      "lean": 1.0
+     },
+     "explained_raw": {
+      "escape": 0.9978,
+      "excited": 0.9542,
+      "groom": 0.9871,
+      "lean": 0.9491
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0417,
+      "sixteenths": 24,
+      "senses": 0.7333,
+      "outputs": 0.0417,
+      "kenyon": 0.0417,
+      "mbon": 0.0417
+     }
+    },
+    "goal": {
+     "moves": 18,
+     "per_bar": 0.089,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 10,
+      "leap": 4,
+      "duck": 4
+     },
+     "commonest": 0.56,
+     "phrase_alike": 0.47,
+     "idle": 0.72,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.271,
+     "slowest_block": 2.908,
+     "block_999": 0.153,
+     "mean_load": 0.054
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6060,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9557,
+      "excited": 0.8055,
+      "groom": 0.8167,
+      "lean": 0.0238
+     },
+     "explained_raw": {
+      "escape": 0.9382,
+      "excited": 0.2271,
+      "groom": 0.7043,
+      "lean": 0.0075
+     },
+     "memory": {
+      "kc_hz": 0.2779,
+      "kc_active_per_bin": 0.0135,
+      "kc_ever": 0.8922,
+      "all_hz": 8.8901
+     },
+     "place": {
+      "chance": 0.0417,
+      "sixteenths": 24,
+      "senses": 0.7333,
+      "outputs": 0.2739,
+      "kenyon": 0.2145,
+      "mbon": 0.1366
+     }
+    },
+    "goal": {
+     "moves": 26,
+     "per_bar": 0.129,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 4,
+      "leap": 6,
+      "duck": 6,
+      "dive": 10
+     },
+     "commonest": 0.38,
+     "phrase_alike": 0.37,
+     "idle": 0.63,
+     "fear_5min": 0.996,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.295,
+     "slowest_block": 3.729,
+     "block_999": 1.43,
+     "mean_load": 0.157
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.333,
+    "same_moments": 0.042
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.333,
+    "same_moments": 0.042
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.865,
+    "same_moments": 0.125
+   }
+  },
+  "fast": {
+   "bpm": 174,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6069,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9611,
+      "excited": 0.7917,
+      "groom": 0.782,
+      "lean": 0.1277
+     },
+     "explained_raw": {
+      "escape": 0.9339,
+      "excited": -0.6837,
+      "groom": 0.367,
+      "lean": 0.1076
+     },
+     "memory": {
+      "kc_hz": 0.3658,
+      "kc_active_per_bin": 0.0178,
+      "kc_ever": 0.9646,
+      "all_hz": 9.6429
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.8685,
+      "outputs": 0.3476,
+      "kenyon": 0.2534,
+      "mbon": 0.1802
+     }
+    },
+    "goal": {
+     "moves": 27,
+     "per_bar": 0.123,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 7,
+      "leap": 5,
+      "duck": 2,
+      "dive": 12,
+      "rush": 1
+     },
+     "commonest": 0.44,
+     "phrase_alike": 0.68,
+     "idle": 0.68,
+     "fear_5min": 1.0,
+     "fear_end": 0.997,
+     "same_in_a_row": 2,
+     "scratching": 0.251,
+     "slowest_block": 3.742,
+     "block_999": 1.691,
+     "mean_load": 0.167
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6069,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.8587,
+      "excited": 0.868,
+      "groom": NaN,
+      "lean": 0.6368
+     },
+     "explained_raw": {
+      "escape": 0.7101,
+      "excited": -1.0075,
+      "groom": NaN,
+      "lean": 0.5558
+     },
+     "memory": {
+      "kc_hz": 0.8619,
+      "kc_active_per_bin": 0.0312,
+      "kc_ever": 0.5937,
+      "all_hz": 8.2821
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.8685,
+      "outputs": 0.3028,
+      "kenyon": 0.3035,
+      "mbon": 0.1717
+     }
+    },
+    "goal": {
+     "moves": 11,
+     "per_bar": 0.05,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 2,
+      "leap": 1,
+      "duck": 7,
+      "dive": 1
+     },
+     "commonest": 0.64,
+     "phrase_alike": 0.98,
+     "idle": 0.98,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.0,
+     "slowest_block": 4.847,
+     "block_999": 1.311,
+     "mean_load": 0.152
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6069,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9992,
+      "excited": 0.9965,
+      "groom": 0.9999,
+      "lean": 0.9932
+     },
+     "explained_raw": {
+      "escape": 0.9968,
+      "excited": 0.9459,
+      "groom": 0.9833,
+      "lean": 0.9757
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.8685,
+      "outputs": 0.0312,
+      "kenyon": 0.0312,
+      "mbon": 0.0312
+     }
+    },
+    "goal": {
+     "moves": 39,
+     "per_bar": 0.177,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 18,
+      "leap": 15,
+      "duck": 6
+     },
+     "commonest": 0.46,
+     "phrase_alike": 0.92,
+     "idle": 0.7,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 2,
+     "scratching": 0.278,
+     "slowest_block": 2.521,
+     "block_999": 0.865,
+     "mean_load": 0.059
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6069,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.9592,
+      "excited": 0.743,
+      "groom": 0.7661,
+      "lean": 0.1468
+     },
+     "explained_raw": {
+      "escape": 0.9409,
+      "excited": -0.9359,
+      "groom": 0.3685,
+      "lean": 0.1179
+     },
+     "memory": {
+      "kc_hz": 0.3857,
+      "kc_active_per_bin": 0.0187,
+      "kc_ever": 0.974,
+      "all_hz": 9.8295
+     },
+     "place": {
+      "chance": 0.0312,
+      "sixteenths": 32,
+      "senses": 0.8685,
+      "outputs": 0.3384,
+      "kenyon": 0.2633,
+      "mbon": 0.1815
+     }
+    },
+    "goal": {
+     "moves": 38,
+     "per_bar": 0.173,
+     "on_grid": 1.0,
+     "kinds": {
+      "hop": 7,
+      "leap": 7,
+      "duck": 4,
+      "dive": 17,
+      "rush": 3
+     },
+     "commonest": 0.45,
+     "phrase_alike": 0.6,
+     "idle": 0.64,
+     "fear_5min": 1.0,
+     "fear_end": 1.0,
+     "same_in_a_row": 2,
+     "scratching": 0.261,
+     "slowest_block": 4.277,
+     "block_999": 1.692,
+     "mean_load": 0.165
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.239,
+    "same_moments": 0.037
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.487,
+    "same_moments": 0.148
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.717,
+    "same_moments": 0.185
+   }
+  },
+  "pad": {
+   "bpm": 120,
+   "barBeats": 4,
+   "real": {
+    "analysis": {
+     "bins": 6240,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.4892,
+      "excited": 0.6536,
+      "groom": 0.9182,
+      "lean": 0.057
+     },
+     "explained_raw": {
+      "escape": 0.4109,
+      "excited": 0.5851,
+      "groom": 0.8633,
+      "lean": 0.0197
+     },
+     "memory": {
+      "kc_hz": 0.0044,
+      "kc_active_per_bin": 0.0002,
+      "kc_ever": 0.2773,
+      "all_hz": 7.6039
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.8016,
+      "outputs": 0.0766,
+      "kenyon": 0.0292,
+      "mbon": 0.0295
+     }
+    },
+    "goal": {
+     "moves": 3,
+     "per_bar": 0.019,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 1,
+      "sink": 1
+     },
+     "commonest": 0.33,
+     "phrase_alike": 0.9,
+     "idle": 0.89,
+     "fear_5min": 0.123,
+     "fear_end": 0.11,
+     "same_in_a_row": 1,
+     "scratching": 0.103,
+     "slowest_block": 4.427,
+     "block_999": 1.05,
+     "mean_load": 0.142
+    }
+   },
+   "scrambled": {
+    "analysis": {
+     "bins": 6240,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.7944,
+      "excited": 0.9968,
+      "groom": NaN,
+      "lean": 0.9002
+     },
+     "explained_raw": {
+      "escape": 0.7038,
+      "excited": 0.933,
+      "groom": NaN,
+      "lean": 0.881
+     },
+     "memory": {
+      "kc_hz": 0.0435,
+      "kc_active_per_bin": 0.0018,
+      "kc_ever": 0.2778,
+      "all_hz": 6.5285
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.8016,
+      "outputs": 0.0875,
+      "kenyon": 0.1157,
+      "mbon": 0.024
+     }
+    },
+    "goal": {
+     "moves": 1,
+     "per_bar": 0.006,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1
+     },
+     "commonest": 1.0,
+     "phrase_alike": 1.0,
+     "idle": 1.0,
+     "fear_5min": 0.396,
+     "fear_end": 0.415,
+     "same_in_a_row": 1,
+     "scratching": 0.0,
+     "slowest_block": 5.115,
+     "block_999": 1.066,
+     "mean_load": 0.137
+    }
+   },
+   "surrogate": {
+    "analysis": {
+     "bins": 6240,
+     "bin": 0.05,
+     "explained": {
+      "escape": 1.0,
+      "excited": 1.0,
+      "groom": 1.0,
+      "lean": 0.9999
+     },
+     "explained_raw": {
+      "escape": 0.9949,
+      "excited": 0.9915,
+      "groom": 0.995,
+      "lean": 0.9916
+     },
+     "memory": {
+      "kc_hz": 0.0,
+      "kc_active_per_bin": 0.0,
+      "kc_ever": 0.0,
+      "all_hz": 0.0
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.8016,
+      "outputs": 0.0156,
+      "kenyon": 0.0156,
+      "mbon": 0.0156
+     }
+    },
+    "goal": {
+     "moves": 2,
+     "per_bar": 0.013,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1,
+      "hold": 1
+     },
+     "commonest": 0.5,
+     "phrase_alike": 0.99,
+     "idle": 0.92,
+     "fear_5min": 0.0,
+     "fear_end": 0.0,
+     "same_in_a_row": 1,
+     "scratching": 0.066,
+     "slowest_block": 2.3,
+     "block_999": 0.864,
+     "mean_load": 0.056
+    }
+   },
+   "reseeded": {
+    "analysis": {
+     "bins": 6240,
+     "bin": 0.05,
+     "explained": {
+      "escape": 0.5001,
+      "excited": 0.5928,
+      "groom": 0.918,
+      "lean": 0.116
+     },
+     "explained_raw": {
+      "escape": 0.4306,
+      "excited": 0.495,
+      "groom": 0.8705,
+      "lean": 0.0597
+     },
+     "memory": {
+      "kc_hz": 0.0044,
+      "kc_active_per_bin": 0.0002,
+      "kc_ever": 0.2794,
+      "all_hz": 7.5549
+     },
+     "place": {
+      "chance": 0.0156,
+      "sixteenths": 64,
+      "senses": 0.8016,
+      "outputs": 0.0878,
+      "kenyon": 0.0308,
+      "mbon": 0.0359
+     }
+    },
+    "goal": {
+     "moves": 1,
+     "per_bar": 0.006,
+     "on_grid": 1.0,
+     "kinds": {
+      "leap": 1
+     },
+     "commonest": 1.0,
+     "phrase_alike": 0.9,
+     "idle": 0.9,
+     "fear_5min": 0.096,
+     "fear_end": 0.19,
+     "same_in_a_row": 1,
+     "scratching": 0.098,
+     "slowest_block": 4.252,
+     "block_999": 1.005,
+     "mean_load": 0.137
+    }
+   },
+   "real_vs_scrambled": {
+    "spots_alike": 0.333,
+    "same_moments": 0.333
+   },
+   "real_vs_surrogate": {
+    "spots_alike": 0.333,
+    "same_moments": 0.333
+   },
+   "real_vs_reseeded": {
+    "spots_alike": 0.333,
+    "same_moments": 0.333
+   }
+  }
+ },
+ "mean": {
+  "explained": {
+   "escape": 0.93,
+   "excited": 0.632,
+   "groom": 0.82,
+   "lean": 0.322
+  },
+  "explained_scrambled": {
+   "escape": 0.885,
+   "excited": 0.889,
+   "groom": null,
+   "lean": 0.765
+  },
+  "place": {
+   "senses": 0.627,
+   "outputs": 0.23,
+   "kenyon": 0.193,
+   "mbon": 0.127,
+   "chance": 0.025
+  },
+  "kc_hz": 0.347,
+  "moves": {
+   "real": 27.583,
+   "scrambled": 9.333,
+   "surrogate": 31.583,
+   "reseeded": 28.25
+  },
+  "fear_5min": {
+   "real": 0.891,
+   "scrambled": 0.95,
+   "surrogate": 0.0,
+   "reseeded": 0.89
+  },
+  "spots_alike": {
+   "scrambled": 0.409,
+   "surrogate": 0.59,
+   "reseeded": 0.746
+  },
+  "same_moments": {
+   "scrambled": 0.102,
+   "surrogate": 0.272,
+   "reseeded": 0.281
+  }
+ }
+}

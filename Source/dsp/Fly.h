@@ -28,8 +28,10 @@
 
 #include "Hand.h"
 #include "FlyData.h"
+#include <algorithm>
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <vector>
 
 namespace dendrite
@@ -44,6 +46,64 @@ public:
     void prepare (float sampleRate) noexcept;
     void rest() noexcept;   // asleep and rested: no activity, every sense fresh (it keeps its memory and moods)
     void forget() noexcept; // a fly that never heard anything: memory and moods as at birth
+
+    // What it has learned and how it feels, as saved with the set (about 57 KB): every plastic
+    // KC -> MBON synapse as a share of its strength at birth, and the slow moods. Its activity,
+    // senses and reflexes are not part of it: a fly brought back wakes up rested, remembering.
+    struct Memory
+    {
+        static constexpr uint32_t tag = 0x464C5931u; // "FLY1"
+        uint32_t magic = 0, count = 0;
+        float arousal = 0.3f, fatigue = 0.0f, feelingHabit = 0.0f;
+        double lived = 0.0; // seconds of inner life so far
+        std::array<uint16_t, flydata::plasticCount> strength {};
+        bool valid() const noexcept;
+    };
+    void save (Memory&) const noexcept;  // audio thread (or wherever the fly runs)
+    void adopt (const Memory&) noexcept; // between two blocks; a memory that is not valid is ignored
+    double lived() const noexcept { return livedSec; }
+
+    // Its temperament: the few numbers taste training moves (tools/fly/taste/). The defaults are
+    // where Hakan's rounds 1 and 2 put them (2026-11-14; before: 0.06, 600, 10, 1, 0.85, 0.4, 0.35, 40).
+    // jumpy and lurch are near their old values for 2.4: the rounds asked for fewer moves when every move was the same wobble.
+    // lurch: since 2.4, how readily a jump becomes a big move (the intervals themselves are fixed).
+    struct Taste
+    {
+        float learn = 0.075f;    // how fast what hurt it becomes fearful
+        float forget = 640.0f;   // seconds to forget
+        float restless = 7.2f;   // random kicks per neuron per second
+        float jumpy = 0.8f;      // >1 jumps more easily
+        float scratch = 0.95f;   // how hard it grooms the band
+        float lurch = 0.4f;      // octaves of tape at a full jump
+        float lean = 0.45f;      // how far it leans the space
+        float eyesTire = 4.0f;   // how fast its eyes tire of hits (use per second at full drive; 12 and 10 s until 2.4, when a steady groove blinded it)
+        float eyesBack = 6.0f;   // seconds for them to recover
+        float calm = 42.0f;      // seconds for arousal to settle
+        float relief = 0.05f;    // how hard the rewarding dopamine neurons fire when a pain ends (1: as hard as the pain's) (2.5)
+    };
+    void setTaste (const Taste& t) noexcept
+    {
+        taste = t;
+        taste.forget = std::max (taste.forget, 1.0f);
+        taste.restless = std::max (taste.restless, 0.01f);
+        taste.jumpy = std::max (taste.jumpy, 0.05f);
+        taste.calm = std::max (taste.calm, 1.0f);
+    }
+    const Taste& getTaste() const noexcept { return taste; }
+
+    // The song's clock (2.4): the beat now, in quarter notes, and the tempo. Its brain decides what
+    // to do and how hard; its body does it on the grid, as a real fly's steering commands only take
+    // hold at one phase of the wingbeat (the halteres keep that time). Here the song is the wingbeat.
+    void setClock (double beat, double bpm, double barBeats = 4.0) noexcept
+    {
+        beatNow = beat;
+        bpmNow = bpm;
+        barNow = barBeats;
+    }
+    // false: the 2.3 fly (moves whenever its neurons say so, one sine lurch of the tape)
+    void setMusical (bool on) noexcept { musical = on; }
+    // what its body can do with the tape; each bends the repeats by exact intervals, for exact note values
+    enum Move { none, hop, leap, duck, dive, rush, hold, sink };
 
     // false: the 2.1.0 fly (no restlessness, no moods, no learning), for comparison
     void setInnerLife (bool on) noexcept { innerLife = on; }
@@ -69,9 +129,38 @@ public:
         float memory = 1.0f;                       // the plastic synapses' strength against at birth
         float feeling = 0.0f;                      // its MBONs: -1 keep away .. 1 come closer
         float fear = 0.0f;                         // 0..1: how much of what it smells now once hurt
+        int move = 0;                              // which Move it is in the middle of
     };
     const Doing& doing() const noexcept { return now; }
     uint16_t takeSpikes (int neuron) noexcept { return spikes[(size_t) neuron].exchange (0, std::memory_order_relaxed); }
+
+    // Tools only (tools/fly/probe, build/render --fly-dump --scramble --surrogate): instruments that
+    // ask whether the brain matters. The plug-in never turns them on, and off they cost nothing.
+    static constexpr int inputCount = flydata::senses + flydata::smells;
+    static constexpr int standLags = 6; // the stand-in hears six 50 ms bins: the last 300 ms
+    struct Probe
+    {
+        int steps = 0;                                   // brain steps summed since the last clear
+        std::array<float, inputCount> drive {}, heard {}; // the senses as measured, and as they reach the neurons (tired, moods)
+        float escape = 0.0f, groom = 0.0f, lean = 0.0f, excited = 0.0f; // its output neurons, as the reflexes read them
+    };
+    void setProbing (bool on) noexcept { probing = on; }
+    const Probe& probe() const noexcept { return probeSum; }
+    void clearProbe() noexcept { probeSum = Probe {}; }
+    // shuffles every non-plastic synapse strength among the connections (fixed seed); forget() undoes it
+    void scramble (uint64_t seed);
+    // the same fly with other chance (its restless kicks, its readiness, which sense neurons fire): a
+    // second real fly, to show how alike two real flies play; takes hold at the next rest()
+    void reseed (uint64_t seed) noexcept { rngSeed = seed; }
+    // The no-brain stand-in: a linear filter from what reaches the senses over the last 300 ms to the
+    // four outputs (escape, groom, lean, excited), fitted by tools/fly/probe/brain_share.py. While it is
+    // set the brain does not run at all; the body, the senses and the clock are the same.
+    struct StandIn
+    {
+        // per output: weights for lag 0 (the 50 ms ending now) inputs 0..43, then lag 1, ..., then a constant
+        std::array<std::array<float, inputCount * standLags + 1>, 4> w {};
+    };
+    void standIn (const StandIn* s) noexcept { stand = s; }
 
 private:
     void step() noexcept; // 0.5 ms of brain
@@ -98,7 +187,7 @@ private:
     std::array<std::array<uint16_t, neurons>, delaySlots> fired {};
     std::array<int, delaySlots> firedCount {};
     int slot = 0;
-    uint64_t rng = 0x666C792E322E3031ull;
+    uint64_t rng = 0x666C792E322E3031ull, rngSeed = 0x666C792E322E3031ull;
     std::array<std::atomic<uint16_t>, neurons> spikes {};
 
     // the senses
@@ -125,6 +214,7 @@ private:
     std::array<Eye, 6> eyes;      // low, mid, high per side
     static constexpr int inputs = flydata::senses + flydata::smells;
     std::array<float, inputs> drive {}, fresh {};
+    std::array<float, inputs> heardNow {}; // what reached the sense neurons this step (fire chance)
     std::array<float, 6> scale {};
     float scaleUp = 0.0f, scaleDown = 0.0f;
 
@@ -140,14 +230,24 @@ private:
 
     // its inner life
     bool innerLife = true;
+    Taste taste;
     std::vector<int16_t> role; // per neuron: Kenyon cell k (k), DAN d (-2 - d), MBON m (-10000 - m), else -1
+    std::vector<float> plasticAtBirth; // each plastic synapse's weight at birth
+    std::vector<uint8_t> does; // per neuron, what its spike moves: the bits below
+    enum : uint8_t { doesEscape = 1, doesLegA = 2, doesLegB = 4, doesLeft = 8, doesRight = 16, doesSteerL = 32, doesSteerR = 64 };
+    std::array<uint8_t, padded / 16> hot {}; // per 16 neurons: may one of them fire this step?
     std::array<float, flydata::kenyonCount> kcTrace {};
     std::array<float, flydata::danCount> danTrace {};
+    std::array<float, flydata::kenyonCount> kcSpikes {};          // this 10 ms: which Kenyon cells fired
+    std::array<float, flydata::mbonCount> dopamineBefore {};      // dopamine bursts that reached each MBON a moment ago
+    std::array<float, flydata::mbonCount> dopamineTonic {};       // and its steady level, which teaches nothing
+    float reliefIn = 0.0f, reliefLeft = 0.0f;                      // the pain ended: relief comes a moment later
     std::array<float, flydata::mbonCount> mbonSpikes {}, mbonRate {}, dopamine {};
     float kickNext = 0.0f;
     int stepSpikes = 0;
     float brainBusy = 0.0f, arousal = 0.3f, fatigue = 0.0f, memory = 1.0f, plasticBirth = 1.0f;
     float feeling = 0.0f, feelingHabit = 0.0f, fear = 0.0f, fearNow = 0.0f;
+    double livedSec = 0.0;
     // fatigue grows while the brain is busier than this (spikes per second, the whole cut brain)
     static constexpr float fatigueFrom = 40000.0f, fatigueSpan = 100000.0f;
 
@@ -155,10 +255,41 @@ private:
     float escape = 0.0f, groom = 0.0f, groomHabit = 0.0f, rub = 0.0f, lean = 0.0f, leanHabit = 0.0f, excited = 0.0f;
     float sinceJump = 10.0f, lurchLeft = 0.0f, lurchSize = 0.0f, throwLeft = 0.0f, freezeFrom = 0.0f, freezeLeft = 0.0f;
     float throwGlow = 0.0f, band = 0.0f, lurchSign = 1.0f, lurchLength = 0.9f, readiness = 0.0f;
+    static constexpr float reliefDelay = 0.3f, reliefLength = 0.5f, dopamineBeforeSec = 1.5f, tonicSec = 20.0f; // seconds
     static constexpr float fearFull = 0.35f; // this much weaker counts as full fear
     bool busyNow = false; // jumping or scratching, with hysteresis (for keep's diary and the lamps)
     Touch target, touch;
+
+    // its body in time (2.4)
+    void startMove (float size, float f) noexcept;
+    bool musical = true;
+    double beatNow = 0.0, bpmNow = 120.0, barNow = 4.0;
+    long long lastTick = -1;
+    bool armed = false;
+    float armedSize = 0.0f, armedFear = 0.0f;
+    struct Leg { float slope = 0.0f, left = 0.0f, end = 1.0f; }; // per 16th: how the heads' distance changes, for how long, where it ends
+    std::array<Leg, 3> legs {};
+    int legCount = 0, legAt = 0, moveNow = none;
+    float stretch = 1.0f, moveSize = 0.0f; // the heads' distance against the grid's (1 / tape speed)
+    float sinceMove16 = 64.0f;
+    float pulse = 0.5f;               // how full the 16th grid is with hits (hats, drums): 0 bare chords .. 1 a groove
+    bool slotHit = false;
+    float busyShare = 0.0f;           // how much of the last eight bars it spent moving
+    std::array<int, 2> lastMoves {};  // the two moves before this one
+    float throw16 = 0.0f, freezeIn16 = -1.0f, freeze16 = 0.0f;
+    float heldBand = 0.0f, heldBandHz = 1000.0f, heldLean = 0.0f, heldFeed = 0.0f;
     float touchGlide = 0.005f;
     Doing now;
+
+    // the instruments (tools only)
+    bool probing = false;
+    Probe probeSum;
+    const StandIn* stand = nullptr;
+    static constexpr int standSubs = 5 * standLags; // 10 ms sub-bins, five to a 50 ms bin
+    std::array<std::array<float, inputs>, standSubs> standRing {};
+    std::array<float, inputs> standAcc {};
+    std::array<float, 4> standOut {};
+    int standSteps = 0, standAt = 0;
+    void standStep() noexcept;
 };
 } // namespace dendrite

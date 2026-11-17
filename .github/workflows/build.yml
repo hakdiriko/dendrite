@@ -5,6 +5,8 @@ name: build
 
 on:
   push:
+    branches: ['**']
+    tags: ['v*']
   workflow_dispatch:
 
 concurrency:
@@ -25,8 +27,8 @@ jobs:
       fail-fast: false
       matrix:
         # While Hakan tests on Windows, pushes build Windows and Linux (the audit) only.
-        # Run the workflow by hand (workflow_dispatch) to add the Mac build.
-        include: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"macos","runner":"macos-15","pluginval-zip":"pluginval_macOS.zip","pluginval-bin":"./pluginval.app/Contents/MacOS/pluginval"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]' || '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]') }}
+        # Run the workflow by hand (workflow_dispatch), or push a v* tag, to add the Mac build.
+        include: ${{ fromJSON((github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"macos","runner":"macos-15","pluginval-zip":"pluginval_macOS.zip","pluginval-bin":"./pluginval.app/Contents/MacOS/pluginval"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]' || '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]') }}
     defaults:
       run:
         shell: bash
@@ -135,3 +137,75 @@ jobs:
         with:
           name: dendrite-macos-vst3-au
           path: dist/
+
+      # Release packages (every run makes them, so a release is exactly what CI tested).
+      - name: Version
+        id: ver
+        run: echo "v=$(sed -n 's/^project(dendrite VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Package (Windows zip and installer)
+        if: runner.os == 'Windows'
+        run: |
+          v=${{ steps.ver.outputs.v }}
+          mkdir -p pkg/stage release
+          cp -R "$BUNDLE_DIR/VST3/dendrite.vst3" pkg/stage/
+          cp "$MANUAL" packaging/CREDITS.txt Resources/fonts/OFL-*.txt pkg/stage/
+          cp packaging/INSTALL-windows.txt pkg/stage/INSTALL.txt
+          (cd pkg/stage && 7z a -tzip "../../release/dendrite-$v-windows-vst3.zip" . > /dev/null)
+          iscc="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          [ -x "$iscc" ] || choco install innosetup -y --no-progress
+          "$iscc" -Q "-DAppVersion=$v" "-DSourceDir=$(cygpath -w "$PWD/pkg/stage")" \
+            "-O$(cygpath -w "$PWD/release")" packaging/windows/dendrite.iss
+
+      - name: Package (Mac zip)
+        if: runner.os == 'macOS'
+        run: |
+          v=${{ steps.ver.outputs.v }}
+          mkdir -p pkg/stage release
+          ditto "$BUNDLE_DIR/VST3/dendrite.vst3" pkg/stage/dendrite.vst3
+          ditto "$BUNDLE_DIR/AU/dendrite.component" pkg/stage/dendrite.component
+          codesign --force --deep -s - pkg/stage/dendrite.vst3 pkg/stage/dendrite.component
+          cp "$MANUAL" packaging/CREDITS.txt Resources/fonts/OFL-*.txt pkg/stage/
+          cp packaging/INSTALL-mac.txt pkg/stage/INSTALL.txt
+          (cd pkg && ditto -c -k --keepParent stage "../release/dendrite-$v-macos-vst3-au.zip")
+
+      - name: Package (Linux zip)
+        if: runner.os == 'Linux'
+        run: |
+          v=${{ steps.ver.outputs.v }}
+          mkdir -p pkg/stage release
+          cp -R "$BUNDLE_DIR/VST3/dendrite.vst3" pkg/stage/
+          cp "$MANUAL" packaging/CREDITS.txt Resources/fonts/OFL-*.txt pkg/stage/
+          (cd pkg/stage && zip -qr "../../release/dendrite-$v-linux-vst3.zip" .)
+
+      - name: Keep the release packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os-name }}
+          path: release/
+
+  # A v* tag publishes the packages that all three builds made and validated.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: plugin
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          v="${tag#v}"
+          # this version's notes from the changelog
+          awk -v v="$v" '$0 ~ "^## "v"( |$)" {on=1; next} on && /^## / {exit} on' CHANGELOG.md > notes.md
+          (cd release && sha256sum * > SHA256SUMS.txt)
+          ls -l release
+          gh release create "$tag" release/* --title "dendrite $v" --notes-file notes.md

@@ -1,5 +1,84 @@
 # Changelog
 
+## 2.5.0 (the fly, hardened: Phase 1 of the second plan)
+
+- **Fear can fall.** The dopamine neurons fire steadily all the time, and until now that steady firing taught the memory as much as the jumps did, so fear climbed to 1.0 within two minutes on any loop and stayed. Now only bursts above each MBON's own level teach, learning goes both ways (dopamine before a Kenyon cell fires gives back, Handler et al. 2019), and a moment after each jump's sting the reward neurons (PAM) fire: relief (Tanimoto et al. 2004). Fear is now the balance of the punished against the rewarded compartments. After five minutes it sits at 0.3 to 0.4 on the groove and the keys, and rises when the music changes.
+- **A real turn.** The space leans by the fly's steering neurons, DNa01 and DNa02 on each side, instead of every descending neuron's left against right. They follow where the sound is (correlation 0.64 with a groove panned bar by bar).
+- **The material matrix** (`tools/fly/matrix.cpp`): 26 cases, every tempo from 70 to 174, 3/4, 6/8, 7/8, Live stopped, tempo changes, loop jumps, silence, mono, one side, 44.1 to 192 kHz, odd block sizes. All pass. `tools/fly/fear.py` measures the fear target.
+- **Cheaper bookkeeping**, with bit-for-bit the same sound: a lookup table for what each spike does, and the spike search skips quiet groups of neurons. About 10 to 12.5% of a core (was 13%); the slowest 128-sample block takes under 80% of its time. The plan's 5% target is not reached (see the handoff, section 7).
+- **Ready to download.** A `v*` tag now builds Windows, macOS and Linux, validates all three, and publishes a release: a Windows installer (puts `dendrite.vst3` in the system VST3 folder and removes an old `viber.vst3`), zips for each system with the manual, install notes and `CREDITS.txt`, and checksums.
+- **Credits.** The fly's data is FlyWire's, under CC BY-NC 4.0; `CREDITS.txt`, the manual's footer and the README now say so, with the papers to cite.
+- **A new fly without a hiccup.** Right-click "a new fly" reset all million synapses on the audio thread; only the 28,761 that learn ever change, so now only those are reset (the same fly, about 35 times less work in that one block).
+- **Known limits.** The fly costs about 10 to 12% of one core per instance at 48 kHz (about 22% at 192 kHz). Its busiest moments land in single blocks: the slowest 128-sample block at 48 kHz uses about 80% of its time, and at 192 kHz with a 256-sample buffer close to 100%, so at 192 kHz use 512 samples or more, or set the itch to off. The matrix now has those two high-rate cases.
+- The release also carries the fly's measuring tools (Phase 0) and the teach page (Phase 2); neither changes the sound.
+- **Honest words.** The manual's itch section described the 32-neuron creature of 2.0; it now says what the fly decides and what we built, and that what wakes it is mostly how hard the hits land. The drawer says it too.
+
+## Fly instruments (tools only; the plug-in sounds exactly as 2.4.3)
+
+Phase 0 of the fly plan: "does the brain matter?" as a number anyone can re-run. See `docs/FLY_BASELINE.md` and `tools/fly/probe/README.md`.
+
+- `build/render --fly-dump` writes every neuron's spikes, the senses and the outputs every 50 ms; `--scramble` shuffles the wiring's strengths; `--surrogate` swaps the brain for a fitted loudness filter; `--stats` measures the slowest audio block; `--bar` sets the time signature.
+- `tools/fly/probe/brain_share.py` plays twelve pieces with the real fly, a scrambled fly and the no-brain stand-in, five minutes each, and reports how much of the fly's behaviour its senses alone explain.
+- `tools/fly/probe/material.py`: the material set. `tools/fly/goal.py` also reports fear at five minutes, the longest run of one move, moves per bar and the slowest block.
+- The probes are off in the plug-in. Fly logs with them off are identical to before.
+- The renderer now flushes denormals, as the plug-in does (`--denormals` turns that off). Before, silence-heavy material rendered several times slower, so the renderer's timing could not be trusted.
+- The baseline's own numbers are in `tools/fly/probe/baseline-2026-11-16.json`, and the stand-in it used is in `standin-2026-11-16.txt`, so later phases can diff against them.
+
+## Tools: the teach page (fly phase 2, the plug-in does not change)
+
+- **Teach the fly.** A one-page player where Hakan plays the fly's moves by hand on dendrite's own echo, over a loop: seven keys for the tape moves (hop, duck, sink, hold, leap, dive, rush), space to throw, G to freeze. The moves snap to the grid exactly as the fly's body does. Each take is saved with every key at the sample it took hold: the teaching data for the plan's phase 4.
+- The echo runs in the browser as WebAssembly (the plug-in's C++, 158 KB, in an AudioWorklet), within -79 dB of the native build and with the same move beats.
+- `Source/dsp/FlyBody.h`: the fly's body without its brain (not yet used by the fly itself). `tools/fly/teach/`: the page, the replay and the progress count.
+
+## 2.4.3 (pure bends on bare material)
+
+From the honest review of 2.4: the duck and dive played held chords a minor sixth lower and the leap a major tenth higher (one of the two tape heads landed on those), which drums hide and bare keys expose.
+
+- **Sink**, the one bend the fly uses where there is no pulse: both heads fall by pure intervals (an octave, and an octave and a fifth) for an 8th, then the tape snaps back in a 32nd, too fast to hear as a pitch. On bare material its moves are now only hold and sink, taking turns.
+- **It scratches less there**: only its strongest scratching gets through (on the keys loop the band is open 31% of the time, was 48%).
+- Inside a groove nothing changes (the render Hakan said yes to is bit-identical).
+
+## 2.4.2 (the fly reads the room)
+
+Hakan's marks on 2.4.1: the groove yes again, the bare keys no again, however calm.
+
+- **It hears whether there is a pulse.** It counts how many 16ths of the last two bars had a hit in the top of the spectrum (hats, a rim, a kick's click). In a groove (most 16ths filled) it dances as in 2.4.1; nothing changes there.
+- **On bare material it is gentle.** With chords and rests and nothing to lean on, every move is naked. There it rests about five times longer, never rushes or dives, and half of its moves leave the tape alone: a **hold**, a throw of a dotted 8th and a held breath for a beat. On the keys loop: 9 moves in 48 bars (was 21), moving 5% of the time (was 18%).
+
+## 2.4.1 (the fly keeps time, calmer)
+
+Hakan's marks on 2.4: the timekeeping fly was a yes on a full groove and a no on sparse keys. The difference was how much it moved: 18% of the time on the groove, 32% on the keys, ending in dive after dive.
+
+- **A budget.** Over any eight bars it moves for at most about a fifth of the time (a third with the itch at 1/4 bar). On the keys it now moves 18% of the time, like the groove he liked.
+- **Big moves land on the one.** Leaps, rushes and dives wait for the bar line (the half bar when wide awake); hops and ducks still take an 8th.
+- **No three in a row.** A third identical move becomes its small opposite (three dives become dive, dive, hop).
+- The fly follows the host's time signature for its bar lines.
+
+## 2.4.0 (the fly keeps time)
+
+Hakan: "it feels like their only function is to fuck around... the goal of the fly should be being precise, time-wise... and that thing it does only with the tape drives me nuts."
+
+- **The song is its wingbeat.** A real fly's steering commands only take hold at one phase of each wingbeat; its halteres keep that time. Now Live's tempo is that clock. The brain still decides what to do and how hard, from the music, but the body does it on the grid: every move starts on a 16th line (an 8th when it is half awake) and lasts an exact note value. Measured on two loops: 100% of its moves, throws and scratch changes land within 10 ms of a line (before: 29%).
+- **Five moves instead of one wobble.** The tape's heads now slide in straight lines, so each slide bends the repeats by one exact interval for one exact note value:
+  - **hop**: up an octave for a 16th, back over an 8th.
+  - **leap**: up an octave and a fifth for a 16th, back down through an octave over a dotted 8th.
+  - **duck**: down an octave for an 8th, back up in a 16th.
+  - **rush** (when it is wound up): up an octave, then the echo runs in double time for a beat or two, then falls back.
+  - **dive** (when it is afraid): down an octave over a half note into half time, it holds its breath for a beat, stays, then climbs back over a quarter.
+  Its fear and its arousal choose the move, so the vocabulary changes as it gets to know the loop.
+- **The scratch, the lean and the feed step on the lines** (16ths, 8ths and beats) and hold between them, instead of drifting.
+- **It leaves room.** After a move it leaves the music alone: about a bar at the default itch, a beat at 1/4 bar.
+- **Its eyes no longer go numb on a full groove.** With a kick, rim and hats under the keys it used to jump once in 48 bars; now about once in five bars (its looming sense tires more slowly and recovers faster).
+- Its temperament starts from where the taste rounds 1 and 2 put it (learns a little faster, less restless, scratches a little harder, leans a little further).
+- The drawer's line names the move: "leaps", "dives  half time", "rushes  double time".
+- Tools: `tools/fly/goal.py` measures the goal on a render (on the grid, variety, how alike two phrases are, how much room it leaves); `build/render --loose` plays the 2.3 fly for comparison.
+
+## 2.3.0 (the fly remembers)
+
+- **The fly is saved with your set.** What it has learned (all 28,761 synapses its fear lives in) and its moods (wound up, tired, its feeling) go into the Live set, about 77 KB. Reopen the set and it is the same fly, still afraid of what hurt it, rested but remembering. Sets from before 2.3 open with a newborn fly, as before.
+- **A new fly, when you want one:** right-click the fly's brain, small or in the drawer, and choose "a new fly". It forgets everything and calms down. Nothing else changes.
+- Tools: the fly's temperament (`Fly::Taste`: how fast it learns and forgets, how restless and jumpy it is, how hard it scratches, lurches and leans, how fast it calms) can be set in the renderer, and `tools/fly/taste/taste.py` runs taste-training rounds: blind variants on your loop, your pick moves it. The plug-in sounds exactly as before.
+
 ## 2.2.1
 
 - **The bitcrush is gone.** The fly's brain moves in 0.5 ms steps, and the echo's tape speed jumped with it every step, so its repeats crackled like a bitcrusher whenever it jumped or leaned (since 2.1). Now the echo glides to what the fly wants, sample by sample (about 4 ms). On Hakan's loop the grit above 10 kHz drops by 30 dB, to where it is with the itch off. Turning the itch off also glides back instead of snapping.
