@@ -140,17 +140,25 @@ def analyze(dump):
     slot = np.minimum(classes - 1, ((centre % m['loopSeconds']) / six).astype(int))
     place = dict(chance=round(1.0 / classes, 4), sixteenths=classes,
                  senses=round(decode_place(d['senses'].astype(np.float64), slot, classes), 4))
+    # the place in the bar: which 16th of the bar, wherever the bar is in the loop
+    bar16 = max(1, int(round(4 * m.get('barBeats', 4))))
+    inbar = np.minimum(bar16 - 1, ((centre % (six * bar16)) / six).astype(int))
+    bar = dict(chance=round(1.0 / bar16, 4), sixteenths=bar16,
+               senses=round(decode_place(d['senses'].astype(np.float64), inbar, bar16), 4))
     sp = d['spikes']
     if sp is not None:
         groups = dict(outputs=m['escape'] + m['groom'] + m['left'] + m['right'], kenyon=m['kenyon'], mbon=m['mbon'])
         for g, idx in groups.items():
-            place[g] = round(decode_place(np.asarray(sp[:, idx], dtype=np.float64), slot, classes), 4)
+            X = np.asarray(sp[:, idx], dtype=np.float64)
+            place[g] = round(decode_place(X, slot, classes), 4)
+            bar[g] = round(decode_place(X, inbar, bar16), 4)
         kc = np.asarray(sp[:, m['kenyon']], dtype=np.float64)
         res['memory'] = dict(kc_hz=round(float(kc.sum() / (kc.shape[0] * m['bin'] * kc.shape[1])), 4),
                              kc_active_per_bin=round(float(np.mean(kc > 0)), 4),
                              kc_ever=round(float(np.mean(kc.sum(0) > 0)), 4),
                              all_hz=round(float(np.asarray(sp).sum(dtype=np.int64) / (sp.shape[0] * m['bin'] * sp.shape[1])), 4))
     res['place'] = place
+    res['bar'] = bar
     with open(os.path.join(dump, 'analysis.json'), 'w') as f:
         json.dump(res, f, indent=1)
     return res
@@ -276,6 +284,10 @@ def report(out):
         explained_scrambled={o: mean(lambda r, o=o: r['scrambled']['analysis']['explained'][o]) for o in OUTPUTS},
         place={g: mean(lambda r, g=g: r['real']['analysis']['place'].get(g)) for g in ('senses', 'outputs', 'kenyon', 'mbon', 'chance')},
         kc_hz=mean(lambda r: r['real']['analysis']['memory']['kc_hz']),
+        kc_active_max=max(r['real']['analysis']['memory']['kc_active_per_bin'] for r in rep['pieces'].values()),
+        bar=dict({g: mean(lambda r, g=g: r['real']['analysis'].get('bar', {}).get(g)) for g in ('senses', 'outputs', 'kenyon', 'mbon', 'chance')},
+                 kenyon_scrambled=mean(lambda r: r['scrambled']['analysis'].get('bar', {}).get('kenyon'))),
+        place_scrambled_kenyon=mean(lambda r: r['scrambled']['analysis']['place'].get('kenyon')),
         moves={f: mean(lambda r, f=f: r[f]['goal']['moves']) for f in FLIES},
         fear_5min={f: mean(lambda r, f=f: r[f]['goal']['fear_5min']) for f in FLIES},
         spots_alike={f: mean(lambda r, f=f: r['real_vs_' + f]['spots_alike']) for f in FLIES[1:]},
@@ -310,6 +322,15 @@ def markdown(rep):
         L.append(f"| {n} | {p['sixteenths']} | {pct(p['chance'])} | {pct(p['senses'])} | {pct(p['outputs'])} | {pct(p['kenyon'])} | {pct(p['mbon'])} | {mem['kc_hz']:.2f} | {pct(mem['kc_active_per_bin'])} |")
     m = rep['mean']['place']
     L.append(f"| **mean** | | {pct(m['chance'])} | {pct(m['senses'])} | {pct(m['outputs'])} | {pct(m['kenyon'])} | {pct(m['mbon'])} | {rep['mean']['kc_hz']:.2f} | |\n")
+    if all('bar' in r['real']['analysis'] for r in rep['pieces'].values()):
+        L.append('### Place in the bar, read from one 50 ms bin (real fly, second half)\n')
+        L.append('| piece | 16ths | chance | raw senses | output neurons | Kenyon cells | MBONs | Kenyon cells, scrambled |')
+        L.append('|---|---|---|---|---|---|---|---|')
+        for n, r in rep['pieces'].items():
+            p, q = r['real']['analysis']['bar'], r['scrambled']['analysis']['bar']
+            L.append(f"| {n} | {p['sixteenths']} | {pct(p['chance'])} | {pct(p['senses'])} | {pct(p['outputs'])} | {pct(p['kenyon'])} | {pct(p['mbon'])} | {pct(q['kenyon'])} |")
+        m = rep['mean']['bar']
+        L.append(f"| **mean** | | {pct(m['chance'])} | {pct(m['senses'])} | {pct(m['outputs'])} | {pct(m['kenyon'])} | {pct(m['mbon'])} | {pct(m['kenyon_scrambled'])} |\n")
     L.append('### Four flies, five minutes each (r real, s scrambled, st stand-in, r2 real with other chance)\n')
     L.append('| piece | moves r / s / st / r2 | per bar (r) | fear at 5 min r / s / st / r2 | scratching r / s / st / r2 | spots alike r~s / r~st / r~r2 | same moments r~s / r~st / r~r2 | longest same move (r) |')
     L.append('|---|---|---|---|---|---|---|---|')

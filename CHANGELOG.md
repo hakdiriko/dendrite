@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: the memory gets a sense of place (fly Phase 3; the fly sounds different)
+
+- **A new cut of the brain**, by reach: 12,139 neurons (was 11,705) and 1.00M connections (was 1.03M), with the whole mushroom body: 5,177 Kenyon cells (was 2,459) and 62,261 learning synapses.
+- **Place reaches the memory** through the real fly's visual projection neurons to the mushroom body. They carry the 16th in the bar, the place in the 4-bar and 8-bar phrase, the last move and the time since it. The phrase starts again where the music changes.
+- **Gate passed narrowly:** the Kenyon cells read the bar 81% of the time and the 16th in the loop 64% (needed 80% and 60%), with at most 1.3% of them active. See `docs/FLY_PHASE3.md`.
+- **Needs a listen:** the scratch is much rarer (keys 1%, was 26%), and the fly costs about a fifth more than 2.5.0. A fly memory saved with 2.x does not fit the new brain, so such a set opens with a fresh fly.
+
 ## 2.5.0 (the fly, hardened: Phase 1 of the second plan)
 
 - **Fear can fall.** The dopamine neurons fire steadily all the time, and until now that steady firing taught the memory as much as the jumps did, so fear climbed to 1.0 within two minutes on any loop and stayed. Now only bursts above each MBON's own level teach, learning goes both ways (dopamine before a Kenyon cell fires gives back, Handler et al. 2019), and a moment after each jump's sting the reward neurons (PAM) fire: relief (Tanimoto et al. 2004). Fear is now the balance of the punished against the rewarded compartments. After five minutes it sits at 0.3 to 0.4 on the groove and the keys, and rises when the music changes.

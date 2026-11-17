@@ -17,6 +17,9 @@ constexpr float tireBack[7] = { 3.0f, 3.0f, 2.0f, 10.0f, 10.0f, 10.0f, 5.0f };
 // the inner life: restless kicks (per neuron per second, calm; mV), learning rate, forgetting (s)
 constexpr float kickMv = 1.5f; // kick rate, learning rate and forgetting are in Taste
 constexpr float liveSec = 0.010f; // traces, moods and learning run every 10 ms
+// its sense of place (3.0): how fast a place neuron fires at its preferred value, and how unlike the
+// last four bars a bar must smell to start a new phrase
+constexpr float placeRate = 300.0f, placeNovelty = 0.35f;
 
 float coeff (float seconds, float dt) noexcept { return 1.0f - std::exp (-dt / seconds); }
 } // namespace
@@ -214,6 +217,13 @@ void Fly::rest() noexcept
     heldBandHz = 1000.0f;
     now = Doing {};
     untilStep = 0.0f;
+    anchorBar = 0;
+    lastBar = -1;
+    smellBar.fill (0.0f);
+    for (auto& m : smellBars)
+        m.fill (0.0f);
+    smellBarCount = barsKept = 0;
+    novelty = 0.0f;
     for (auto& sub : standRing)
         sub.fill (0.0f);
     standAcc.fill (0.0f);
@@ -310,6 +320,74 @@ void Fly::smell() noexcept
     const float middle = sorted[(size_t) (flydata::smells / 2)];
     for (int b = 0; b < flydata::smells; ++b)
         drive[(size_t) (flydata::senses + b)] = std::min (1.2f, 2.0f * std::max (0.0f, n[(size_t) b] - middle));
+    for (int b = 0; b < flydata::smells; ++b)
+        smellBar[(size_t) b] += n[(size_t) b];
+    ++smellBarCount;
+}
+
+void Fly::place() noexcept
+{
+    // Where it is in time. The bar and the phrase come from the song's clock; the phrase starts at
+    // the host's bar count and starts again where the music changes strongly (a bar that smells
+    // unlike the four before it). Each place neuron is tuned to one value of one of these and fires
+    // the more, the nearer the fly is to it.
+    const double bars = beatNow / std::max (1.0, barNow);
+    const long long bar = (long long) std::floor (bars);
+    const float inBar = (float) (bars - (double) bar);
+    if (bar != lastBar)
+    {
+        if (lastBar >= 0 && smellBarCount > 0)
+        {
+            std::array<float, flydata::smells> mean {};
+            for (int b = 0; b < flydata::smells; ++b)
+                mean[(size_t) b] = smellBar[(size_t) b] / (float) smellBarCount;
+            if (barsKept >= 4)
+            {
+                float diff = 0.0f, size = 1.0e-3f;
+                for (int b = 0; b < flydata::smells; ++b)
+                {
+                    float before = 0.0f;
+                    for (const auto& m : smellBars)
+                        before += 0.25f * m[(size_t) b];
+                    diff += std::abs (mean[(size_t) b] - before);
+                    size += 0.5f * (mean[(size_t) b] + before);
+                }
+                novelty = diff / size;
+                if (novelty > placeNovelty && bar - anchorBar >= 2)
+                    anchorBar = bar;
+            }
+            for (size_t k = smellBars.size() - 1; k > 0; --k)
+                smellBars[k] = smellBars[k - 1];
+            smellBars[0] = mean;
+            barsKept = std::min (barsKept + 1, 4);
+        }
+        smellBar.fill (0.0f);
+        smellBarCount = 0;
+        if (bar < anchorBar || bar < lastBar)
+            anchorBar = bar < anchorBar ? 0 : anchorBar; // the song jumped back (a loop brace): its own bar count again
+        lastBar = bar;
+    }
+    const long long inPhrase = ((bar - anchorBar) % 8 + 8) % 8;
+    now.phraseBar = (int) inPhrase;
+    const float value[3] = { inBar, ((float) (inPhrase % 4) + inBar) / 4.0f, ((float) inPhrase + inBar) / 8.0f };
+    // tuned as wide as two 16ths of the bar, and as half a bar of each phrase
+    constexpr float kappa[3] = { 9.1f, 9.1f, 36.0f };
+    const float rate = placeRate * dtSec;
+    const float since = std::log2 (1.0f + sinceMove16) / 6.0f;
+    for (int p = 0; p < flydata::placeCount; ++p)
+    {
+        const int kind = flydata::placeKind[p];
+        const float slot = flydata::placeSlot[p];
+        float tuned = 0.0f;
+        if (kind < 3)
+            tuned = std::exp (kappa[kind] * (std::cos (2.0f * pi * (value[kind] - slot)) - 1.0f));
+        else if (kind == 3)
+            tuned = lastMoves[0] == 1 + (int) (slot * 7.0f) ? std::exp (-sinceMove16 / 16.0f) : 0.0f;
+        else
+            tuned = std::exp (-0.5f * (since - slot) * (since - slot) / (0.12f * 0.12f));
+        if (uniform() < rate * tuned)
+            v[flydata::placeNeuron[p]] = vThreshold + 1.0f;
+    }
 }
 
 void Fly::live() noexcept
@@ -453,6 +531,8 @@ void Fly::step() noexcept
     }
     for (int k = 0; k < inputs; ++k)
         heardNow[(size_t) k] = hit[k];
+    if (flydata::placeCount > 0)
+        place();
     if (probing)
         for (int k = 0; k < inputs; ++k)
         {
