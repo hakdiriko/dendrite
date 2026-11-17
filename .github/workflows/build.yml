@@ -162,6 +162,40 @@ jobs:
           "$iscc" -Q "-DAppVersion=$v" "-DSourceDir=$(cygpath -w "$PWD/pkg/stage")" \
             "-O$(cygpath -w "$PWD/release")" packaging/windows/dendrite.iss
 
+      # a picture of the installer's first and last pages, to check the look without installing
+      - name: Installer preview (Windows)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release -Filter *-setup.exe | Select-Object -First 1
+          New-Item -ItemType Directory -Force preview | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("preview/$name.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          }
+          $p = Start-Process $exe.FullName -PassThru
+          Start-Sleep 6; Shot "1-welcome"
+          $ws = New-Object -ComObject WScript.Shell
+          [void]$ws.AppActivate("Setup - dendrite"); Start-Sleep 1
+          $ws.SendKeys("{ENTER}"); Start-Sleep 3; Shot "2-ready"
+          $ws.SendKeys("{ENTER}"); Start-Sleep 10; Shot "3-finish"
+          $ws.SendKeys("{ENTER}"); Start-Sleep 2
+          if (!$p.HasExited) { Stop-Process $p -Force }
+
+      - name: Keep the installer preview
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-preview
+          path: preview/
+          if-no-files-found: ignore
+
       - name: Package (Mac zip)
         if: runner.os == 'macOS'
         run: |
@@ -172,6 +206,19 @@ jobs:
           codesign --force --deep -s - pkg/stage/dendrite.vst3 pkg/stage/dendrite.component
           cp "$MANUAL" packaging/CREDITS.txt Resources/fonts/OFL-*.txt pkg/stage/
           cp packaging/INSTALL-mac.txt pkg/stage/INSTALL.txt
+          # the installer: files installed by Installer.app carry no quarantine, so an unsigned
+          # .pkg needs one "Open Anyway" in System Settings and no Terminal
+          mkdir -p pkg/root-vst3 pkg/root-au pkg/parts
+          ditto pkg/stage/dendrite.vst3 pkg/root-vst3/dendrite.vst3
+          ditto pkg/stage/dendrite.component pkg/root-au/dendrite.component
+          pkgbuild --root pkg/root-vst3 --install-location "/Library/Audio/Plug-Ins/VST3" \
+            --identifier com.hakdiriko.dendrite.pkg.vst3 --version "$v" pkg/parts/dendrite-vst3.pkg
+          pkgbuild --root pkg/root-au --install-location "/Library/Audio/Plug-Ins/Components" \
+            --identifier com.hakdiriko.dendrite.pkg.au --version "$v" pkg/parts/dendrite-au.pkg
+          sed "s/VERSION/$v/g" packaging/mac/distribution.xml > pkg/distribution.xml
+          productbuild --distribution pkg/distribution.xml --resources packaging/mac/resources \
+            --package-path pkg/parts "pkg/stage/dendrite-$v-macos.pkg"
+          cp "pkg/stage/dendrite-$v-macos.pkg" release/
           (cd pkg && ditto -c -k --keepParent stage "../release/dendrite-$v-macos-vst3-au.zip")
 
       - name: Package (Linux zip)

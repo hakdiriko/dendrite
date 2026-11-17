@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- dendrite's Mac installer (productbuild). CI fills in VERSION. -->
+<installer-gui-script minSpecVersion="2">
+    <title>dendrite VERSION</title>
+    <organization>com.hakdiriko</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="allow" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+    <os-version min="11.0"/>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <choices-outline>
+        <line choice="vst3"/>
+        <line choice="au"/>
+    </choices-outline>
+    <choice id="vst3" title="VST3" description="dendrite for Ableton Live, Bitwig, Reaper, Cubase and other VST3 hosts.">
+        <pkg-ref id="com.hakdiriko.dendrite.pkg.vst3"/>
+    </choice>
+    <choice id="au" title="Audio Unit" description="dendrite for Logic Pro, GarageBand and other Audio Unit hosts.">
+        <pkg-ref id="com.hakdiriko.dendrite.pkg.au"/>
+    </choice>
+    <pkg-ref id="com.hakdiriko.dendrite.pkg.vst3" version="VERSION" onConclusion="none">dendrite-vst3.pkg</pkg-ref>
+    <pkg-ref id="com.hakdiriko.dendrite.pkg.au" version="VERSION" onConclusion="none">dendrite-au.pkg</pkg-ref>
+</installer-gui-script>
