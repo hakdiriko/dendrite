@@ -316,6 +316,13 @@ int main (int argc, char** argv)
             b.block = size;
             cases.push_back (b);
         }
+        // the high rates as a host runs them: a 256-sample buffer is 2.7 ms at 96 kHz, 1.3 ms at 192 kHz
+        for (const float sr : { 96000.0f, 192000.0f })
+        {
+            Case h { "blocks of 256 at " + std::to_string ((int) sr) + " Hz", sr, { groove (127.0) } };
+            h.block = 256;
+            cases.push_back (h);
+        }
     }
 
     int failed = 0;

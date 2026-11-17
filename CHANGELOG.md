@@ -9,6 +9,7 @@
 - **Ready to download.** A `v*` tag now builds Windows, macOS and Linux, validates all three, and publishes a release: a Windows installer (puts `dendrite.vst3` in the system VST3 folder and removes an old `viber.vst3`), zips for each system with the manual, install notes and `CREDITS.txt`, and checksums.
 - **Credits.** The fly's data is FlyWire's, under CC BY-NC 4.0; `CREDITS.txt`, the manual's footer and the README now say so, with the papers to cite.
 - **A new fly without a hiccup.** Right-click "a new fly" reset all million synapses on the audio thread; only the 28,761 that learn ever change, so now only those are reset (the same fly, about 35 times less work in that one block).
+- **Known limits.** The fly costs about 10 to 12% of one core per instance at 48 kHz (about 22% at 192 kHz). Its busiest moments land in single blocks: the slowest 128-sample block at 48 kHz uses about 80% of its time, and at 192 kHz with a 256-sample buffer close to 100%, so at 192 kHz use 512 samples or more, or set the itch to off. The matrix now has those two high-rate cases.
 - The release also carries the fly's measuring tools (Phase 0) and the teach page (Phase 2); neither changes the sound.
 - **Honest words.** The manual's itch section described the 32-neuron creature of 2.0; it now says what the fly decides and what we built, and that what wakes it is mostly how hard the hits land. The drawer says it too.
 
