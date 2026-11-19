@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**dendrite** (always lowercase; repo `knit`; called viber until 0.2.0): a dub echo that grows around your head. A zero-setup VST3/AU audio effect, C++/JUCE, for Hakan.
+**dendrite** (always lowercase; repo `dendrite`, was `knit` until 2026-11-19; called viber until 0.2.0): a dub echo that grows around your head. A zero-setup VST3/AU audio effect, C++/JUCE, for Hakan.
 
 Read before working:
 - `docs/PROJECT_BRIEF.md`: vision, principles, roadmap, autonomy rules. Read at the start of every session.

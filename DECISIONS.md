@@ -173,3 +173,4 @@ One line per decision, plus why. Newest at the bottom.
 - 2026-11-17: the first public release is 2.5.0 = 2.4.3 + Phase 1 (fear that falls, the real turn) + the Phase 0 and 2 tools. Phase 3 (new cut, place in the bar) stays out. Why: its gate passed only narrowly and it replaces FlyData wholesale; Phase 1 is the version measured hardest (26-case matrix, pluginval, audit).
 - 2026-11-17: FlyWire's public data is CC BY-NC 4.0 (flywire.ai/guidelines, read 2026-11-17). Why recorded: a paid dendrite with the fly needs FlyWire's permission; the release ships CREDITS.txt with the attribution either way.
 - 2026-11-17: releases are built by CI from a `v*` tag only (Windows Inno Setup installer + zips, Mac ad-hoc-signed universal zip, Linux zip, SHA256SUMS). Why: what is published is exactly what pluginval validated on that commit; nobody builds by hand.
+- 2026-11-19: Repo renamed `knit` -> `dendrite`, to match the plug-in. Why: Hakan asked. GitHub redirects the old URLs.

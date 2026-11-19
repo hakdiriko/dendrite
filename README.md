@@ -1,9 +1,9 @@
 # dendrite
 
 **A dub echo that grows around your head.** VST3 (plus AU on macOS), built with JUCE. Put it on a track and play.
-The repository is called `knit`; the plug-in is called **dendrite**, always lowercase (it was called viber until 0.2.0).
+The repository and the plug-in are called **dendrite**, always lowercase (it was called viber until 0.2.0).
 
-**Status: released (2.5).** Download it from [afferent.page](https://afferent.page) or the [GitHub releases](https://github.com/hakdiriko/knit/releases). A dotted-eighth dub echo locked to the host tempo. Every repeat steps a little further out from the middle, so the echo grows from inside your head to all around it, while the mono sum stays a clean dub echo. It breathes with your playing, and when a part repeats too long it gets an itch: three of five heads (scream, laugh, manipulate, swarm, ghost) answer. It also keeps the last minute, so you can drag an itch straight into Live.
+**Status: released (2.5).** Download it from [afferent.page](https://afferent.page) or the [GitHub releases](https://github.com/hakdiriko/dendrite/releases). A dotted-eighth dub echo locked to the host tempo. Every repeat steps a little further out from the middle, so the echo grows from inside your head to all around it, while the mono sum stays a clean dub echo. It breathes with your playing, and when a part repeats too long it gets an itch: three of five heads (scream, laugh, manipulate, swarm, ghost) answer. It also keeps the last minute, so you can drag an itch straight into Live.
 
 | Control | What you hear |
 |---|---|
@@ -23,7 +23,7 @@ Releases: on the Actions page, **Run workflow** on `main` with **publish** ticke
 
 Every push also builds the plug-in automatically. You never need to compile anything.
 
-1. Open the [Actions tab](https://github.com/hakdiriko/knit/actions/workflows/build.yml) (you need to be signed in to GitHub).
+1. Open the [Actions tab](https://github.com/hakdiriko/dendrite/actions/workflows/build.yml) (you need to be signed in to GitHub).
 2. Click the newest run with a green tick.
 3. Scroll to **Artifacts** and download:
    - Windows: `dendrite-windows-vst3` (every push)
