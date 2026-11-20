@@ -86,13 +86,159 @@ DendriteProcessor::~DendriteProcessor()
 
 void DendriteProcessor::rigTick (double nowSeconds)
 {
+    constexpr auto relaxed = std::memory_order_relaxed;
+    auto& d = display;
+    const int itchChoice = juce::roundToInt (itchParam->load());
     auto* counts = recording.counts();
     for (int n = 0; n < dendrite::rig::Recording::neurons; ++n)
         counts[n] = takeFlySpikes (n);
+    recording.setStepping (itchChoice > 0); // off: the fly rests, its brain does not step
     recording.step (nowSeconds);
+    recording.noteState ({ d.flyArousal.load (relaxed), d.flyFatigue.load (relaxed), d.flyFear.load (relaxed), d.flyMemory.load (relaxed) });
+    watchRig();
+}
+
+void DendriteProcessor::watchRig()
+{
+    // what happened since the last tick, written into the rig's log (message thread)
     constexpr auto relaxed = std::memory_order_relaxed;
-    recording.noteState ({ display.flyArousal.load (relaxed), display.flyFatigue.load (relaxed), display.flyFear.load (relaxed),
-                           display.flyMemory.load (relaxed) });
+    auto& d = display;
+    auto& w = watch;
+    const auto dot = juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 "));
+    const double now = recording.sessionSeconds();
+    auto signedText = [] (float v, int decimals) { return (v >= 0.0f ? "+" : "-") + juce::String (std::abs (v), decimals); };
+
+    // the session, once the host has prepared it; what a reopened set brought with it
+    const float sr = d.sampleRate.load (relaxed);
+    if (! w.sessionLogged && sr > 0.0f)
+    {
+        w.sessionLogged = true;
+        recording.log ("session" + dot + juce::Time::getCurrentTime().formatted ("%Y-%m-%d %H:%M:%S") + dot + juce::String (sr / 1000.0f, 1) + " kHz" + dot
+                       + juce::String (d.blockSize.load (relaxed)) + " smp");
+    }
+    if (w.restoredPending)
+    {
+        w.restoredPending = false;
+        const auto h = (int) (recording.restoredSeconds() / 3600.0), m = (int) std::fmod (recording.restoredSeconds() / 60.0, 60.0);
+        recording.log ("restored" + dot + (h > 0 ? juce::String (h) + " h " : juce::String()) + juce::String (m) + " min of history" + dot
+                       + juce::String (recording.scarTotal()) + (recording.scarTotal() == 1 ? " scar" : " scars"));
+    }
+
+    // the input: gone after 2 s below -80 dBFS, back as soon as it rises
+    const bool heard = d.inLevel.load (relaxed) > 1.0e-4f;
+    if (heard)
+        w.quietSince = -1.0;
+    else if (w.quietSince < 0.0)
+        w.quietSince = now;
+    if (w.inputOn && ! heard && now - w.quietSince >= 2.0)
+    {
+        w.inputOn = false;
+        recording.log ("no input");
+    }
+    else if (! w.inputOn && heard)
+    {
+        w.inputOn = true;
+        recording.log ("input");
+    }
+
+    // a reflex: the giant fiber's escape lurches the tape. Logged with its move and the furthest the
+    // tape's speed went; at its first tick the neurons firing hardest are burned in as a scar
+    const float jump = d.flyJump.load (relaxed), st = d.flySemitones.load (relaxed);
+    static const char* moves[] = { "none", "hop", "leap", "duck", "dive", "rush", "hold", "sink" };
+    if (jump > 0.01f && ! w.jumping)
+    {
+        w.jumping = true;
+        w.reflexSince = now;
+        w.peakSemitones = st;
+        const int move = juce::jlimit (0, 7, d.flyMove.load (relaxed));
+        w.reflexMove = moves[move];
+        recording.scar();
+        w.reflexEvent = recording.log ("reflex" + dot + w.reflexMove + " " + signedText (st, 1) + " st");
+    }
+    else if (jump > 0.01f)
+    {
+        if (std::abs (st) > std::abs (w.peakSemitones))
+        {
+            w.peakSemitones = st;
+            if (auto* e = recording.event (w.reflexEvent))
+                e->text = "reflex" + dot + w.reflexMove + " " + signedText (st, 1) + " st";
+        }
+    }
+    else
+        w.jumping = false;
+
+    // grooming: the band it scratches, and for how long (with the fly's own hysteresis)
+    const float scratch = d.flyScratch.load (relaxed);
+    if (! w.grooming && scratch > 0.3f)
+    {
+        w.grooming = true;
+        w.groomSince = now;
+        w.groomEvent = recording.log ("groom" + dot + juce::String (d.flyScratchHz.load (relaxed) / 1000.0f, 1) + " kHz");
+    }
+    else if (w.grooming && scratch < 0.08f)
+    {
+        w.grooming = false;
+        if (auto* e = recording.event (w.groomEvent))
+            e->text += " " + juce::String (now - w.groomSince, 1) + " s";
+    }
+
+    // keep's diary: each itch, throw and runaway it holds can be pulled from its log line
+    keep.collect();
+    for (const auto& m : keep.diary())
+    {
+        if (m.id <= w.lastMark)
+            continue;
+        w.lastMark = m.id;
+        uint32_t id = 0;
+        if (m.kind == dendrite::keep::Kind::itch)
+        {
+            // the itch's sound is the reflex the rig just logged: that line becomes its handle
+            auto* e = recording.event (w.reflexEvent);
+            if (e != nullptr && e->mark == 0 && now - e->at < 2.0)
+            {
+                e->mark = m.id;
+                id = e->id;
+            }
+            else
+                id = recording.log ("itch", m.id);
+        }
+        else
+            id = recording.log (m.kind == dendrite::keep::Kind::throwing ? "throw" : "runaway", m.id);
+        if (m.kind != dendrite::keep::Kind::itch)
+            w.open.push_back ({ m.id, id });
+    }
+    for (auto it = w.open.begin(); it != w.open.end();)
+    {
+        const auto* m = keep.find (it->first);
+        if (m == nullptr || m->endSample >= 0)
+        {
+            if (auto* e = recording.event (it->second); e != nullptr && m != nullptr)
+                e->text += dot + juce::String ((double) (m->endSample - m->sample) / keep.sampleRate(), 1) + " s";
+            it = w.open.erase (it);
+        }
+        else
+            ++it;
+    }
+
+    // the protocol: every switch the hand or the host turns
+    const int itch = juce::roundToInt (itchParam->load()), time = juce::roundToInt (timeParam->load());
+    const bool dry = dryParam->load() > 0.5f, bypassed = bypassParam->load() > 0.5f;
+    if (w.seenSettings)
+    {
+        if (itch != w.itch)
+            recording.log ("itch selector" + dot + itchNames[itch] + (itch == 0 ? dot + "at rest" : juce::String()));
+        if (time != w.time)
+            recording.log ("heads" + dot + params.getParameter ("time")->getCurrentValueAsText());
+        if (dry != w.dry)
+            recording.log (dry ? "dry" + dot + "0 dB" : "dry" + dot + "off");
+        if (bypassed != w.bypassed)
+            recording.log (bypassed ? "output" + dot + "bypassed" + dot + "recording" : "output" + dot + "live");
+    }
+    w.seenSettings = true;
+    w.itch = itch;
+    w.time = time;
+    w.dry = dry;
+    w.bypassed = bypassed;
 }
 
 juce::AudioProcessorParameter* DendriteProcessor::getBypassParameter() const { return params.getParameter ("bypass"); }
@@ -450,6 +596,7 @@ void DendriteProcessor::setStateInformation (const void* data, int size)
     {
         recording.load (rig);
         state.removeChild (rig, nullptr);
+        watch.restoredPending = true;
     }
     params.replaceState (state);
 }

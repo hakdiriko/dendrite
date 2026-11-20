@@ -3,7 +3,7 @@
 using namespace dendrite::ui;
 
 DendriteEditor::DendriteEditor (DendriteProcessor& p)
-    : AudioProcessorEditor (p), processor (p), header (p), specimen (p), instruments (p, specimen), settings (p)
+    : AudioProcessorEditor (p), processor (p), header (p), specimen (p), instruments (p, specimen), settings (p), raster (p), log (p)
 {
     setLookAndFeel (&lookAndFeel);
     setOpaque (true);
@@ -11,6 +11,8 @@ DendriteEditor::DendriteEditor (DendriteProcessor& p)
     addAndMakeVisible (specimen);
     addAndMakeVisible (instruments);
     addAndMakeVisible (settings);
+    addAndMakeVisible (raster);
+    addAndMakeVisible (log);
 
     // any shape, up to a whole 8K screen; hosts' maximise and fullscreen work
     setResizable (true, true);
@@ -35,7 +37,10 @@ void DendriteEditor::resized()
     auto r = getLocalBounds();
     header.setBounds (r.removeFromTop (Header::height));
     settings.setBounds (r.removeFromBottom (Settings::height));
-    instruments.setBounds (r.removeFromRight (Instruments::width));
+    auto column = r.removeFromRight (Instruments::width);
+    instruments.setBounds (column.removeFromTop (Instruments::height));
+    log.setBounds (column);
+    raster.setBounds (r.removeFromBottom (Raster::height));
     specimen.setBounds (r);
 }
 
@@ -49,10 +54,12 @@ void DendriteEditor::animateTo (double seconds)
     // the recording itself ticks in the processor; the window only draws what it holds
     specimen.tick (seconds);
     specimen.repaint();
+    raster.repaint();
     if (frame++ % 3 == 0)
     {
         header.repaint();
         instruments.repaint();
         settings.repaint();
+        log.repaint();
     }
 }

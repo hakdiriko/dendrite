@@ -16,6 +16,18 @@ namespace tone
         return juce::Colour (v, v, v);
     }
     const juce::Colour black { 0xff000000 };
+    // firing to light, on a log scale: 1 Hz at the dim step, 10 Hz between, 100 Hz and up white
+    inline float rate (float hz) noexcept
+    {
+        return dim + (live - dim) * juce::jlimit (0.0f, 1.0f, std::log10 (std::max (hz, 1.0f)) / 2.0f);
+    }
+    // a scar's light: white when it is made, settled to the mid step within a minute; where
+    // scars overlap they add up a little, to a ceiling
+    inline float scar (float ageSeconds, int count) noexcept
+    {
+        const float settle = mid + (live - mid) * std::exp (-std::max (0.0f, ageSeconds) / 15.0f);
+        return std::min (live, settle + std::min (0.24f, 0.03f * (float) std::max (0, count - 1)));
+    }
 } // namespace tone
 
 // Fragment Mono (SIL Open Font License, Resources/fonts), embedded so the window reads the same

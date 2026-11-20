@@ -59,6 +59,8 @@ set(DENDRITE_UI_SOURCES
     Source/ui/Specimen.cpp
     Source/ui/Instruments.cpp
     Source/ui/Settings.cpp
+    Source/ui/Raster.cpp
+    Source/ui/Log.cpp
     Source/ui/HostFocus.cpp
     Source/rig/Recording.cpp)
 

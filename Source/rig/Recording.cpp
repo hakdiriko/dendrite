@@ -1,10 +1,82 @@
 #include "Recording.h"
+#include <numeric>
 
 namespace dendrite::rig
 {
-Recording::Recording()
-    : incoming ((size_t) neurons, 0), traces ((size_t) neurons, 0.0f), exposed ((size_t) neurons, 0u)
+const char* Recording::populationName (int p) noexcept
 {
+    static const char* names[] = { "ears l", "ears r", "eyes l", "eyes r", "smell", "kc", "mbon", "ppl1", "pam", "steer l", "steer r", "groom", "giant fiber" };
+    return p >= 0 && p < populations ? names[p] : "";
+}
+
+Recording::Recording()
+    : scarCount ((size_t) neurons, 0), scarLast ((size_t) neurons, 0.0), order ((size_t) neurons, 0),
+      incoming ((size_t) neurons, 0), lastTick ((size_t) neurons, 0), traces ((size_t) neurons, 0.0f), exposed ((size_t) neurons, 0u)
+{
+    using namespace flydata;
+    // the senses are B, A, CE, loom low, mid, high, each left then right; then the 32 smell bands
+    auto senses = [] (std::vector<uint16_t>& into, int first, int last, int stride) {
+        for (int s = first; s <= last; s += stride)
+            for (int k = senseStart[s]; k < senseStart[s + 1]; ++k)
+                into.push_back (senseNeuron[k]);
+    };
+    senses (members[earsLeft], 0, 4, 2);
+    senses (members[earsRight], 1, 5, 2);
+    senses (members[eyesLeft], 6, 10, 2);
+    senses (members[eyesRight], 7, 11, 2);
+    senses (members[smell], flydata::senses, flydata::senses + smells - 1, 1);
+    members[Population::kenyon].assign (std::begin (flydata::kenyon), std::end (flydata::kenyon));
+    members[Population::mbon].assign (std::begin (flydata::mbon), std::end (flydata::mbon));
+    members[Population::ppl1].assign (std::begin (flydata::ppl1), std::end (flydata::ppl1));
+    members[Population::pam].assign (std::begin (flydata::pam), std::end (flydata::pam));
+    members[Population::steerLeft].assign (std::begin (flydata::steerLeft), std::end (flydata::steerLeft));
+    members[Population::steerRight].assign (std::begin (flydata::steerRight), std::end (flydata::steerRight));
+    members[groom].assign (std::begin (legNeuron), std::end (legNeuron));
+    members[giantFiber].assign (std::begin (escapeNeuron), std::end (escapeNeuron));
+    for (auto& m : members) // a neuron can sit in more than one sense; count it once per population
+    {
+        std::sort (m.begin(), m.end());
+        m.erase (std::unique (m.begin(), m.end()), m.end());
+    }
+}
+
+uint32_t Recording::log (const juce::String& text, uint32_t mark)
+{
+    Event e;
+    e.id = nextEvent++;
+    e.at = sessionSeconds();
+    e.text = text;
+    e.mark = mark;
+    eventList.push_back (std::move (e));
+    while ((int) eventList.size() > logLength)
+        eventList.pop_front();
+    return eventList.back().id;
+}
+
+Recording::Event* Recording::event (uint32_t id) noexcept
+{
+    for (auto it = eventList.rbegin(); it != eventList.rend(); ++it)
+        if (it->id == id)
+            return &*it;
+    return nullptr;
+}
+
+void Recording::scar()
+{
+    // the hardest firing over the last 300 ms (each neuron's trace), at the moment the reflex reached the rig
+    std::iota (order.begin(), order.end(), 0);
+    std::nth_element (order.begin(), order.begin() + scarNeurons, order.end(), [this] (int a, int b) { return traces[(size_t) a] > traces[(size_t) b]; });
+    const double t = lived();
+    const juce::SpinLock::ScopedLockType hold (lock);
+    for (int k = 0; k < scarNeurons; ++k)
+    {
+        const auto n = (size_t) order[(size_t) k];
+        if (traces[n] <= 0.0f)
+            continue; // a silent neuron did not drive it
+        scarCount[n] = (uint16_t) std::min (65535, scarCount[n] + 1);
+        scarLast[n] = t;
+    }
+    ++scarsMade;
 }
 
 void Recording::noteState (const std::array<float, quantities>& state)
@@ -35,6 +107,7 @@ void Recording::step (double nowSeconds)
         {
             const uint16_t c = incoming[n];
             incoming[n] = 0;
+            lastTick[n] = c;
             traces[n] = traces[n] * keep + (float) c;
             if (c != 0)
             {
@@ -45,6 +118,22 @@ void Recording::step (double nowSeconds)
         }
     }
     sessionSpikes += total;
+
+    // the raster: each population's rate this tick (none while the specimen's time stands still)
+    if (dt > 0.0 && stepping)
+    {
+        float* row = rasterData.data() + rasterHead * populations;
+        for (int p = 0; p < populations; ++p)
+        {
+            int sum = 0;
+            for (auto n : members[(size_t) p])
+                sum += lastTick[n];
+            row[p] = (float) ((double) sum / (dt * (double) std::max<size_t> (1, members[(size_t) p].size())));
+        }
+        rasterAt[(size_t) rasterHead] = sessionSeconds();
+        rasterHead = (rasterHead + 1) % rasterTicks;
+        rasterCount = std::min (rasterCount + 1, rasterTicks);
+    }
     if (dt > 0.0)
     {
         // spikes per second over the whole cut, smoothed over about the trace's time
@@ -66,6 +155,22 @@ juce::ValueTree Recording::save() const
         zip.flush();
     }
     rig.setProperty ("neurons", neurons, nullptr);
+    {
+        // scars: per neuron its count, then when its last one was made (seconds of the set's history)
+        juce::MemoryOutputStream scarsPacked;
+        {
+            juce::GZIPCompressorOutputStream zip (scarsPacked, 9);
+            const juce::SpinLock::ScopedLockType hold (lock);
+            for (size_t n = 0; n < (size_t) neurons; ++n)
+            {
+                zip.writeShort ((short) scarCount[n]);
+                zip.writeFloat ((float) scarLast[n]);
+            }
+            zip.flush();
+        }
+        rig.setProperty ("scars", juce::Base64::toBase64 (scarsPacked.getData(), scarsPacked.getDataSize()), nullptr);
+        rig.setProperty ("scarsMade", scarsMade, nullptr);
+    }
     rig.setProperty ("exposure", juce::Base64::toBase64 (packed.getData(), packed.getDataSize()), nullptr);
     // the history this set carries: what it came with plus this session
     rig.setProperty ("seconds", savedLived + std::max (0.0, now - started), nullptr);
@@ -97,5 +202,25 @@ void Recording::load (const juce::ValueTree& rig)
         exposedMax = std::max (exposedMax, back[n]);
     }
     savedLived = restored = std::max (0.0, (double) rig.getProperty ("seconds", 0.0));
+
+    // scars (absent in a set saved before they existed: it simply has none)
+    juce::MemoryOutputStream scarsPacked;
+    if (rig.hasProperty ("scars") && juce::Base64::convertFromBase64 (scarsPacked, rig.getProperty ("scars").toString()))
+    {
+        juce::MemoryInputStream scarsRaw (scarsPacked.getData(), scarsPacked.getDataSize(), false);
+        juce::GZIPDecompressorInputStream scarsUnzip (scarsRaw);
+        std::vector<uint16_t> count ((size_t) neurons, 0);
+        std::vector<double> last ((size_t) neurons, 0.0);
+        for (size_t n = 0; n < (size_t) neurons; ++n)
+        {
+            if (scarsUnzip.isExhausted())
+                return;
+            count[n] = (uint16_t) scarsUnzip.readShort();
+            last[n] = (double) scarsUnzip.readFloat();
+        }
+        scarCount = std::move (count);
+        scarLast = std::move (last);
+        scarsMade = std::max (0, (int) rig.getProperty ("scarsMade", 0));
+    }
 }
 } // namespace dendrite::rig

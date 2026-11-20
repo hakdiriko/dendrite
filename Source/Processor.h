@@ -145,5 +145,19 @@ private:
     };
     RigTimer rigTimer { *this };
 
+    // what the rig's log has already seen (message thread)
+    void watchRig();
+    struct Watch
+    {
+        bool sessionLogged = false, restoredPending = false, inputOn = true, jumping = false, grooming = false, seenSettings = false;
+        double quietSince = -1.0, reflexSince = 0.0, groomSince = 0.0;
+        float peakSemitones = 0.0f;
+        juce::String reflexMove;
+        uint32_t reflexEvent = 0, groomEvent = 0, lastMark = 0;
+        std::vector<std::pair<uint32_t, uint32_t>> open; // keep's marks still playing, and their log lines
+        int itch = -1, time = -1;
+        bool dry = true, bypassed = false;
+    } watch;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DendriteProcessor)
 };

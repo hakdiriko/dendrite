@@ -36,12 +36,6 @@ namespace
         { "grooming", "DNg11, grooming", false },
     };
 
-    // firing to light, on a log scale: 1 Hz at the dim step, 10 Hz between, 100 Hz and up white
-    float levelFor (float hz) noexcept
-    {
-        return tone::dim + (tone::live - tone::dim) * juce::jlimit (0.0f, 1.0f, std::log10 (std::max (hz, 1.0f)) / 2.0f);
-    }
-
 } // namespace
 
 Specimen::Specimen (DendriteProcessor& p)
@@ -100,7 +94,7 @@ void Specimen::renderPoints (float px)
             level += (tone::dim - tone::floor) * (float) std::log1p ((double) e) / most;
         const float hz = rec.trace (n) / (float) rig::Recording::traceSeconds;
         if (hz >= 1.0f)
-            level = std::max (level, levelFor (hz));
+            level = std::max (level, tone::rate (hz));
         const auto v = (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * level));
 
         const int x0 = juce::jlimit (0, w - dot, (int) ((float) flydata::neuronX[n] / 65535.0f * (float) (w - dot)));
@@ -111,6 +105,31 @@ void Specimen::renderPoints (float px)
                 auto* p = bits.getPixelPointer (x, y);
                 if (p[0] < v) // where two neurons share a pixel, the brighter one shows
                     p[0] = p[1] = p[2] = v;
+            }
+    }
+
+    // scars, burned in over the neurons: a cross at each, never removed
+    const int arm = 2 * dot;
+    for (int n = 0; n < neurons; ++n)
+    {
+        const int count = rec.scars (n);
+        if (count == 0)
+            continue;
+        const auto v = (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * tone::scar (rec.scarAge (n), count)));
+        const int cx = juce::jlimit (0, w - dot, (int) ((float) flydata::neuronX[n] / 65535.0f * (float) (w - dot)));
+        const int cy = juce::jlimit (0, h - dot, (int) ((float) flydata::neuronY[n] / 65535.0f * (float) (h - dot)));
+        auto put = [&] (int x, int y) {
+            if (x < 0 || y < 0 || x >= w || y >= h)
+                return;
+            auto* p = bits.getPixelPointer (x, y);
+            if (p[0] < v)
+                p[0] = p[1] = p[2] = v;
+        };
+        for (int t = 0; t < dot; ++t)
+            for (int k = -arm; k < dot + arm; ++k)
+            {
+                put (cx + k, cy + t); // across
+                put (cx + t, cy + k); // down
             }
     }
 }
@@ -180,8 +199,15 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
         };
         swatch (tone::floor, "silent");
         swatch (tone::dim, "fired this session");
-        swatch (levelFor (10.0f), "10 Hz");
+        swatch (tone::rate (10.0f), "10 Hz");
         swatch (tone::live, utf8 ("\xe2\x89\xa5 100 Hz"));
+        // a scar's mark, as the map draws it, settled
+        g.setColour (tone::grey (tone::mid));
+        g.fillRect (juce::Rectangle<float> (x, y - 0.5f, 7.0f, 1.0f));
+        g.fillRect (juce::Rectangle<float> (x + 3.0f, y - 3.5f, 1.0f, 7.0f));
+        g.setColour (tone::grey (tone::mid));
+        const auto scars = juce::String (processor.recording.scarTotal()) + (processor.recording.scarTotal() == 1 ? " scar" : " scars");
+        g.drawText (scars, juce::Rectangle<float> (x + 11.0f, y - 8.0f, 90.0f, 16.0f), juce::Justification::centredLeft);
     }
 
     // what the picture is, and what it holds
