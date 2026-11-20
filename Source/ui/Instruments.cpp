@@ -38,7 +38,7 @@ void Instruments::paint (juce::Graphics& g)
     const auto& rec = processor.recording;
     constexpr auto relaxed = std::memory_order_relaxed;
     const auto data = fonts->at (type::data), small = fonts->at (type::small);
-    auto width = [] (const juce::Font& f, const juce::String& s) { return juce::GlyphArrangement::getStringWidth (f, s); };
+    auto textWidth = [] (const juce::Font& f, const juce::String& s) { return juce::GlyphArrangement::getStringWidth (f, s); };
     const float x0 = 16.0f, x1 = (float) getWidth() - 14.0f, pitch = 15.0f;
     float y = 6.0f;
     rows.clear();
@@ -47,7 +47,7 @@ void Instruments::paint (juce::Graphics& g)
         y += 6.0f;
         g.setFont (small);
         g.setColour (tone::grey (tone::mid));
-        const float w = width (small, name);
+        const float w = textWidth (small, name);
         g.drawText (name, juce::Rectangle<float> (x0, y, w + 2.0f, 14.0f), juce::Justification::centredLeft);
         g.setColour (tone::grey (tone::dim));
         line.h (x0 + w + 8.0f, x1, y + 7.0f);
@@ -60,11 +60,11 @@ void Instruments::paint (juce::Graphics& g)
         g.drawText (label, juce::Rectangle<float> (x0, y, 90.0f, pitch), juce::Justification::centredLeft);
         float total = 0.0f;
         for (const auto& p : parts)
-            total += width (data, p.text);
+            total += textWidth (data, p.text);
         float x = x1 - total;
         for (const auto& p : parts)
         {
-            const float w = width (data, p.text);
+            const float w = textWidth (data, p.text);
             g.setColour (tone::grey (p.unit ? std::min (level, tone::mid) : level));
             g.drawText (p.text, juce::Rectangle<float> (x, y, w + 2.0f, pitch), juce::Justification::centredLeft);
             x += w;

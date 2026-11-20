@@ -57,7 +57,7 @@ void Log::paint (juce::Graphics& g)
     for (auto it = events.rbegin(); it != events.rend() && y >= top; ++it, ++age, y -= pitch)
     {
         const bool handle = held (it->mark);
-        const bool lit = hover != nullptr && hover->y == y && handle;
+        const bool lit = hover != nullptr && std::abs (hover->y - y) < 0.5f && handle;
         const float level = lit ? tone::live : std::max (tone::mid, tone::live - 0.04f * (float) age);
         const auto when = stamp (it->at);
         const float ww = width (when);

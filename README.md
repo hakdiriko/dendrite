@@ -5,13 +5,15 @@ The repository is called `knit`; the plug-in is called **dendrite**, always lowe
 
 **Status: released (2.5).** Download it from [afferent.page](https://afferent.page) or the [GitHub releases](https://github.com/hakdiriko/knit/releases). A dotted-eighth dub echo locked to the host tempo. Every repeat steps a little further out from the middle, so the echo grows from inside your head to all around it, while the mono sum stays a clean dub echo. It breathes with your playing, and when a part repeats too long it gets an itch: three of five heads (scream, laugh, manipulate, swarm, ghost) answer. It also keeps the last minute, so you can drag an itch straight into Live.
 
+Since 3.0 the window is the display of an electrophysiology rig, and the fly's brain is the specimen. Every number on it is measured.
+
 | Control | What you hear |
 |---|---|
-| feed (the field, up) | how long the repeats live: off, whisper, dub, drown, endless |
-| space (the field, right) | where they live: inside, around, envelop, beyond. Mono-safe all the way |
-| throw | press the dark to throw what's playing into the echo; at feed off it's the only way in |
-| itch | after 1 to 8 bars of the same, the heads answer (or off) |
-| keep | after an itch its lamps glow; drag one into Live to get that itch, cut on bar lines |
+| feed (the electrode, up) | how long the repeats live: off, whisper, dub, drown, endless |
+| space (the electrode, right) | where they live: inside, around, envelop, beyond. Mono-safe all the way |
+| throw | press the specimen anywhere away from the electrode and hold; at feed off it's the only way in |
+| itch selector | how awake the fly is kept, 1/4 bar (wide awake) to 8 bars, or off (at rest) |
+| keep | lines in the log marked with a square are still on tape: drag one into Live, cut on bar lines |
 
 The one-page manual is [docs/manual/dendrite-manual.pdf](docs/manual/dendrite-manual.pdf), and it comes inside every download.
 
@@ -58,6 +60,6 @@ Design decisions are in [DECISIONS.md](DECISIONS.md); changes per version in [CH
 
 © 2026 hakdiriko. All rights reserved. The source is public so it can be read and built, but no licence is granted to copy, modify or redistribute it.
 
-The fonts in `Resources/fonts/` (Urbanist and Fragment Mono) are under the SIL Open Font License; JUCE is used under its own licence.
+The font in `Resources/fonts/` (Fragment Mono) is under the SIL Open Font License; JUCE is used under its own licence.
 
 The fly's wiring comes from the FlyWire connectome (Dorkenwald et al. 2024, Schlegel et al. 2024), released under CC BY-NC 4.0: dendrite with the fly inside may only be distributed non-commercially unless FlyWire grants otherwise. Full credits: [packaging/CREDITS.txt](packaging/CREDITS.txt).

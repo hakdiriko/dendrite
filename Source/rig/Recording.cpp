@@ -15,8 +15,8 @@ Recording::Recording()
 {
     using namespace flydata;
     // the senses are B, A, CE, loom low, mid, high, each left then right; then the 32 smell bands
-    auto senses = [] (std::vector<uint16_t>& into, int first, int last, int stride) {
-        for (int s = first; s <= last; s += stride)
+    auto senses = [] (std::vector<uint16_t>& into, int first, int final, int stride) {
+        for (int s = first; s <= final; s += stride)
             for (int k = senseStart[s]; k < senseStart[s + 1]; ++k)
                 into.push_back (senseNeuron[k]);
     };
@@ -210,16 +210,16 @@ void Recording::load (const juce::ValueTree& rig)
         juce::MemoryInputStream scarsRaw (scarsPacked.getData(), scarsPacked.getDataSize(), false);
         juce::GZIPDecompressorInputStream scarsUnzip (scarsRaw);
         std::vector<uint16_t> count ((size_t) neurons, 0);
-        std::vector<double> last ((size_t) neurons, 0.0);
+        std::vector<double> when ((size_t) neurons, 0.0);
         for (size_t n = 0; n < (size_t) neurons; ++n)
         {
             if (scarsUnzip.isExhausted())
                 return;
             count[n] = (uint16_t) scarsUnzip.readShort();
-            last[n] = (double) scarsUnzip.readFloat();
+            when[n] = (double) scarsUnzip.readFloat();
         }
         scarCount = std::move (count);
-        scarLast = std::move (last);
+        scarLast = std::move (when);
         scarsMade = std::max (0, (int) rig.getProperty ("scarsMade", 0));
     }
 }

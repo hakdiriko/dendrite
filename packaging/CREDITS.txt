@@ -37,9 +37,8 @@ instrument, and FlyWire and the authors above do not endorse dendrite.
 
 Fonts
 -----
-Urbanist, (c) The Urbanist Project Authors, SIL Open Font License 1.1.
 Fragment Mono, (c) The Fragment Mono Project Authors, SIL Open Font License 1.1.
-The licence texts are included as OFL-Urbanist.txt and OFL-FragmentMono.txt.
+The licence text is included as OFL-FragmentMono.txt.
 
 
 Software

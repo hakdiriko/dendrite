@@ -8,7 +8,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(dendrite VERSION 2.6.0 LANGUAGES C CXX)
+project(dendrite VERSION 3.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -125,4 +125,13 @@ if(DENDRITE_TOOLS)
         JucePlugin_Name="dendrite" JucePlugin_VersionString="2.0.0"
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(dendrite_keeptest PRIVATE dendrite_fonts juce::juce_audio_utils juce::juce_recommended_config_flags)
+
+    # the null test: the processor as a host runs it, output as raw floats (tools/nulltest)
+    juce_add_console_app(dendrite_nulltest PRODUCT_NAME "dendrite_nulltest")
+    target_sources(dendrite_nulltest PRIVATE tools/nulltest/nulltest.cpp ${dendrite_snapshot_sources})
+    target_include_directories(dendrite_nulltest PRIVATE Source)
+    target_compile_definitions(dendrite_nulltest PRIVATE
+        JucePlugin_Name="dendrite" JucePlugin_VersionString="3.0.0"
+        JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+    target_link_libraries(dendrite_nulltest PRIVATE dendrite_fonts juce::juce_audio_utils juce::juce_recommended_config_flags)
 endif()

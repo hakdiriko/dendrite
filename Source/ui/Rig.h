@@ -50,7 +50,7 @@ namespace type
 // Lines one physical pixel wide, snapped to the pixel grid, whatever the window's scale.
 struct Hairline
 {
-    explicit Hairline (juce::Graphics& g) : g (g), px (g.getInternalContext().getPhysicalPixelScaleFactor()) {}
+    explicit Hairline (juce::Graphics& graphics) : g (graphics), px (graphics.getInternalContext().getPhysicalPixelScaleFactor()) {}
     float snap (float v) const noexcept { return (std::floor (v * px) + 0.5f) / px; }
     float width() const noexcept { return 1.0f / px; }
     void h (float x0, float x1, float y) const { g.fillRect (juce::Rectangle<float> (x0, snap (y) - 0.5f / px, x1 - x0, 1.0f / px)); }

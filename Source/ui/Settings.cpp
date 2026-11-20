@@ -99,7 +99,9 @@ void Settings::mouseUp (const juce::MouseEvent& e)
         case dry:
             set ("dry", processor.params.getRawParameterValue ("dry")->load() > 0.5f ? 0.0f : 1.0f);
             break;
-        default:
+        case output:
+        case none:
+        case fields:
             break;
     }
 }
@@ -111,7 +113,10 @@ juce::String Settings::getTooltip()
         case itch: return "itch selector: how awake the fly is kept. 1/4 bar is wide awake, 8 bars half asleep, off rests it (click: choose)";
         case heads: return "the delay line's rhythm: dotted, triplet or half (click: the next)";
         case dry: return "the dry path: on at 0 dB, or off for a return track (click: switch)";
-        default: return {};
+        case output:
+        case none:
+        case fields: return {};
     }
+    return {};
 }
 } // namespace dendrite::ui

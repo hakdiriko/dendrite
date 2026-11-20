@@ -5,182 +5,190 @@
 <title>dendrite manual</title>
 <!-- One A4 page. Render to PDF with: node docs/manual/render_manual.js [preview.png] -->
 <style>
-  @font-face { font-family: "Urbanist"; font-weight: 300; src: url("../../Resources/fonts/Urbanist-Light.ttf"); }
-  @font-face { font-family: "Urbanist"; font-weight: 400; src: url("../../Resources/fonts/Urbanist-Regular.ttf"); }
-  @font-face { font-family: "Urbanist"; font-weight: 500; src: url("../../Resources/fonts/Urbanist-Medium.ttf"); }
   @font-face { font-family: "Fragment Mono"; font-weight: 400; src: url("../../Resources/fonts/FragmentMono-Regular.ttf"); }
 
-  /* true black and greys, one white light, one dark red (the window uses the same values) */
-  :root {
-    --black: #000; --rule: #1c1c1c; --rule2: #2e2e2e;
-    --light: #ededed; --dim: #979797; --faint: #575757;
-    --glow: #ffffff; --itch: #b3241b; --itchText: #cf3a2e;
-  }
+  /* the window's own light: black, then five steps of grey (live 100%, bright 72, mid 48, dim 28, floor 12) */
+  :root { --black: #000; --live: #fff; --bright: #b8b8b8; --mid: #7a7a7a; --dim: #474747; --floor: #1f1f1f; }
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--black); }
   body {
     width: 210mm; height: 297mm; overflow: hidden;
-    padding: 11mm 16mm 8mm;
-    font-family: "Urbanist", sans-serif; font-weight: 400;
-    font-size: 8.3pt; line-height: 1.42; color: var(--dim);
+    padding: 10mm 14mm 7mm;
+    font-family: "Fragment Mono", monospace; font-weight: 400;
+    font-size: 7pt; line-height: 1.42; color: var(--mid);
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
     display: flex; flex-direction: column;
   }
 
-  header { display: flex; align-items: baseline; }
-  h1 {
-    position: relative; font-weight: 300; font-size: 30pt; letter-spacing: 0.06em; line-height: 1;
-    color: var(--light); text-shadow: 0 0 6mm rgba(255, 255, 255, 0.22);
-  }
-  /* the photon: one point of light above the i */
-  h1 .i { position: relative; }
-  h1 .i::after {
-    content: ""; position: absolute; left: 50%; top: 0.4mm; transform: translateX(-50%); width: 1.3mm; height: 1.3mm; border-radius: 50%;
-    background: var(--glow); box-shadow: 0 0 2mm 0.6mm rgba(255, 255, 255, 0.75), 0 0 7mm 2mm rgba(255, 255, 255, 0.22);
-  }
-  .meta { margin-left: auto; font-size: 6.8pt; letter-spacing: 0.18em; color: var(--faint); }
+  header { display: flex; align-items: baseline; border-bottom: 0.2mm solid var(--dim); padding-bottom: 2mm; }
+  h1 { font-weight: 400; font-size: 13pt; letter-spacing: 0.02em; color: var(--live); }
+  .meta { margin-left: 6mm; color: var(--mid); }
+  .meta.r { margin-left: auto; }
 
-  .top { margin-top: 5mm; display: grid; grid-template-columns: 2fr 1fr; gap: 7mm; align-items: end; }
-  .lede { font-size: 11.5pt; font-weight: 300; line-height: 1.5; color: var(--light); }
+  .top { margin-top: 4mm; }
+  .stage { margin-top: 4mm; display: grid; grid-template-columns: 2.15fr 1fr; gap: 6mm; align-items: start; }
+  .stage aside section + section { margin-top: 3mm; }
+  .lede { font-size: 8pt; line-height: 1.5; color: var(--bright); }
   .lede span { display: block; }
-  .lede .soft { color: var(--dim); }
+  .lede .soft { color: var(--mid); }
 
-  figure { position: relative; margin-top: 5mm; border: 0.25mm solid var(--rule); overflow: hidden; }
-  /* the top sixth of the window is only tissue: crop it so the page keeps its room */
-  figure img { display: block; width: 100%; margin-top: -10.2%; }
+  figure .shot { position: relative; border: 0.2mm solid var(--dim); }
+  figure img { display: block; width: 100%; }
+  /* callouts: a number in a square, hairline, no glow */
   .n {
     position: absolute; transform: translate(-50%, -50%);
-    width: 4.6mm; height: 4.6mm; border-radius: 50%;
-    background: rgba(0, 0, 0, 0.85); border: 0.25mm solid var(--glow);
-    color: var(--glow); font-family: "Fragment Mono", monospace; font-weight: 400; font-size: 6.2pt;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 2.6mm rgba(255, 255, 255, 0.35);
+    width: 4mm; height: 4mm; background: var(--black); border: 0.2mm solid var(--live);
+    color: var(--live); font-size: 6.4pt; display: flex; align-items: center; justify-content: center;
   }
-  .n.itch { border-color: var(--itch); color: var(--itchText); box-shadow: 0 0 2.6mm rgba(179, 36, 27, 0.55); }
+  figcaption { margin-top: 1.2mm; font-size: 6.2pt; color: var(--dim); }
 
-  main { margin-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm 7mm; flex: 1; min-height: 0; align-content: start; }
+  main { margin-top: 3.5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm 6mm; flex: 1; min-height: 0; align-content: start; }
   h2 {
     display: flex; align-items: center; gap: 2mm;
-    font-weight: 400; font-size: 7pt; letter-spacing: 0.22em; color: var(--light);
-    margin-bottom: 2mm;
+    font-weight: 400; font-size: 7.2pt; color: var(--live);
+    margin-bottom: 1.4mm; padding-bottom: 1mm; border-bottom: 0.2mm solid var(--floor);
   }
-  h2 i { font-style: normal; color: var(--glow); font-family: "Fragment Mono", monospace; }
-  h2 i.itch { color: var(--itchText); }
-  p + p { margin-top: 1.8mm; }
-  b { font-weight: 500; color: var(--light); }
-  .scale { display: block; color: var(--faint); letter-spacing: 0.02em; }
-  .scale em { font-style: normal; color: var(--dim); }
-  .heads { display: grid; grid-template-columns: 21mm 1fr; margin: 1.8mm 0; }
-  .heads dt { color: var(--itchText); }
+  h2 i { font-style: normal; color: var(--black); background: var(--live); padding: 0 0.9mm; }
+  p + p { margin-top: 1.4mm; }
+  b { font-weight: 400; color: var(--bright); }
+  .scale { display: block; color: var(--dim); }
+  .scale em { font-style: normal; color: var(--mid); }
+  .moves { display: grid; grid-template-columns: 21mm 1fr; margin: 1.2mm 0; }
+  .moves dt { color: var(--bright); }
 
   .low { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7mm;
-         padding-top: 4mm; border-top: 0.25mm solid var(--rule); }
-  .tries span { display: block; color: var(--glow); font-family: "Fragment Mono", monospace; font-size: 0.92em; }
-  .tries p + p { margin-top: 1.4mm; }
-  code, .m { font-family: "Fragment Mono", monospace; font-weight: 400; font-size: 0.92em; letter-spacing: 0; }
-  code { color: var(--light); }
+         padding-top: 2.5mm; border-top: 0.2mm solid var(--dim); }
+  .tries span { display: block; color: var(--bright); }
+  .tries p + p { margin-top: 1.2mm; }
+  code { color: var(--bright); }
 
   footer {
-    margin-top: 4mm; display: flex; justify-content: space-between;
-    font-size: 6.4pt; color: var(--faint); letter-spacing: 0.14em;
+    margin-top: 3mm; display: flex; justify-content: space-between;
+    font-size: 6pt; color: var(--dim); border-top: 0.2mm solid var(--floor); padding-top: 1.5mm;
   }
 </style>
 </head>
 <body>
   <header>
-    <h1>dendr<span class="i">ı</span>te</h1>
-    <div class="meta"><span class="m">v2.5</span> &nbsp;·&nbsp; vst3 · au &nbsp;·&nbsp; windows · macos</div>
+    <h1>dendrite</h1>
+    <span class="meta">drosophila melanogaster · adult female · flywire 783</span>
+    <span class="meta r">v3.0 · vst3 · au · windows · macos</span>
   </header>
 
   <div class="top">
     <p class="lede">
-      <span>let's look at a sound. there. not there.</span>
-      <span>give it two tape heads, a dotted ⅛ and a ¼, and it comes back,</span>
-      <span>each time a little further out: inside your head, then around it.</span>
-      <span class="soft">play the same thing too long and it gets an itch.</span>
+      <span>a preparation. one fly's brain: 11,705 neurons, 1,034,261 connections, wired as flywire mapped them.</span>
+      <span>a signal is played to it. two tape heads, a dotted ⅛ and a ¼, carry it back, each pass further out.</span>
+      <span class="soft">the specimen answers. the rig writes it down. every number on it is measured.</span>
     </p>
-    <section class="start">
-      <h2>start</h2>
-      <p>put it on a track. no send. no mix knob.</p>
-      <p>play. the default already works.</p>
-      <p>touch the dark on the last hit of a phrase.</p>
-      <p>now move the light while it plays.</p>
-    </section>
   </div>
 
-  <figure>
-    <img src="window.png" alt="the dendrite window">
-    <div class="n" style="left: 59.5%; top: 13.1%">1</div>
-    <div class="n" style="left: 19.6%; top: 42.3%">2</div>
-    <div class="n itch" style="left: 18.6%; top: 92.7%">3</div>
-    <div class="n itch" style="left: 66.2%; top: 92.7%">4</div>
-  </figure>
+  <div class="stage">
+    <figure>
+      <div class="shot">
+      <img src="window.png" alt="the dendrite window">
+      <div class="n" style="left: 38%; top: 24%">1</div>
+      <div class="n" style="left: 61%; top: 44%">2</div>
+      <div class="n" style="left: 3%; top: 91%">3</div>
+      <div class="n" style="left: 74%; top: 82%">4</div>
+      <div class="n" style="left: 74%; top: 7%">5</div>
+      <div class="n" style="left: 9%; top: 74%">6</div>
+      </div>
+      <figcaption>90 s of a drum loop, itch selector 1 bar, the hand resting on a neuron of johnston's organ (the ear).</figcaption>
+    </figure>
+    <aside>
+      <section>
+        <h2>start</h2>
+        <p>put it on a track. no send, no mix knob.</p>
+        <p>play. the default works.</p>
+        <p>press the plate on the last hit of a phrase.</p>
+        <p>then move the electrode.</p>
+      </section>
+      <section>
+        <h2><i>1</i>electrode</h2>
+        <p>the whole interface. drag it.</p>
+        <p><b>up</b>: feed. the repeats live longer.
+          <span class="scale">whisper <em>·</em> dub <em>·</em> drown <em>·</em> endless</span></p>
+        <p><b>right</b>: space. they live further away.
+          <span class="scale">inside <em>·</em> around <em>·</em> envelop <em>·</em> beyond</span></p>
+        <p>its ring is its recording radius, 25 µm, to scale. the column reads the neurons under it.</p>
+        <p>shift-drag: fine. wheel: nudge. double-click: home.</p>
+      </section>
+    </aside>
+  </div>
 
   <main>
-    <section>
-      <h2><i>1</i>light</h2>
-      <p>this point is the whole interface. drag it.</p>
-      <p><b>up</b>, the repeats live longer.
-        <span class="scale">whisper <em>·</em> dub <em>·</em> drown <em>·</em> endless</span></p>
-      <p><b>right</b>, they live further away.
-        <span class="scale">inside <em>·</em> around <em>·</em> envelop <em>·</em> beyond</span></p>
-      <p>every hit grows a dendrite. old stems peel off and die. yours do the same, only smaller.</p>
-      <p>a shimmering skin on the light: your input is too hot.</p>
-    </section>
 
     <section>
-      <h2><i>2</i>throw</h2>
-      <p><b>touch the dark and hold.</b> a nerve runs from your finger to the light, and what is playing is thrown into the echo, louder, off to one side.</p>
+      <h2><i>2</i>stimulus</h2>
+      <p><b>press the plate anywhere else, and hold.</b> what is playing is thrown into the delay line, louder, off to one side. a hairline joins your press to the tip.</p>
       <p><b>let go.</b> it falls home over two bars.</p>
       <p><b>at endless, hold on.</b> it runs away. let go before it eats the room.</p>
-      <p>light at the bottom: only what you throw gets in. dub engineers call it a closed send.</p>
+      <p>electrode at the bottom: only what you throw gets in. dub engineers call it a closed send.</p>
     </section>
 
     <section>
-      <h2><i class="itch">3</i>itch selector</h2>
-      <p>how restless it is: <b>¼</b> to <b>8</b>, or off.</p>
-      <p>inside lives a fly: 11,705 neurons of a real fly's brain. <b>it decides</b> when, how hard, up or down. it learns what hurt it, and calms. it remembers your set.</p>
-      <p><b>we built</b> its body: moves wait for your grid and bend in your key. honestly, what wakes it is mostly how hard the hits land.</p>
-      <dl class="heads">
+      <h2><i>3</i>itch selector</h2>
+      <p>how awake the fly is kept: <b>¼</b> wide awake to <b>8</b> half asleep, or <b>off</b>: at rest, its brain does not step.</p>
+      <p>it decides when, how hard, up or down. it learns what hurt it, and calms.</p>
+      <dl class="moves">
         <dt>hop · leap</dt><dd>up, and home</dd>
         <dt>rush</dt><dd>up into double time</dd>
-        <dt>duck · dive</dt><dd>down, holding its breath</dd>
+        <dt>duck · dive</dt><dd>down, breath held</dd>
         <dt>hold · sink</dt><dd>bare keys, gently</dd>
       </dl>
-      <p>what it throws <b>glows on</b>, then spirals away. red is only ever the itch.</p>
+      <p>each reflex burns a scar into the map: the 64 neurons that drove it. scars never fade, and stay with the set.</p>
     </section>
 
+    <section>
+      <h2><i>4</i>log · keep</h2>
+      <p>every reflex, groom, throw and switch, with the session clock. newest at the bottom.</p>
+      <p>a small square: keep still has it on tape, the last minute. <b>drag the line into live</b>: that take, bar to bar. shift: everything.</p>
+      <p>files: <code>documents/dendrite/kept</code></p>
+    </section>
+
+    <section>
+      <h2><i>5</i>instruments</h2>
+      <p>levels in dBFS. each head's time and gain per pass. return, spread, diffuse, the throw, the afterglow, correlation.</p>
+      <p>the fly: how awake, its spikes per second, arousal, fatigue, fear and memory, ten minutes of each.</p>
+      <p>hover a line: what it measures.</p>
+    </section>
+
+    <section>
+      <h2><i>6</i>raster · map</h2>
+      <p>thirteen populations, ears to giant fiber, one cell per bin: their real rate. 1 Hz dim, 100 Hz white.</p>
+      <p>hover the map: any neuron's flywire root id, cell type, transmitter, side and rate.</p>
+      <p>the map keeps every spike of the session. a reopened set shows its history.</p>
+    </section>
 
     <div class="low">
       <section class="tries">
         <h2>three places to begin</h2>
-        <p><span>dub 50 · around 30</span>a chord stab. throw the last one.</p>
-        <p><span>drown 70 · envelop 65</span>a voice, on headphones. itch off.</p>
-        <p><span>whisper 25 · around 40</span>a loop. itch 4. leave it be.</p>
+        <p><span>feed 50 · space 30</span>a chord stab. throw the last one.</p>
+        <p><span>feed 70 · space 65</span>a voice, on headphones. itch off.</p>
+        <p><span>feed 25 · space 40</span>a loop. itch 4 bars. leave it be.</p>
       </section>
 
       <section>
-        <h2><i class="itch">4</i>keep</h2>
-        <p>it never forgets the last minute.</p>
-        <p>after an itch the lamps glow like embers. drag one into live: that itch, bar to bar. shift: everything.</p>
-        <p>hover the strip: a tape. pull out any stretch.</p>
-        <p>files: <code>documents/dendrite/kept</code></p>
+        <h2>settings line</h2>
+        <p><b>heads</b>: dotted · triplet · half. click for the next.</p>
+        <p><b>dry</b>: off on a return track.</p>
+        <p><b>output</b>: when the host bypasses it, the output goes dry and the specimen keeps recording.</p>
       </section>
 
       <section>
         <h2>notes</h2>
-        <p>no latency. in the strip: <b>time</b> (dotted, triplet, half) and <b>dry</b> (off on a return track).</p>
-        <p>map <b>throw</b> to a key: ctrl+k in live.</p>
-        <p>shift-drag: fine. double-click the light: home.</p>
-        <p>the first time, it shows you. click the name to see it again.</p>
+        <p>no latency. map <b>throw</b> to a key: ctrl+k in live.</p>
+        <p>the window is any size, up to a whole screen. the scale bar picks its length again.</p>
+        <p>hover anything: it says what it measures.</p>
       </section>
     </div>
   </main>
 
   <footer>
-    <span>afferent.page &nbsp;·&nbsp; fly: flywire.ai, cc by-nc 4.0</span>
-    <span>windows <code>C:\Program Files\Common Files\VST3</code> &nbsp;·&nbsp; macos <code>~/Library/Audio/Plug-Ins</code></span>
+    <span>afferent.page · fly: flywire.ai, cc by-nc 4.0 (dorkenwald et al. 2024, schlegel et al. 2024)</span>
+    <span>windows <code>C:\Program Files\Common Files\VST3</code> · macos <code>~/Library/Audio/Plug-Ins</code></span>
   </footer>
 </body>
 </html>
