@@ -181,7 +181,7 @@ void ItchStrip::paint (juce::Graphics& g)
 
     g.setColour (colour::redText.withAlpha (0.85f)); // the itch's things are the red ones
     g.setFont (fonts->small (*this, fonts->regular, 12.5f, 0.08f));
-    g.drawText ("itch", juce::Rectangle<float> (dotsLeft() - 44.0f, y - 9.0f, 40.0f, 18.0f), juce::Justification::centredLeft);
+    g.drawText ("itch selector", selectorLabelArea(), juce::Justification::centredRight);
 
     // the frame it listens through fills along the line, warmer as the music repeats
     const float x0 = dot (0).x, x1 = dot (cells - 1).x;
@@ -268,6 +268,12 @@ juce::Rectangle<float> ItchStrip::timeArea() const
     return { dotsLeft() + 12.0f * 22.0f + 10.0f, dot (0).y - 17.0f, 64.0f, 15.0f };
 }
 
+juce::Rectangle<float> ItchStrip::selectorLabelArea() const
+{
+    // the control's name, right up against the line it names (Hakan, 2.5.1: "itch selector")
+    return { dotsLeft() - 116.0f, dot (0).y - 9.0f, 98.0f, 18.0f };
+}
+
 juce::Rectangle<float> ItchStrip::dryArea() const
 {
     return timeArea().translated (0.0f, 18.0f);
@@ -281,6 +287,9 @@ juce::String ItchStrip::getTooltip()
         return "dry: off for a return track (echo only)";
     if (wordmarkArea().contains (mouseAt))
         return "dendrite: click to see how it works";
+    if (selectorLabelArea().contains (mouseAt) || dotsArea().expanded (4.0f, 0.0f).contains (mouseAt))
+        return juce::String (juce::CharPointer_UTF8 ("itch selector: how restless the fly inside is \xc2\xb7 "
+                                                     "\xc2\xbc it can't sit still, 8 it dozes, off it sleeps \xc2\xb7 drag along the line"));
     if (const int k = lampAt (mouseAt); k >= 0 && embers[(size_t) k] > 0.01f)
         return "the last itch: pull it into Live (shift: with everything)";
     return {};

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (the itch selector)
+
+- **"itch selector".** The red word in front of the line of dots now says what it is: the itch selector, in the same type as before (Urbanist, red, since it is the itch's). The host shows the same name for the parameter; its ID stays `frames`, so saved sets and automation keep it.
+- **It says what it does.** Rest the mouse on the name or the dots: "how restless the fly inside is: ¼ it can't sit still, 8 it dozes, off it sleeps". Since 2.1 the numbers no longer count bars between itches; they set how awake the fly is (¼ most, 8 least). The manual's itch section says the same.
+
 ## 2.5.0 (the fly, hardened: Phase 1 of the second plan)
 
 - **Fear can fall.** The dopamine neurons fire steadily all the time, and until now that steady firing taught the memory as much as the jumps did, so fear climbed to 1.0 within two minutes on any loop and stayed. Now only bursts above each MBON's own level teach, learning goes both ways (dopamine before a Kenyon cell fires gives back, Handler et al. 2019), and a moment after each jump's sting the reward neurons (PAM) fire: relief (Tanimoto et al. 2004). Fear is now the balance of the punished against the rewarded compartments. After five minutes it sits at 0.3 to 0.4 on the groove and the keys, and rises when the music changes.
