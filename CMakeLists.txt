@@ -8,7 +8,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(dendrite VERSION 2.6.0 LANGUAGES C CXX)
+project(dendrite VERSION 3.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,24 +49,23 @@ juce_add_binary_data(dendrite_fonts
     HEADER_NAME BinaryData.h
     NAMESPACE BinaryData
     SOURCES
-        Resources/fonts/Urbanist-Light.ttf
-        Resources/fonts/Urbanist-Regular.ttf
-        Resources/fonts/Urbanist-Medium.ttf
-        Resources/fonts/FragmentMono-Regular.ttf
-        Resources/lamps/led-off.png
-        Resources/lamps/led-on.png)
+        Resources/fonts/FragmentMono-Regular.ttf)
 
-target_sources(dendrite PRIVATE
-    Source/Processor.cpp
+# the window (3.0, the rig) and the recorders it reads
+set(DENDRITE_UI_SOURCES
     Source/Editor.cpp
-    Source/ui/Theme.cpp
-    Source/ui/Field.cpp
-    Source/ui/Medium.cpp
-    Source/ui/Controls.cpp
-    Source/ui/FlyBrain.cpp
-    Source/ui/Tape.cpp
-    Source/ui/FirstLight.cpp
+    Source/ui/Rig.cpp
+    Source/ui/Header.cpp
+    Source/ui/Specimen.cpp
+    Source/ui/Instruments.cpp
+    Source/ui/Settings.cpp
+    Source/ui/Raster.cpp
+    Source/ui/Log.cpp
     Source/ui/HostFocus.cpp
+    Source/rig/Recording.cpp
+    Source/rig/Identities.cpp)
+
+set(DENDRITE_DSP_SOURCES
     Source/dsp/Echo.cpp
     Source/dsp/Itch.cpp
     Source/dsp/Engine.cpp
@@ -75,6 +74,11 @@ target_sources(dendrite PRIVATE
     Source/dsp/Fly.cpp
     Source/dsp/FlyData.cpp
     Source/keep/Keep.cpp)
+
+target_sources(dendrite PRIVATE
+    Source/Processor.cpp
+    ${DENDRITE_UI_SOURCES}
+    ${DENDRITE_DSP_SOURCES})
 
 target_include_directories(dendrite PRIVATE Source)
 
@@ -103,23 +107,8 @@ if(DENDRITE_TOOLS)
     target_sources(dendrite_snapshot PRIVATE
         tools/snapshot/snapshot.cpp
         Source/Processor.cpp
-        Source/Editor.cpp
-        Source/ui/Theme.cpp
-        Source/ui/Field.cpp
-        Source/ui/Medium.cpp
-        Source/ui/Controls.cpp
-        Source/ui/FlyBrain.cpp
-        Source/ui/Tape.cpp
-        Source/ui/FirstLight.cpp
-        Source/ui/HostFocus.cpp
-        Source/dsp/Echo.cpp
-        Source/dsp/Itch.cpp
-        Source/dsp/Engine.cpp
-        Source/dsp/Creature.cpp
-        Source/dsp/Hand.cpp
-        Source/dsp/Fly.cpp
-        Source/dsp/FlyData.cpp
-        Source/keep/Keep.cpp)
+        ${DENDRITE_UI_SOURCES}
+        ${DENDRITE_DSP_SOURCES})
     target_include_directories(dendrite_snapshot PRIVATE Source)
     target_compile_definitions(dendrite_snapshot PRIVATE
         JucePlugin_Name="dendrite" JucePlugin_VersionString="1.1.0"
@@ -136,4 +125,13 @@ if(DENDRITE_TOOLS)
         JucePlugin_Name="dendrite" JucePlugin_VersionString="2.0.0"
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(dendrite_keeptest PRIVATE dendrite_fonts juce::juce_audio_utils juce::juce_recommended_config_flags)
+
+    # the null test: the processor as a host runs it, output as raw floats (tools/nulltest)
+    juce_add_console_app(dendrite_nulltest PRODUCT_NAME "dendrite_nulltest")
+    target_sources(dendrite_nulltest PRIVATE tools/nulltest/nulltest.cpp ${dendrite_snapshot_sources})
+    target_include_directories(dendrite_nulltest PRIVATE Source)
+    target_compile_definitions(dendrite_nulltest PRIVATE
+        JucePlugin_Name="dendrite" JucePlugin_VersionString="3.0.0"
+        JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+    target_link_libraries(dendrite_nulltest PRIVATE dendrite_fonts juce::juce_audio_utils juce::juce_recommended_config_flags)
 endif()

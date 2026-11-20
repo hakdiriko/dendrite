@@ -3,18 +3,14 @@
 //   dendrite_snapshot material.wav out.png [feed] [space] [itch] [seconds] [scale] [throwAt]
 // Optional environment:
 //   DENDRITE_THROW_LEN=0.6             how long the throw is held, in seconds
-//   DENDRITE_TOUCH=x,y                 where the throw touches the field (0..1), for the picture
-//   DENDRITE_DRAG=t0                   from t0 seconds on, the light is dragged around a loop
-//   DENDRITE_HOVER=x,y                 the mouse rests at x,y (0..1) without pressing
-//   DENDRITE_SYNAPSES=0                strands never join (for with/without clips)
+//   DENDRITE_SIZE=w,h                  the window in logical pixels
+//   DENDRITE_PNG_SCALE=1               the picture's pixels per logical pixel (2: a 200% screen)
 //   DENDRITE_FRAMES=dir                also write frames at 30 fps (frame_00000.png ...)
 //   DENDRITE_FRAMES_FROM=t             ... starting at t seconds
 //   DENDRITE_AUDIO=out.wav             also write what came out of the plug-in
-//   DENDRITE_FIRST_LIGHT=1             play first light from the start
-//   DENDRITE_STRIP_HOVER=t0,t1         the mouse rests in the strip from t0 to t1 (the tape shows)
-//   DENDRITE_KEEP_HOLD=t0,t1           the last itch's ember lamp is held from t0 to t1 (the ruler opens)
-//   DENDRITE_FLY_OPEN=t                the fly's drawer opens at t seconds
 //   DENDRITE_KEEP_OUT=dir              at the end, write the last finished itch as keep would drag it
+//   DENDRITE_TIME=1                    how long one frame of the window takes to paint
+//   DENDRITE_HOVER=x,y                 the hand rests over the specimen there (window pixels)
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
 #include "Editor.h"
@@ -39,9 +35,7 @@ bool writePng (juce::Component& c, const juce::File& out, float scale)
 
 int main (int argc, char** argv)
 {
-    // first light only when asked for (DENDRITE_FIRST_LIGHT=1), so pictures show the window itself
-    setenv ("DENDRITE_FIRST_LIGHT", "0", 0);
-    juce::ScopedJuceInitialiser_GUI gui;
+        juce::ScopedJuceInitialiser_GUI gui;
     if (argc < 3)
     {
         std::printf ("usage: dendrite_snapshot material.wav out.png [feed] [space] [itch] [seconds] [scale] [throwAt]\n");
@@ -54,14 +48,8 @@ int main (int argc, char** argv)
     const float scale = argc > 7 ? (float) std::atof (argv[7]) : 1.0f;
     const double throwAt = argc > 8 ? std::atof (argv[8]) : -1.0;
     const double throwLen = env ("DENDRITE_THROW_LEN").isNotEmpty() ? env ("DENDRITE_THROW_LEN").getDoubleValue() : 0.6;
-    const double dragFrom = env ("DENDRITE_DRAG").isNotEmpty() ? env ("DENDRITE_DRAG").getDoubleValue() : -1.0;
     const juce::File framesDir = env ("DENDRITE_FRAMES").isNotEmpty() ? juce::File (env ("DENDRITE_FRAMES")) : juce::File();
     const double framesFrom = env ("DENDRITE_FRAMES_FROM").getDoubleValue();
-    juce::Point<float> touch { -1.0f, -1.0f };
-    if (env ("DENDRITE_TOUCH").isNotEmpty())
-        touch = { env ("DENDRITE_TOUCH").upToFirstOccurrenceOf (",", false, false).getFloatValue(),
-                  env ("DENDRITE_TOUCH").fromFirstOccurrenceOf (",", false, false).getFloatValue() };
-
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
     std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (juce::File { juce::String (argv[1]) }));
@@ -77,16 +65,14 @@ int main (int argc, char** argv)
 
     std::unique_ptr<juce::AudioProcessorEditor> base (processor.createEditor());
     auto* editor = dynamic_cast<DendriteEditor*> (base.get());
-    if (env ("DENDRITE_HOVER").isNotEmpty())
-    {
-        const auto xy = juce::StringArray::fromTokens (env ("DENDRITE_HOVER"), ",", "");
-        editor->getField().simulateHover ({ xy[0].getFloatValue(), xy[1].getFloatValue() });
-    }
-    if (env ("DENDRITE_SYNAPSES") == "0")
-        editor->getField().setSynapses (false);
     editor->setSize ((int) (DendriteEditor::designWidth * scale), (int) (DendriteEditor::designHeight * scale));
     if (const auto size = env ("DENDRITE_SIZE"); size.isNotEmpty()) // w,h in pixels: any window shape
         editor->setSize (size.upToFirstOccurrenceOf (",", false, false).getIntValue(), size.fromFirstOccurrenceOf (",", false, false).getIntValue());
+    if (const auto hover = env ("DENDRITE_HOVER"); hover.isNotEmpty())
+        for (auto* c : editor->getChildren())
+            if (auto* s = dynamic_cast<dendrite::ui::Specimen*> (c))
+                s->hoverForTools (c->getLocalPoint (editor, juce::Point<float> (hover.upToFirstOccurrenceOf (",", false, false).getFloatValue(),
+                                                                                 hover.fromFirstOccurrenceOf (",", false, false).getFloatValue())));
 
     std::unique_ptr<juce::AudioFormatWriter> audioOut;
     if (env ("DENDRITE_AUDIO").isNotEmpty())
@@ -114,32 +100,13 @@ int main (int argc, char** argv)
         const double now = (double) pos / reader->sampleRate;
         const bool throwing = throwAt >= 0.0 && now >= throwAt && now < throwAt + throwLen;
         processor.params.getParameter ("throw")->setValueNotifyingHost (throwing ? 1.0f : 0.0f);
-        if (touch.x >= 0.0f)
-            editor->getField().simulateTouch (touch, throwing);
-        if (dragFrom >= 0.0 && now >= dragFrom)
-        {
-            // a slow, wandering drag: out to the right and up, then back round
-            const float u = (float) (now - dragFrom);
-            editor->getField().simulateMove ({ space + 0.28f * std::sin (0.9f * u) + 0.06f * std::sin (2.3f * u),
-                                               1.0f - feed - 0.22f * std::sin (0.6f * u) + 0.05f * std::cos (1.9f * u) });
-        }
-        auto within = [&] (const char* name) {
-            const auto v = juce::StringArray::fromTokens (env (name), ",", "");
-            return v.size() == 2 && now >= v[0].getDoubleValue() && now < v[1].getDoubleValue();
-        };
-        if (env ("DENDRITE_STRIP_HOVER").isNotEmpty())
-            editor->getItchStrip().simulateHover (within ("DENDRITE_STRIP_HOVER"));
-        if (env ("DENDRITE_FLY_OPEN").isNotEmpty() && now >= env ("DENDRITE_FLY_OPEN").getDoubleValue()
-            && ! editor->getFlyBrain().isOpen())
-            editor->setFlyOpen (true); // the fly's drawer opens at this many seconds
-        if (env ("DENDRITE_KEEP_HOLD").isNotEmpty())
-            editor->getItchStrip().simulateLampPress (within ("DENDRITE_KEEP_HOLD"));
         processor.processBlock (buffer, midi);
         if (audioOut != nullptr)
             audioOut->writeFromAudioSampleBuffer (buffer, 0, 512);
-        if (now - t >= 1.0 / 60.0)
+        if (now - t >= 1.0 / 30.0)
         {
             t = now;
+            processor.rigTick (now); // the recorders, as the processor's timer would
             editor->animateTo (now);
         }
         if (framesDir != juce::File() && now >= nextFrame)
@@ -148,6 +115,7 @@ int main (int argc, char** argv)
             writePng (*editor, framesDir.getChildFile (juce::String::formatted ("frame_%05d.png", frameNumber++)), 1.0f);
         }
     }
+    processor.rigTick (t + 0.001);
     editor->animateTo (t + 0.001);
     if (env ("DENDRITE_KEEP_OUT").isNotEmpty())
     {
@@ -178,5 +146,18 @@ int main (int argc, char** argv)
             editor->animateTo (t + 2.001 + k / 60.0);
         std::printf ("%.2f ms per frame (%.2f ms of it simulation)\n", total, (juce::Time::getMillisecondCounterHiRes() - tickStart) / 120.0);
     }
-    return writePng (*editor, juce::File { juce::String (argv[2]) }, 2.0f) ? 0 : 3;
+    if (env ("DENDRITE_RATES").isNotEmpty())
+    {
+        // how fast the neurons fire now (the trace over its time constant), as quantiles
+        std::vector<float> hz;
+        for (int n = 0; n < dendrite::rig::Recording::neurons; ++n)
+            hz.push_back (processor.recording.trace (n) / (float) dendrite::rig::Recording::traceSeconds);
+        std::sort (hz.begin(), hz.end());
+        for (double q : { 0.1, 0.25, 0.5, 0.75, 0.9, 0.99 })
+            std::printf ("q%.2f %.1f Hz\n", q, hz[(size_t) (q * (double) (hz.size() - 1))]);
+        std::printf ("cut brain %.0f spikes/s\n", processor.recording.spikesPerSecond());
+    }
+    // DENDRITE_PNG_SCALE=1: the window as a 100% Windows screen shows it
+    const float pngScale = env ("DENDRITE_PNG_SCALE").isNotEmpty() ? env ("DENDRITE_PNG_SCALE").getFloatValue() : 2.0f;
+    return writePng (*editor, juce::File { juce::String (argv[2]) }, pngScale) ? 0 : 3;
 }

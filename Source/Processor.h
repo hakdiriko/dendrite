@@ -3,11 +3,13 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/Engine.h"
 #include "keep/Keep.h"
+#include "rig/Recording.h"
 
 class DendriteProcessor : public juce::AudioProcessor
 {
 public:
     DendriteProcessor();
+    ~DendriteProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -54,11 +56,14 @@ public:
         std::atomic<float> repetition { 0.0f }, frameProgress { 0.0f }, boredom { 0.0f };
         std::array<std::atomic<float>, dendrite::Heads::count> lamps {};
         std::atomic<float> correlation { 1.0f }, inLevel { 0.0f }, outLevel { 0.0f }, bpm { 120.0f };
+        std::atomic<float> sampleRate { 0.0f }; // as the host prepared it (0: not yet)
+        std::atomic<int> blockSize { 0 };
         // 0..1 against the track's own recent peaks, so a quiet track looks as alive as a loud
         // one: the strongest hit since the window last took it (read it with exchange (0.0f)),
         // the input's held level, the echo's level
         std::atomic<float> hit { 0.0f }, body { 0.0f }, echoBody { 0.0f };
         std::atomic<float> runaway { 0.0f }; // 0..1 while a throw held at endless runs away
+        std::atomic<float> glow { 0.0f };    // 0..1: how much of the itch's afterglow is still alive
         std::atomic<bool> hostPlaying { false }, itching { false };
         // the fly: what it is doing now
         std::atomic<float> flyJump { 0.0f }, flySemitones { 0.0f }, flyScratch { 0.0f }, flyScratchHz { 1000.0f }, flyTurn { 0.0f };
@@ -79,6 +84,11 @@ public:
 
     // keep: the last minute, on tape, and a diary of what happened (read by the window)
     dendrite::keep::Keep keep;
+
+    // The rig's recorders (3.0), message thread only: ticked 30 times a second whether or not the
+    // window is open (the snapshot tool, which has no message loop, calls rigTick itself).
+    dendrite::rig::Recording recording;
+    void rigTick (double nowSeconds);
 
 private:
     void run (juce::AudioBuffer<float>&, bool forceBypass);
@@ -126,6 +136,28 @@ private:
     std::atomic<int> flyArrivingState { 0 }; // 0 nothing, 1 being written, 2 ready, 3 being adopted
     std::atomic<bool> flyForget { false };
     int flyUntilSeal = 0;
+
+    struct RigTimer : juce::Timer
+    {
+        explicit RigTimer (DendriteProcessor& p) : owner (p) {}
+        void timerCallback() override { owner.rigTick (juce::Time::getMillisecondCounterHiRes() * 0.001); }
+        DendriteProcessor& owner;
+    };
+    RigTimer rigTimer { *this };
+
+    // what the rig's log has already seen (message thread)
+    void watchRig();
+    struct Watch
+    {
+        bool sessionLogged = false, restoredPending = false, inputOn = true, jumping = false, grooming = false, seenSettings = false;
+        double quietSince = -1.0, reflexSince = 0.0, groomSince = 0.0;
+        float peakSemitones = 0.0f;
+        juce::String reflexMove;
+        uint32_t reflexEvent = 0, groomEvent = 0, lastMark = 0;
+        std::vector<std::pair<uint32_t, uint32_t>> open; // keep's marks still playing, and their log lines
+        int itch = -1, time = -1;
+        bool dry = true, bypassed = false;
+    } watch;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DendriteProcessor)
 };

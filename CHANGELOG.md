@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.0.0 (the preparation: the window becomes an electrophysiology rig)
+
+Hakan asked for a full rebuild of the window, not a reskin: the fly is the specimen, the window is the rig recording it, dark science, clinical. One rule above style: every number, trace and label on screen comes from real state. The sound does not change (null test below).
+
+- **The specimen.** All 11,705 neurons at the places FlyWire mapped them, from the front, to scale (816 x 393 um), with calibration ticks every 50 um and a 1-2-5 scale bar that picks its length again on every resize. A neuron is as bright as its own firing over the last 300 ms, on a log scale (1 Hz dim, 100 Hz white, legend under the map). Under that, every spike of the session leaves it a little brighter for good (the exposure), saved with the set.
+- **The electrode** is the old light: its place over the brain is feed (up) and space (right), the same parameters and automation, with the same drag, shift, wheel and double-click. Its ring is its real 25 um recording radius; it reads the neurons under it (count, mean rate, the busiest one by its FlyWire cell type). Its place is marked on both axes.
+- **Throw** = press the specimen anywhere away from the electrode and hold (a hairline joins the press to the tip).
+- **The instruments** (right column): input and output levels, tempo; the electrode's readings; the delay line as it is (each head's time in ms and gain per pass in dB, return, spread, diffuse, the throw's envelope, the afterglow, correlation); the specimen (how awake, the whole brain's spikes per second, arousal, fatigue, fear and memory with ten minutes of history, escape move and semitones, grooming band, steering). Hover any line: what it measures. No decay time: a formula from the heads' gains alone ignores the tape's losses and would call a dying tail "sustained".
+- **The raster**: 13 of the fly's real populations (ears and eyes per side, smell, Kenyon cells, MBONs, PPL1, PAM, steering per side, grooming, giant fiber), each cell the population's mean rate in the recorder's real bin (printed). It stands still while the fly rests.
+- **The log**: session, restored history, input lost and back, every reflex (move, furthest pitch), groom (band, length), throw and runaway (length), and every switch the hand or the host turns, with the session clock; newest white at the bottom. Lines keep still holds on tape carry a small square: drag them into Live as before (shift: everything).
+- **Scars.** At each reflex the 64 neurons firing hardest are burned into the map as crosses: white when made, settled to mid grey within a minute, adding up where they overlap, never removed, saved with the set. New in 3.0 (no earlier set has any).
+- **Who each neuron is.** Hover the map: the nearest neuron's FlyWire root id, cell type, transmitter, class, side, rate now, its neighbours within 5 um and its scars. All 11,705 were matched to FlyWire 783 by place and proven by rebuilding the cut's whole wiring from FlyWire's connectivity: identical, synapse for synapse (`tools/rig/identities.py`).
+- **States.** The header says recording, no input or at rest, with "output bypassed" in front when the host bypasses (the output goes dry, the specimen keeps recording). At rest the raster says its brain does not step. No intro, no ghost-hand demo: the clock starts at t+00:00:00.0 and the log's first line is the session.
+- **Look.** Black, five steps of grey (live, bright, mid, dim, floor), one face (Fragment Mono, 12 px for data, 11 px for small labels, raised from 10 after a check at 100% Windows scaling), hairlines one physical pixel wide. The dark red, Urbanist, the lamps, the field's dendrites and the fly drawer are gone. The arcade window is kept on branch `ui-simulative-arcade`.
+- **Window**: 960 x 680 by default, 900 x 640 at least, any size up to 8K; the column keeps its width and the specimen and raster take the room.
+- **The sound is bit-identical to 2.6.0.** `tools/nulltest` ran the loop and a song through the processor of 2.6.0 and of 3.0.0 at 44.1 and 48 kHz, 512- and 333-sample blocks, with a throw and an itch selector change: 8 of 8 outputs identical to the bit. The audio thread gains one relaxed store per block (the afterglow level, for the window).
+- The manual is rewritten for the rig, in the same face and greys.
+
 ## 2.6.0 (the afterglow: the itch keeps feeding itself, then dissolves)
 
 Hakan, in his demos: the itch repeated two or three times and then suddenly disappeared. He wants it to keep feeding itself, then dissolve smoothly, and any resonance in the tail to be psychoacoustically trippy.
