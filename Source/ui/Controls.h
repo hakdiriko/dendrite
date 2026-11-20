@@ -74,6 +74,7 @@ private:
     juce::Point<float> mouseAt;
     juce::Rectangle<float> timeArea() const;
     juce::Rectangle<float> dryArea() const;
+    juce::Rectangle<float> selectorLabelArea() const;
     Sprite beadOff, beadOn, lampOff, lampOn;
     juce::Rectangle<float> headsArea;
     int choice = DendriteProcessor::defaultItch;
