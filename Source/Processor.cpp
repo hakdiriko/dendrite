@@ -90,6 +90,9 @@ void DendriteProcessor::rigTick (double nowSeconds)
     for (int n = 0; n < dendrite::rig::Recording::neurons; ++n)
         counts[n] = takeFlySpikes (n);
     recording.step (nowSeconds);
+    constexpr auto relaxed = std::memory_order_relaxed;
+    recording.noteState ({ display.flyArousal.load (relaxed), display.flyFatigue.load (relaxed), display.flyFear.load (relaxed),
+                           display.flyMemory.load (relaxed) });
 }
 
 juce::AudioProcessorParameter* DendriteProcessor::getBypassParameter() const { return params.getParameter ("bypass"); }
@@ -309,6 +312,7 @@ void DendriteProcessor::publish()
     d.body.store (v.body, relaxed);
     d.echoBody.store (v.echoBody, relaxed);
     d.runaway.store (v.runaway, relaxed);
+    d.glow.store (v.echo.glow, relaxed);
     d.bpm.store ((float) v.bpm, relaxed);
     d.hostPlaying.store (v.hostPlaying, relaxed);
     d.itching.store (v.itching, relaxed);

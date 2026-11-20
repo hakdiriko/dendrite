@@ -42,13 +42,25 @@ namespace
         return tone::dim + (tone::live - tone::dim) * juce::jlimit (0.0f, 1.0f, std::log10 (std::max (hz, 1.0f)) / 2.0f);
     }
 
-    juce::String utf8 (const char* s) { return juce::String (juce::CharPointer_UTF8 (s)); }
 } // namespace
 
-Specimen::Specimen (DendriteProcessor& p) : processor (p)
+Specimen::Specimen (DendriteProcessor& p)
+    : processor (p),
+      // while the hand holds the electrode, the hand is the truth: a late echo from the host is ignored
+      feedLink (*p.params.getParameter ("feed"), [this] (float v) { if (! dragging) feed = v; }),
+      spaceLink (*p.params.getParameter ("space"), [this] (float v) { if (! dragging) space = v; }),
+      throwLink (*p.params.getParameter ("throw"), [this] (float v) { throwOn = v > 0.5f; })
 {
     setOpaque (true);
-    setInterceptsMouseClicks (false, false);
+    feedLink.sendInitialUpdate();
+    spaceLink.sendInitialUpdate();
+    throwLink.sendInitialUpdate();
+}
+
+Specimen::~Specimen()
+{
+    if (touching)
+        setThrow (false); // never leave a throw held when the window closes mid-press
 }
 
 void Specimen::resized()
@@ -56,7 +68,7 @@ void Specimen::resized()
     // room for the region names above and below, the ticks and scale on the left and bottom
     auto r = getLocalBounds().toFloat();
     r.removeFromLeft (52.0f);
-    r.removeFromRight (36.0f);
+    r.removeFromRight (24.0f);
     r.removeFromTop (72.0f);
     r.removeFromBottom (84.0f);
     const float aspect = widthMicrons / heightMicrons;
@@ -113,6 +125,8 @@ void Specimen::paint (juce::Graphics& g)
                                         .translated (line.snap (brain.getX()) - 0.5f / line.px, line.snap (brain.getY()) - 0.5f / line.px));
     paintScale (g, line);
     paintRegions (g, line);
+    measureTip();
+    paintElectrode (g, line);
 }
 
 void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
@@ -248,5 +262,185 @@ void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
             g.drawText (p.text, juce::Rectangle<float> (p.x, textY - 7.0f, p.w + 2.0f, 14.0f), juce::Justification::centredLeft);
         }
     }
+}
+
+//==============================================================================
+// the electrode
+
+juce::Point<float> Specimen::tipPoint() const noexcept
+{
+    return { brain.getX() + space * brain.getWidth(), brain.getY() + (1.0f - feed) * brain.getHeight() };
+}
+
+void Specimen::measureTip()
+{
+    const auto& rec = processor.recording;
+    const float tx = space * widthMicrons, ty = (1.0f - feed) * heightMicrons, r2 = tipMicrons * tipMicrons;
+    Recorded out;
+    out.xMicrons = tx;
+    out.yMicrons = feed * heightMicrons;
+    float sum = 0.0f;
+    for (int n = 0; n < neurons; ++n)
+    {
+        const float dx = (float) flydata::neuronX[n] / 65535.0f * widthMicrons - tx;
+        const float dy = (float) flydata::neuronY[n] / 65535.0f * heightMicrons - ty;
+        if (dx * dx + dy * dy > r2)
+            continue;
+        const float hz = rec.trace (n) / (float) rig::Recording::traceSeconds;
+        ++out.units;
+        sum += hz;
+        if (out.busiest < 0 || hz > out.busiestHz)
+        {
+            out.busiest = n;
+            out.busiestHz = hz;
+        }
+    }
+    out.meanHz = out.units > 0 ? sum / (float) out.units : 0.0f;
+    tip = out;
+}
+
+void Specimen::paintElectrode (juce::Graphics& g, const Hairline& line)
+{
+    const auto at = tipPoint();
+    const float r = tipRadius();
+    const bool live = throwOn || touching;
+
+    // the stimulus: a hairline from where the hand presses to the tip, and the press site
+    if (touching)
+    {
+        g.setColour (tone::grey (tone::bright));
+        const auto toward = at + (pressAt - at) * (r / std::max (r, pressAt.getDistanceFrom (at)));
+        g.drawLine (juce::Line<float> (pressAt, toward), line.width());
+        g.drawRect (juce::Rectangle<float> (7.0f, 7.0f).withCentre ({ line.snap (pressAt.x), line.snap (pressAt.y) }), line.width());
+    }
+
+    // the tip: its recording radius to scale, four ticks outside it, the point itself
+    g.setColour (tone::grey (live ? tone::live : dragging || hoverTip ? tone::live : tone::bright));
+    const auto centre = juce::Point<float> (line.snap (at.x), line.snap (at.y));
+    g.drawEllipse (juce::Rectangle<float> (2.0f * r, 2.0f * r).withCentre (centre), line.width());
+    line.h (centre.x - r - 7.0f, centre.x - r - 2.0f, centre.y);
+    line.h (centre.x + r + 2.0f, centre.x + r + 7.0f, centre.y);
+    line.v (centre.x, centre.y - r - 7.0f, centre.y - r - 2.0f);
+    line.v (centre.x, centre.y + r + 2.0f, centre.y + r + 7.0f);
+    g.fillRect (juce::Rectangle<float> (2.0f, 2.0f).withCentre (centre));
+
+    // where it sits, marked on the calibration axes
+    const float left = brain.getX() - 10.0f, bottom = brain.getBottom() + 10.0f;
+    g.setColour (tone::grey (tone::bright));
+    line.h (left - 9.0f, left, at.y);
+    line.v (at.x, bottom, bottom + 9.0f);
+}
+
+void Specimen::tick (double nowSeconds)
+{
+    clockNow = nowSeconds;
+    // a press becomes a throw once it has lasted a moment, so a click that only focuses the window is not one
+    if (pending && nowSeconds - pressStarted >= 0.08)
+    {
+        pending = false;
+        touching = true;
+        touchStarted = nowSeconds;
+        setThrow (true);
+    }
+}
+
+void Specimen::setThrow (bool on)
+{
+    throwOn = on;
+    throwLink.setValueAsCompleteGesture (on ? 1.0f : 0.0f);
+}
+
+juce::String Specimen::getTooltip()
+{
+    if (hoverTip)
+        return "electrode: drag up for feed (" + DendriteProcessor::feedName (feed) + " " + juce::String (juce::roundToInt (feed * 100.0f))
+               + "%), right for space (" + DendriteProcessor::spaceName (space) + " " + juce::String (juce::roundToInt (space * 100.0f))
+               + utf8 ("%) \xc2\xb7 shift: fine \xc2\xb7 wheel: nudge \xc2\xb7 double-click: home");
+    if (hoverPlate)
+        return "press and hold to stimulate (the throw)";
+    return {};
+}
+
+void Specimen::mouseMove (const juce::MouseEvent& e)
+{
+    hoverTip = nearTip (e.position);
+    hoverPlate = ! hoverTip;
+    setMouseCursor (hoverTip ? juce::MouseCursor::DraggingHandCursor : juce::MouseCursor::CrosshairCursor);
+}
+
+void Specimen::mouseExit (const juce::MouseEvent&)
+{
+    hoverTip = hoverPlate = false;
+}
+
+void Specimen::mouseDown (const juce::MouseEvent& e)
+{
+    if (! nearTip (e.position))
+    {
+        pending = true;
+        pressStarted = clockNow;
+        pressAt = e.position;
+        return;
+    }
+    dragging = true;
+    fine = e.mods.isShiftDown();
+    grabMouse = e.position;
+    grabUnit = { space, 1.0f - feed };
+    feedLink.beginGesture();
+    spaceLink.beginGesture();
+}
+
+void Specimen::mouseDrag (const juce::MouseEvent& e)
+{
+    if (touching || pending)
+    {
+        pressAt = e.position;
+        return;
+    }
+    if (! dragging)
+        return;
+    // measured from where the drag began, not added up frame by frame (the host echoes each value late)
+    if (e.mods.isShiftDown() != fine)
+    {
+        fine = e.mods.isShiftDown();
+        grabMouse = e.position;
+        grabUnit = { space, 1.0f - feed };
+    }
+    const float scale = fine ? 0.2f : 1.0f;
+    const auto moved = e.position - grabMouse;
+    space = juce::jlimit (0.0f, 1.0f, grabUnit.x + moved.x / brain.getWidth() * scale);
+    feed = juce::jlimit (0.0f, 1.0f, 1.0f - (grabUnit.y + moved.y / brain.getHeight() * scale));
+    spaceLink.setValueAsPartOfGesture (space);
+    feedLink.setValueAsPartOfGesture (feed);
+}
+
+void Specimen::mouseUp (const juce::MouseEvent&)
+{
+    if (touching)
+        setThrow (false);
+    touching = pending = false;
+    if (dragging)
+    {
+        feedLink.endGesture();
+        spaceLink.endGesture();
+    }
+    dragging = false;
+}
+
+void Specimen::mouseDoubleClick (const juce::MouseEvent& e)
+{
+    if (! nearTip (e.position))
+        return; // a double press on the plate is two stimuli, not a reset
+    feedLink.setValueAsCompleteGesture (DendriteProcessor::defaultFeed);
+    spaceLink.setValueAsCompleteGesture (DendriteProcessor::defaultSpace);
+}
+
+void Specimen::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
+{
+    const float step = (e.mods.isShiftDown() ? 0.01f : 0.04f) * (w.isReversed ? -1.0f : 1.0f);
+    if (std::abs (w.deltaX) > std::abs (w.deltaY))
+        spaceLink.setValueAsCompleteGesture (juce::jlimit (0.0f, 1.0f, space + step * (w.deltaX > 0.0f ? 1.0f : -1.0f)));
+    else if (std::abs (w.deltaY) > 0.0f)
+        feedLink.setValueAsCompleteGesture (juce::jlimit (0.0f, 1.0f, feed + step * (w.deltaY > 0.0f ? 1.0f : -1.0f)));
 }
 } // namespace dendrite::ui

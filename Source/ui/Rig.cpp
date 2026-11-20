@@ -40,11 +40,23 @@ juce::String clock (double seconds)
     return juce::String::formatted ("t+%02d:%02d:%02d.%d", (int) (s / 3600), (int) ((s / 60) % 60), (int) (s % 60), (int) (tenths % 10));
 }
 
+juce::String decibels (float gain)
+{
+    if (! (gain > 1.0e-6f))
+        return "-inf";
+    const float db = 20.0f * std::log10 (gain);
+    return (db >= 0.05f ? "+" : "") + juce::String (db, 1);
+}
+
 LookAndFeel::LookAndFeel()
 {
     setColour (juce::TooltipWindow::backgroundColourId, tone::black);
     setColour (juce::TooltipWindow::textColourId, tone::grey (tone::bright));
     setColour (juce::TooltipWindow::outlineColourId, tone::grey (tone::dim));
+    setColour (juce::PopupMenu::backgroundColourId, tone::black);
+    setColour (juce::PopupMenu::textColourId, tone::grey (tone::mid));
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, tone::grey (tone::floor));
+    setColour (juce::PopupMenu::highlightedTextColourId, tone::grey (tone::live));
 }
 
 juce::Typeface::Ptr LookAndFeel::getTypefaceForFont (const juce::Font&)
@@ -77,5 +89,46 @@ void LookAndFeel::drawTooltip (juce::Graphics& g, const juce::String& text, int 
     g.setColour (tone::grey (tone::bright));
     g.setFont (fonts->at (type::data));
     g.drawText (text, 8, 0, width - 16, height, juce::Justification::centredLeft, false);
+}
+
+void LookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
+{
+    g.fillAll (tone::black);
+    g.setColour (tone::grey (tone::dim));
+    g.drawRect (0, 0, width, height, 1);
+}
+
+juce::Font LookAndFeel::getPopupMenuFont() { return fonts->at (type::data); }
+
+void LookAndFeel::getIdealPopupMenuItemSize (const juce::String& text, bool isSeparator, int, int& idealWidth, int& idealHeight)
+{
+    idealHeight = isSeparator ? 7 : 20;
+    idealWidth = juce::roundToInt (juce::GlyphArrangement::getStringWidth (getPopupMenuFont(), text)) + 40;
+}
+
+void LookAndFeel::drawPopupMenuItem (juce::Graphics& g, const juce::Rectangle<int>& area, bool isSeparator, bool isActive,
+                                     bool isHighlighted, bool isTicked, bool, const juce::String& text, const juce::String&,
+                                     const juce::Drawable*, const juce::Colour*)
+{
+    if (isSeparator)
+    {
+        g.setColour (tone::grey (tone::dim));
+        Hairline (g).h ((float) area.getX() + 8.0f, (float) area.getRight() - 8.0f, (float) area.getCentreY());
+        return;
+    }
+    if (isHighlighted && isActive)
+    {
+        g.setColour (tone::grey (tone::floor));
+        g.fillRect (area.reduced (1, 0));
+    }
+    g.setFont (getPopupMenuFont());
+    // the current choice is marked by a square, as on a selector switch, and is the brightest line
+    if (isTicked)
+    {
+        g.setColour (tone::grey (tone::bright));
+        g.fillRect (juce::Rectangle<float> (4.0f, 4.0f).withCentre ({ (float) area.getX() + 12.0f, (float) area.getCentreY() }));
+    }
+    g.setColour (tone::grey (! isActive ? tone::dim : isHighlighted ? tone::live : isTicked ? tone::bright : tone::mid));
+    g.drawText (text, area.withTrimmedLeft (24).withTrimmedRight (8), juce::Justification::centredLeft, false);
 }
 } // namespace dendrite::ui

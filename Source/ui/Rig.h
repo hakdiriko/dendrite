@@ -53,6 +53,10 @@ juce::String grouped (juce::int64 n);
 juce::int64 synapseCount();
 // "t+01:12:31.4"
 juce::String clock (double seconds);
+// a level in dB with one decimal, or "-inf" below -120 dB
+juce::String decibels (float gain);
+// UTF-8 literal to a String
+inline juce::String utf8 (const char* s) { return juce::String (juce::CharPointer_UTF8 (s)); }
 
 class LookAndFeel : public juce::LookAndFeel_V4
 {
@@ -62,6 +66,14 @@ public:
     void drawCornerResizer (juce::Graphics&, int w, int h, bool isMouseOver, bool isMouseDragging) override;
     void drawTooltip (juce::Graphics&, const juce::String& text, int width, int height) override;
     juce::Rectangle<int> getTooltipBounds (const juce::String& text, juce::Point<int> screenPos, juce::Rectangle<int> parentArea) override;
+    // menus in the same hand: black, one face, the chosen line bright
+    void drawPopupMenuBackground (juce::Graphics&, int width, int height) override;
+    void drawPopupMenuItem (juce::Graphics&, const juce::Rectangle<int>& area, bool isSeparator, bool isActive, bool isHighlighted,
+                            bool isTicked, bool hasSubMenu, const juce::String& text, const juce::String& shortcutKeyText,
+                            const juce::Drawable* icon, const juce::Colour* textColour) override;
+    juce::Font getPopupMenuFont() override;
+    int getPopupMenuBorderSize() override { return 1; }
+    void getIdealPopupMenuItemSize (const juce::String& text, bool isSeparator, int standardMenuItemHeight, int& idealWidth, int& idealHeight) override;
 
 private:
     juce::SharedResourcePointer<Fonts> fonts;

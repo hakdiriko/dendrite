@@ -2,12 +2,15 @@
 
 #include "Processor.h"
 #include "ui/Header.h"
+#include "ui/Instruments.h"
 #include "ui/Rig.h"
+#include "ui/Settings.h"
 #include "ui/Specimen.h"
 
 // dendrite's window (3.0): the display of a rig recording a fly's brain. The header names the
-// specimen and keeps the clock; the specimen fills the rest. Any size from 720 x 460 up; type keeps
-// its size and the specimen takes the room.
+// specimen and keeps the clock; the instruments stand in a column on the right, the settings run
+// along the bottom, and the specimen takes the rest. Any size from 840 x 560 up; type keeps its
+// size, the column keeps its width, and the specimen takes the room.
 class DendriteEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
@@ -17,8 +20,8 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
-    static constexpr int designWidth = 880, designHeight = 560;
-    static constexpr int minWidth = 720, minHeight = 460;
+    static constexpr int designWidth = 960, designHeight = 600;
+    static constexpr int minWidth = 840, minHeight = 560;
 
     // For the snapshot tool: advance the window to a given time without a timer.
     void animateTo (double seconds);
@@ -30,6 +33,8 @@ private:
     dendrite::ui::LookAndFeel lookAndFeel;
     dendrite::ui::Header header;
     dendrite::ui::Specimen specimen;
+    dendrite::ui::Instruments instruments;
+    dendrite::ui::Settings settings;
     juce::TooltipWindow tooltips { this, 900 };
     int frame = 0;
 

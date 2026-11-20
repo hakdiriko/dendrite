@@ -11,6 +11,7 @@
 #include <juce_core/juce_core.h>
 #include <juce_data_structures/juce_data_structures.h>
 #include "dsp/FlyData.h"
+#include <array>
 #include <vector>
 
 namespace dendrite::rig
@@ -38,6 +39,18 @@ public:
     juce::int64 spikesInSession() const noexcept { return sessionSpikes; }
     float spikesPerSecond() const noexcept { return rate; } // the whole cut brain, now
 
+    // the specimen's state (arousal, fatigue, fear, memory as the fly publishes them), sampled
+    // once a second for the last ten minutes; not saved
+    enum Quantity { arousal, fatigue, fear, memory, quantities };
+    static constexpr int historySeconds = 600;
+    void noteState (const std::array<float, quantities>& now);
+    int historyLength() const noexcept { return historyCount; }
+    float history (int quantity, int secondsAgo) const noexcept
+    {
+        const int at = (historyHead - 1 - secondsAgo + 2 * historySeconds) % historySeconds;
+        return historyData[(size_t) (at * quantities + quantity)];
+    }
+
     // the set: saved next to the parameters (any thread; guarded)
     juce::ValueTree save() const;
     void load (const juce::ValueTree&);
@@ -52,6 +65,9 @@ private:
     juce::int64 sessionSpikes = 0;
     float rate = 0.0f;
     double started = -1.0, now = 0.0, last = -1.0, restored = 0.0, savedLived = 0.0;
+    std::vector<float> historyData = std::vector<float> ((size_t) (historySeconds * quantities), 0.0f);
+    int historyHead = 0, historyCount = 0;
+    double lastNoted = -1.0;
     mutable juce::SpinLock lock; // exposure crosses to whatever thread the host saves on
 };
 } // namespace dendrite::rig

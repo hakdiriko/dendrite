@@ -63,6 +63,7 @@ public:
         // the input's held level, the echo's level
         std::atomic<float> hit { 0.0f }, body { 0.0f }, echoBody { 0.0f };
         std::atomic<float> runaway { 0.0f }; // 0..1 while a throw held at endless runs away
+        std::atomic<float> glow { 0.0f };    // 0..1: how much of the itch's afterglow is still alive
         std::atomic<bool> hostPlaying { false }, itching { false };
         // the fly: what it is doing now
         std::atomic<float> flyJump { 0.0f }, flySemitones { 0.0f }, flyScratch { 0.0f }, flyScratchHz { 1000.0f }, flyTurn { 0.0f };

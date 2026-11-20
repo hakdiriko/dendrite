@@ -3,18 +3,20 @@
 using namespace dendrite::ui;
 
 DendriteEditor::DendriteEditor (DendriteProcessor& p)
-    : AudioProcessorEditor (p), processor (p), header (p), specimen (p)
+    : AudioProcessorEditor (p), processor (p), header (p), specimen (p), instruments (p, specimen), settings (p)
 {
     setLookAndFeel (&lookAndFeel);
     setOpaque (true);
     addAndMakeVisible (header);
     addAndMakeVisible (specimen);
+    addAndMakeVisible (instruments);
+    addAndMakeVisible (settings);
 
     // any shape, up to a whole 8K screen; hosts' maximise and fullscreen work
     setResizable (true, true);
     setResizeLimits (minWidth, minHeight, 7680, 4320);
     setSize (designWidth, designHeight);
-    startTimerHz (30); // the specimen at 30 frames a second, the header's clock at 10
+    startTimerHz (30); // the specimen at 30 frames a second; the clock and the readouts at 10, a meter's rate
 }
 
 DendriteEditor::~DendriteEditor()
@@ -32,6 +34,8 @@ void DendriteEditor::resized()
 {
     auto r = getLocalBounds();
     header.setBounds (r.removeFromTop (Header::height));
+    settings.setBounds (r.removeFromBottom (Settings::height));
+    instruments.setBounds (r.removeFromRight (Instruments::width));
     specimen.setBounds (r);
 }
 
@@ -40,10 +44,15 @@ void DendriteEditor::timerCallback()
     animateTo (juce::Time::getMillisecondCounterHiRes() * 0.001);
 }
 
-void DendriteEditor::animateTo (double)
+void DendriteEditor::animateTo (double seconds)
 {
     // the recording itself ticks in the processor; the window only draws what it holds
+    specimen.tick (seconds);
     specimen.repaint();
     if (frame++ % 3 == 0)
+    {
         header.repaint();
+        instruments.repaint();
+        settings.repaint();
+    }
 }

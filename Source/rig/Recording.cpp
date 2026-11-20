@@ -7,6 +7,18 @@ Recording::Recording()
 {
 }
 
+void Recording::noteState (const std::array<float, quantities>& state)
+{
+    // once a second of the session's clock; a gap (the timer stalled) is not filled in
+    if (lastNoted >= 0.0 && now - lastNoted < 1.0)
+        return;
+    lastNoted = lastNoted < 0.0 || now - lastNoted > 2.0 ? now : lastNoted + 1.0;
+    for (int q = 0; q < quantities; ++q)
+        historyData[(size_t) (historyHead * quantities + q)] = state[(size_t) q];
+    historyHead = (historyHead + 1) % historySeconds;
+    historyCount = std::min (historyCount + 1, historySeconds);
+}
+
 void Recording::step (double nowSeconds)
 {
     if (started < 0.0)
