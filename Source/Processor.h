@@ -3,11 +3,13 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/Engine.h"
 #include "keep/Keep.h"
+#include "rig/Recording.h"
 
 class DendriteProcessor : public juce::AudioProcessor
 {
 public:
     DendriteProcessor();
+    ~DendriteProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -54,6 +56,8 @@ public:
         std::atomic<float> repetition { 0.0f }, frameProgress { 0.0f }, boredom { 0.0f };
         std::array<std::atomic<float>, dendrite::Heads::count> lamps {};
         std::atomic<float> correlation { 1.0f }, inLevel { 0.0f }, outLevel { 0.0f }, bpm { 120.0f };
+        std::atomic<float> sampleRate { 0.0f }; // as the host prepared it (0: not yet)
+        std::atomic<int> blockSize { 0 };
         // 0..1 against the track's own recent peaks, so a quiet track looks as alive as a loud
         // one: the strongest hit since the window last took it (read it with exchange (0.0f)),
         // the input's held level, the echo's level
@@ -79,6 +83,11 @@ public:
 
     // keep: the last minute, on tape, and a diary of what happened (read by the window)
     dendrite::keep::Keep keep;
+
+    // The rig's recorders (3.0), message thread only: ticked 30 times a second whether or not the
+    // window is open (the snapshot tool, which has no message loop, calls rigTick itself).
+    dendrite::rig::Recording recording;
+    void rigTick (double nowSeconds);
 
 private:
     void run (juce::AudioBuffer<float>&, bool forceBypass);
@@ -126,6 +135,14 @@ private:
     std::atomic<int> flyArrivingState { 0 }; // 0 nothing, 1 being written, 2 ready, 3 being adopted
     std::atomic<bool> flyForget { false };
     int flyUntilSeal = 0;
+
+    struct RigTimer : juce::Timer
+    {
+        explicit RigTimer (DendriteProcessor& p) : owner (p) {}
+        void timerCallback() override { owner.rigTick (juce::Time::getMillisecondCounterHiRes() * 0.001); }
+        DendriteProcessor& owner;
+    };
+    RigTimer rigTimer { *this };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DendriteProcessor)
 };

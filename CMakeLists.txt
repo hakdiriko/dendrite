@@ -49,24 +49,18 @@ juce_add_binary_data(dendrite_fonts
     HEADER_NAME BinaryData.h
     NAMESPACE BinaryData
     SOURCES
-        Resources/fonts/Urbanist-Light.ttf
-        Resources/fonts/Urbanist-Regular.ttf
-        Resources/fonts/Urbanist-Medium.ttf
-        Resources/fonts/FragmentMono-Regular.ttf
-        Resources/lamps/led-off.png
-        Resources/lamps/led-on.png)
+        Resources/fonts/FragmentMono-Regular.ttf)
 
-target_sources(dendrite PRIVATE
-    Source/Processor.cpp
+# the window (3.0, the rig) and the recorders it reads
+set(DENDRITE_UI_SOURCES
     Source/Editor.cpp
-    Source/ui/Theme.cpp
-    Source/ui/Field.cpp
-    Source/ui/Medium.cpp
-    Source/ui/Controls.cpp
-    Source/ui/FlyBrain.cpp
-    Source/ui/Tape.cpp
-    Source/ui/FirstLight.cpp
+    Source/ui/Rig.cpp
+    Source/ui/Header.cpp
+    Source/ui/Specimen.cpp
     Source/ui/HostFocus.cpp
+    Source/rig/Recording.cpp)
+
+set(DENDRITE_DSP_SOURCES
     Source/dsp/Echo.cpp
     Source/dsp/Itch.cpp
     Source/dsp/Engine.cpp
@@ -75,6 +69,11 @@ target_sources(dendrite PRIVATE
     Source/dsp/Fly.cpp
     Source/dsp/FlyData.cpp
     Source/keep/Keep.cpp)
+
+target_sources(dendrite PRIVATE
+    Source/Processor.cpp
+    ${DENDRITE_UI_SOURCES}
+    ${DENDRITE_DSP_SOURCES})
 
 target_include_directories(dendrite PRIVATE Source)
 
@@ -103,23 +102,8 @@ if(DENDRITE_TOOLS)
     target_sources(dendrite_snapshot PRIVATE
         tools/snapshot/snapshot.cpp
         Source/Processor.cpp
-        Source/Editor.cpp
-        Source/ui/Theme.cpp
-        Source/ui/Field.cpp
-        Source/ui/Medium.cpp
-        Source/ui/Controls.cpp
-        Source/ui/FlyBrain.cpp
-        Source/ui/Tape.cpp
-        Source/ui/FirstLight.cpp
-        Source/ui/HostFocus.cpp
-        Source/dsp/Echo.cpp
-        Source/dsp/Itch.cpp
-        Source/dsp/Engine.cpp
-        Source/dsp/Creature.cpp
-        Source/dsp/Hand.cpp
-        Source/dsp/Fly.cpp
-        Source/dsp/FlyData.cpp
-        Source/keep/Keep.cpp)
+        ${DENDRITE_UI_SOURCES}
+        ${DENDRITE_DSP_SOURCES})
     target_include_directories(dendrite_snapshot PRIVATE Source)
     target_compile_definitions(dendrite_snapshot PRIVATE
         JucePlugin_Name="dendrite" JucePlugin_VersionString="1.1.0"

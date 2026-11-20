@@ -74,6 +74,22 @@ DendriteProcessor::DendriteProcessor()
     engine.creature().beBorn (genome);
     vault.life = engine.creature().saved();
     engine.itchFly().save (flyVault->memory);
+
+    // the rig records on the message thread, window open or not (3.0)
+    rigTimer.startTimerHz (30);
+}
+
+DendriteProcessor::~DendriteProcessor()
+{
+    rigTimer.stopTimer();
+}
+
+void DendriteProcessor::rigTick (double nowSeconds)
+{
+    auto* counts = recording.counts();
+    for (int n = 0; n < dendrite::rig::Recording::neurons; ++n)
+        counts[n] = takeFlySpikes (n);
+    recording.step (nowSeconds);
 }
 
 juce::AudioProcessorParameter* DendriteProcessor::getBypassParameter() const { return params.getParameter ("bypass"); }
@@ -89,6 +105,8 @@ bool DendriteProcessor::isBusesLayoutSupported (const BusesLayout& layouts) cons
 void DendriteProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     setLatencySamples (0);
+    display.sampleRate.store ((float) sampleRate, std::memory_order_relaxed);
+    display.blockSize.store (samplesPerBlock, std::memory_order_relaxed);
     engine.setControls (feedParam->load(), spaceParam->load(), false, (int) itchParam->load(), bypassParam->load() > 0.5f);
     engine.setStyle ((int) timeParam->load(), dryParam->load() > 0.5f);
     engine.prepare ((float) sampleRate);
@@ -344,6 +362,10 @@ void DendriteProcessor::getStateInformation (juce::MemoryBlock& dest)
         state.appendChild (fly, nullptr);
     }
 
+    // the rig's record of this session (3.0): where the music drove the brain
+    state.removeChild (state.getChildWithName (dendrite::rig::Recording::tag), nullptr);
+    state.appendChild (recording.save(), nullptr);
+
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, dest);
 }
@@ -417,6 +439,13 @@ void DendriteProcessor::setStateInformation (const void* data, int size)
             }
         }
         state.removeChild (fly, nullptr);
+    }
+
+    // the rig's history (3.0); sets from before 3.0 have none and start fresh
+    if (const auto rig = state.getChildWithName (dendrite::rig::Recording::tag); rig.isValid())
+    {
+        recording.load (rig);
+        state.removeChild (rig, nullptr);
     }
     params.replaceState (state);
 }
