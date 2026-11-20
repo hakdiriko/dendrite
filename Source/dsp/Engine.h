@@ -41,6 +41,9 @@ public:
         dryTarget = dry ? 1.0f : 0.0f;
     }
 
+    // What the itch throws: 0 rides the echo (2.5), 1 the afterglow, 2 the afterglow that spirals.
+    void setTail (int t) noexcept { echo.setTail (t); }
+
     // In place, stereo. left/right may be the same signal for a mono input.
     void process (float* left, float* right, int numSamples, const HostTime& time) noexcept;
 
