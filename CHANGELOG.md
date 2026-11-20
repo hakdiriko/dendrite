@@ -1,9 +1,17 @@
 # Changelog
 
-## Unreleased (the itch selector)
+## 2.6.0 (the afterglow: the itch keeps feeding itself, then dissolves)
 
+Hakan, in his demos: the itch repeated two or three times and then suddenly disappeared. He wants it to keep feeding itself, then dissolve smoothly, and any resonance in the tail to be psychoacoustically trippy.
+
+- **Why it disappeared.** The itch's throw rode the echo's own loop: for about a bar the feedback rose and the return was lifted, then both fell back and the ducking hid the rest. Worse, the two tape heads wobbled each on their own: in a long, regenerating tail they drifted against each other until their repeats cancelled, and the tail fell 15 dB in one beat. That happened after a throw and four bars into any break.
+- **The afterglow.** What the itch throws now goes onto a tape of its own, fed by the dotted head alone, so it cannot cancel itself. Its first repeats land like a throw (+8 dB, settling over a bar or two), it keeps feeding itself at the level of the echo for about three bars, then dissolves along a half parabola in dB (no corner where it stops): -60 dB after 7 bars at whisper, 9 at dub, 13 at endless. As it fades, every pass gets a little darker and more blurred, and it drifts further out around your head. It ducks half as deep as the echo, so the next chord doesn't swallow it. The echo itself no longer rides on the itch's throws: it plays the music as it does without the itch.
+- **The spiral (B, the default).** Inside the afterglow's loop, a single-sideband shift moves every partial by the same few Hz on every pass (6 Hz, growing to 12 as it fades). Harmonics stop being harmonic, and the tail climbs like a barber pole after a rising move (hop, leap, rush) and sinks after a falling one (duck, dive, sink); a hold spirals the way the dice say. The Side's own loop turns a little faster than the Mid's, so the image whirls faster around your head as it fades. A (the afterglow without the spiral) is one line away.
+- **Tails no longer fall off a cliff.** The tape's wow now moves both heads together, as a real tape's speed does (the quarter head by its longer distance), with a fifth of a wow of its own; and when a break outlasts the fill's four bars, the fill lets go over about two bars (it used to take a tenth of a second) and the loop eases off a little over the next four. A break's tail now dissolves over about five bars, never faster than 3 dB a beat, instead of dropping 15 dB in one beat, and is silent (under -120 dBFS) 25 seconds into the break. While music plays, the echo's level is unchanged (within 0.2 dB).
+- Measured on Hakan's Warm Saw Keys loop and the groove, two minutes each: the wet is 0.4 to 2 dB quieter on average than 2.5 and its peaks 1 to 2.5 dB lower (no build-up from overlapping afterglows); in a break after one itch, 2.5 fell from -34 to -56 dB in two beats, 2.6 falls smoothly to -60 over about five bars. The fly's 28-case matrix passes.
 - **"itch selector".** The red word in front of the line of dots now says what it is: the itch selector, in the same type as before (Urbanist, red, since it is the itch's). The host shows the same name for the parameter; its ID stays `frames`, so saved sets and automation keep it.
 - **It says what it does.** Rest the mouse on the name or the dots: "how restless the fly inside is: ¼ it can't sit still, 8 it dozes, off it sleeps". Since 2.1 the numbers no longer count bars between itches; they set how awake the fly is (¼ most, 8 least). The manual's itch section says the same.
+- Tools: `build/render --glow 0|1|2` (2.5's ride, A, B). `--glow 0` is bit-identical to 2.5. Renders in `dendrite-home/reports/2.6/audio/`.
 
 ## 2.5.0 (the fly, hardened: Phase 1 of the second plan)
 

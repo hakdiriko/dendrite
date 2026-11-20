@@ -107,6 +107,10 @@ void Echo::prepare (float newSampleRate)
     loopS.prepare ((int) (sampleRate * 4.4f));
     tapeM.prepare (sampleRate, 0);
     tapeS.prepare (sampleRate, 0); // the same tape: a Side that is a share of the Mid stays that share
+    glowM.prepare ((int) (sampleRate * 4.4f));
+    glowS.prepare ((int) (sampleRate * 4.4f));
+    glowTapeM.prepare (sampleRate, 1); // the afterglow's tape: other diffusers, so it blurs apart from the echo
+    glowTapeS.prepare (sampleRate, 1);
 
     constexpr float sideMs[5] = { 1.13f, 2.31f, 3.67f, 5.53f, 8.29f };
     for (size_t k = 0; k < sideDiffusers.size(); ++k)
@@ -142,6 +146,9 @@ void Echo::prepare (float newSampleRate)
     cTurn = approach (0.6f, sampleRate);
     cTurnHeal = approach (45.0f, sampleRate);
     cRunUp = approach (1.6f, sampleRate);
+    cGateUp = approach (0.003f, sampleRate);
+    cGateDown = approach (0.012f, sampleRate);
+    cGlowDir = approach (0.05f, sampleRate);
 
     reset();
 }
@@ -186,6 +193,21 @@ void Echo::reset()
     onsetArmed = 1.0f;
     onsetThrown = false;
     silentFor = count = 0;
+
+    glowM.clear();
+    glowS.clear();
+    glowTapeM.clear();
+    glowTapeS.clear();
+    glowPair.clear();
+    glowSpinM.clear();
+    glowSpinS.clear();
+    for (auto* p : { &glowDarkM, &glowDarkS, &glowToneM, &glowToneS })
+        p->clear();
+    glowGate = glowEnvM = glowEnvS = glowDir = glowMu = glowAlive = glowYouth = glowSpin = glowSpinSide = glowPhaseM = glowPhaseS = 0.0f;
+    glowFallback = 0.7f;
+    glowAge = 1.0e9f;
+    glowDiffusion = tapeDiffusion;
+    wasThrowing = false;
 }
 
 void Echo::updatePaths() noexcept
@@ -212,6 +234,7 @@ void Echo::updatePaths() noexcept
 
     // after a throw, the feedback ride falls back over about two bars
     cThrowDown = approach (std::max (0.3f, 32.0f * sixteenth / sampleRate) * 0.5f, sampleRate);
+    cFillFade = approach (std::max (0.5f, 16.0f * sixteenth / sampleRate), sampleRate);
     cThrowTail = approach (std::max (0.6f, 32.0f * sixteenth / sampleRate), sampleRate); // a closed send's throw rings ~2 bars
 }
 
@@ -229,10 +252,11 @@ Echo::View Echo::view() const noexcept
     v.theta = thetaNow;
     v.returnLevel = levelNow;
     v.fill = fillAmount;
-    v.throwing = std::max (heldSend, throwEnv);
+    v.throwing = std::max ({ heldSend, throwEnv, tail > 0 ? glowYouth * glowAlive : 0.0f });
     v.ease = easeNow;
     v.breath = breathNow;
     v.runaway = runaway;
+    v.glow = glowAlive;
     // relative to the track's own recent peaks, so a quiet track and a loud one look alike
     v.body = peakLong > 1.0e-9f ? clamp01 (1.41f * std::sqrt (rmsShort) / peakLong) : 0.0f;
     v.echoBody = peakLong > 1.0e-9f ? clamp01 (std::max (outEnvM, outEnvS) / (0.85f * peakLong)) : 0.0f;
@@ -241,7 +265,10 @@ Echo::View Echo::view() const noexcept
 
 void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws) noexcept
 {
-    const bool holding = held || touchNow.throwing;
+    // the itch's throw rides the echo's own loop only in 2.5's tail; since 2.6 it goes to the
+    // afterglow (processGlow), and the echo carries on as it was
+    const bool itchThrow = touchNow.throwing;
+    const bool holding = held || (tail == 0 && itchThrow);
     // controls glide; the paths follow every 16 samples
     feed += cControl * (feedTarget - feed);
     space += cControl * (spaceTarget - space);
@@ -299,13 +326,14 @@ void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws
         throwEnv -= cThrowDown * throwEnv;
         throwTail -= cThrowTail * throwTail;
     }
-    if (holding && ! wasHeld)
+    if ((holding && ! wasHeld) || (itchThrow && ! wasThrowing && ! holding))
     {
         launchTarget = dice.sign() * dice.range (0.7f, 1.5f);
         onsetPending = 1.0f;
         onsetThrown = true;
     }
     wasHeld = holding;
+    wasThrowing = itchThrow;
     // the runaway: a throw held at endless may grow past what was played, into a howl the
     // tape itself holds; it falls back like any throw when you let go
     const float runTarget = held ? clamp01 ((feed - 0.87f) / 0.1f) : 0.0f;
@@ -321,12 +349,21 @@ void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws
     lean += cLean * (busy - lean);
     const float leanSamples = lean * 0.008f * sampleRate;
     const float wobbleA = (wowA.next() * wowSeconds + flutter.next() * flutterSeconds) * sampleRate;
-    const float wobbleB = wowB.next() * wowSeconds * sampleRate;
+    // Since 2.6 the tape's wow moves both heads together, as a real tape's speed does (the quarter
+    // head by its longer distance), with only a fifth of a wow of its own. In 2.5 each head wobbled
+    // on its own: in a long, regenerating tail the two heads drifted against each other until their
+    // repeats cancelled, and the tail fell 15 dB in one beat (after a throw, or four bars into a break).
+    const float ownWow = wowB.next() * wowSeconds * sampleRate;
+    const float wobbleB = tail > 0 ? quarterSm / std::max (1.0f, dottedSm) * wobbleA + 0.2f * ownWow : ownWow;
     breathNow = std::clamp (breathWander.next() * 1.4f, -1.0f, 1.0f);
 
     // filling the silence: an eighth in, four bars at most
     const bool silent = silentFor > (int64_t) (2.0f * sixteenth) && silentFor < (int64_t) (64.0f * sixteenth);
-    fillAmount += (silent ? cFillUp : cFillDown) * ((silent ? 1.0f : 0.0f) - fillAmount);
+    // When the silence outlasts the four bars, the fill lets go over about two bars (since 2.6):
+    // until then it let go in a tenth of a second, and the tail fell 16 dB in one beat. When the
+    // music comes back it still lets go at once.
+    const bool longSilence = tail > 0 && silentFor >= (int64_t) (64.0f * sixteenth);
+    fillAmount += (silent ? cFillUp : longSilence ? cFillFade : cFillDown) * ((silent ? 1.0f : 0.0f) - fillAmount);
 
     // filling raises the feedback, never past the feed's cap; a throw rides it up, and with
     // a low feed it lends the loop a dub's worth of it
@@ -336,6 +373,15 @@ void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws
         const float s = pLoopCap / (gd + gq);
         gd *= s;
         gq *= s;
+    }
+    // a break that goes on: past the fill's four bars the loop lets go a little more over the next
+    // four, so the tail dissolves with no corner instead of hanging at dub's near-unity for half a minute
+    if (longSilence)
+    {
+        const float over = (float) (silentFor - (int64_t) (64.0f * sixteenth)) / (64.0f * sixteenth);
+        const float letGo = 1.0f - 0.12f * smooth01 (over);
+        gd *= letGo;
+        gq *= letGo;
     }
     gainDottedNow = std::min (0.9f + 0.12f * runaway, std::max (gd + (0.12f + 0.2f * runaway) * throwEnv, 0.72f * throwTail));
     gainQuarterNow = std::min (0.66f + 0.1f * runaway, std::max (gq + (0.1f + 0.15f * runaway) * throwEnv, 0.5f * throwTail));
@@ -419,8 +465,10 @@ void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws
 
     // ducks under what's playing, blooms in the gaps, swells on its own (-3..+3 dB)
     const float duck = pDuck * (1.0f - 0.8f * throwEnv);
-    float level = 1.0f - duck * std::clamp ((toDb (eDuck) - toDb (peakLong) + 26.0f) / 18.0f, 0.0f, 1.0f);
-    level *= std::pow (10.0f, 0.15f * breathNow);
+    const float under = std::clamp ((toDb (eDuck) - toDb (peakLong) + 26.0f) / 18.0f, 0.0f, 1.0f); // how loud the music is now
+    float level = 1.0f - duck * under;
+    const float breathGain = std::pow (10.0f, 0.15f * breathNow);
+    level *= breathGain;
     // a throw always comes back, even with feed all the way down: the dub engineer's closed send
     const float returnNow = std::max (pReturn, 1.2f * std::sqrt (throwTail));
     level *= returnNow * (1.0f + 0.2f * fillAmount) * (1.0f + 0.35f * throwEnv);
@@ -435,6 +483,18 @@ void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws
 
     wm = level * tiltM.lowpass (0.8f * dM + 0.55f * qM);
     ws = level * pSideOut * tiltS.lowpass (0.8f * dS + 0.55f * pCross * qS);
+
+    if (tail > 0)
+    {
+        // the afterglow ducks half as deep as the echo: it breathes with the music but stays
+        const float glowLevel = (1.0f - 0.5f * pDuck * under) * breathGain * touchNow.lift;
+        float gm = 0.0f, gs = 0.0f;
+        processGlow (xm, xs, dDelay, qDelay, glowLevel, gm, gs);
+        probeGlowM = gm;
+        probeGlowS = gs;
+        wm += gm;
+        ws += gs;
+    }
 
     // The echo may be as loud as what was played, not louder: a ceiling under the safety
     // limiter, for the Mid and the Side each on its own (so space never moves the Mid).
@@ -451,5 +511,126 @@ void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws
     wm *= pTrim;
     ws *= pTrim;
     ++count;
+}
+} // namespace dendrite
+
+namespace dendrite
+{
+//==============================================================================
+// The afterglow. Every 16 samples: how much each pass keeps, how dark and blurred it gets, how fast
+// it spirals. The level falls along a half parabola in dB (-60 dB at the end of its life): it
+// hardly drops for the first bar, then dissolves faster and faster, so there is no corner where
+// it stops. passSeconds: one pass of the loop, weighted like its two heads.
+void Echo::updateGlow (float passSeconds) noexcept
+{
+    const float barSeconds = 16.0f * sixteenth / sampleRate;
+    // whisper 7 bars, dub 9, endless 13 (to -60 dB)
+    glowLife = (5.0f + 8.0f * clamp01 (feed + touchNow.feed)) * barSeconds;
+    const float x = glowAge / glowLife;
+    glowAlive = glowAge > 0.0f ? clamp01 (1.0f - x * x) : 1.0f;
+    glowYouth = std::exp (-glowAge / (0.75f * barSeconds));
+    const float dbPerSecond = -120.0f * x / glowLife - 0.6f;
+    // the tape loses a little on every pass (its filters, about half a dB on keys); 1.05 gives it
+    // back, so for the first bar it keeps feeding itself, and the saturation and the ceiling hold
+    // anything more
+    // (the spiral loses a little more: what it shifts leaves the dotted head's comb)
+    const float giveBack = tail == 2 ? 1.11f : 1.05f;
+    glowMu = x > 1.6f ? 0.0f : std::min (giveBack + 0.02f, giveBack * fromDb (dbPerSecond * passSeconds));
+    // darker and more blurred as it goes
+    const float dark = 11000.0f * std::pow (2.0f, -2.2f * std::min (x, 1.3f));
+    glowDarkM.setCutoff (dark, sampleRate);
+    glowDarkS.setCutoff (dark, sampleRate);
+    glowDiffusion = tapeDiffusion + 0.3f * smooth01 (x);
+    // the spiral: still at first, then each pass is shifted a few Hz, up after a rising move,
+    // down after a falling one
+    // (a move that leaves the tape alone, a hold, spirals the way the dice say)
+    const float dir = std::abs (glowDir) > 0.15f ? glowDir : glowFallback;
+    glowSpin = tail == 2 ? 6.0f * dir * smooth01 (x / 0.15f) * (1.0f + x) : 0.0f;
+    // the Side turns a little faster on every pass, so the image whirls faster as it fades,
+    // like water finding the drain
+    glowSpinSide = glowSpin + (tail == 2 ? 0.3f * std::abs (dir) : 0.0f);
+}
+
+void Echo::processGlow (float xm, float xs, float dDelay, float qDelay, float glowLevel, float& gm, float& gs) noexcept
+{
+    const bool writing = touchNow.throwing;
+    glowGate += (writing ? cGateUp : cGateDown) * ((writing ? 1.0f : 0.0f) - glowGate);
+    if (writing)
+    {
+        if (glowAge > 0.0f)
+        {
+            glowDir = 0.0f; // a new throw: listen again for where the tape goes
+            glowFallback = 0.7f * dice.sign();
+        }
+        glowAge = 0.0f;
+    }
+    else
+    {
+        glowAge = std::min (glowAge + 1.0f / sampleRate, 1.0e9f);
+    }
+    // which way the move bends the tape while the afterglow is young
+    if (glowAge < 0.6f)
+    {
+        const float bend = std::clamp (4.0f * (touchNow.speed - 1.0f), -1.0f, 1.0f);
+        if (std::abs (bend) > std::abs (glowDir))
+            glowDir += cGlowDir * (bend - glowDir);
+    }
+    if ((count & 15) == 0)
+        updateGlow ((0.6f * dDelay + 0.4f * qDelay) / sampleRate);
+
+    const float dM = glowM.read (dDelay), qM = glowM.read (qDelay);
+    const float dS = glowS.read (dDelay), qS = glowS.read (qDelay);
+    // it feeds itself through the dotted head alone: two heads that wow apart cancel each other a
+    // little more on every pass, and the afterglow would die young. The quarter head is heard, not fed.
+    float fbM = glowMu * dM;
+    float fbS = glowMu * dS;
+    fbM = glowDarkM.lowpass (fbM);
+    fbS = glowDarkS.lowpass (fbS);
+
+    if (tail == 2)
+    {
+        // a single-sideband shift inside the loop: every pass moves every partial by the same few
+        // Hz, so harmonics stop being harmonic and the tail climbs (or sinks) like a barber pole.
+        // The Side's own loop turns a little faster than the Mid's, so the image circles the head.
+        float re = 0.0f, im = 0.0f;
+        glowSpinM.process (fbM, re, im);
+        glowPhaseM = wrapAngle (glowPhaseM + tau * glowSpin / sampleRate);
+        fbM = re * std::cos (glowPhaseM) + im * std::sin (glowPhaseM); // (this pair's im leads: + shifts up)
+        glowSpinS.process (fbS, re, im);
+        glowPhaseS = wrapAngle (glowPhaseS + tau * glowSpinSide / sampleRate);
+        fbS = re * std::cos (glowPhaseS) + im * std::sin (glowPhaseS);
+    }
+
+    // never louder than what was played into the track: the Mid and the Side each on its own
+    const float ceiling = 0.4f * peakLong;
+    glowEnvM += (std::abs (fbM) > glowEnvM ? aLoop : rLoop) * (std::abs (fbM) - glowEnvM);
+    glowEnvS += (std::abs (fbS) > glowEnvS ? aLoop : rLoop) * (std::abs (fbS) - glowEnvS);
+    if (glowEnvM > ceiling)
+        fbM *= ceiling / glowEnvM;
+    if (glowEnvS > 1.3f * ceiling)
+        fbS *= 1.3f * ceiling / glowEnvS;
+
+    const float writeM = glowTapeM.process (glowGate * xm + fbM, pDrive, glowDiffusion);
+    float reM = 0.0f, imM = 0.0f;
+    glowPair.process (writeM, reM, imM);
+    // it drifts further out from the head as it dissolves
+    const float out = 1.0f - glowAlive;
+    const float pan = pPan + 0.12f + 0.1f * out, spread = pSpread + 0.08f + 0.15f * out;
+    const float inject = pan * std::sin (thetaNow + 1.3f) * writeM + spread * std::cos (thetaNow + 1.3f) * imM;
+    const float writeS = glowTapeS.process (glowGate * pInWidth * xs + fbS, pDrive, glowDiffusion) + inject;
+    glowM.push (writeM);
+    glowS.push (writeS);
+
+    if ((count & 15) == 0)
+    {
+        const float cutoff = 6500.0f * std::pow (2.0f, 0.9f * breathNow);
+        glowToneM.setCutoff (cutoff, sampleRate);
+        glowToneS.setCutoff (cutoff, sampleRate);
+    }
+    // its first repeats land as hard as a throw (+8 dB), and that settles over a bar or two into the
+    // long dissolve
+    const float level = 0.55f * glowLevel * (1.0f + 1.6f * glowYouth);
+    gm = level * glowToneM.lowpass (0.8f * dM + 0.55f * qM);
+    gs = level * pSideOut * glowToneS.lowpass (0.8f * dS + 0.55f * pCross * qS);
 }
 } // namespace dendrite

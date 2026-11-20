@@ -13,6 +13,7 @@
 //                [--repeat N]  (plays the input N times in a row: a loop that goes on)
 //                [--dice]  (1.2's itch: dice by song position, instead of the creature)
 //                [--heads]  (2.0a: the creature fires the heads instead of the fly)
+//                [--glow 0|1|2]  (what the itch throws: 2.5's ride on the echo, the afterglow, the spiral)
 //                [--fly-log fly.csv]  (every 256 samples: what the fly does, its moods, memory, feeling)
 //                [--still]  (the 2.1.0 fly: no restlessness, moods or learning)
 //                [--loose]  (the 2.3 fly: moves off the grid, one sine lurch of the tape)
@@ -222,6 +223,7 @@ int main (int argc, char** argv)
     int repeat = 1;
     bool dice = false, loopTransport = false, handMode = false, headsMode = false;
     std::string flyLog;
+    int glowMode = -1;
     bool still = false;
     std::string tasteSpec;
     bool loose = false;
@@ -251,6 +253,7 @@ int main (int argc, char** argv)
         else if (k == "--hand") handMode = true;
         else if (k == "--heads") headsMode = true;
         else if (k == "--fly-log") flyLog = next();
+        else if (k == "--glow") glowMode = std::stoi (next());
         else if (k == "--still") still = true;
         else if (k == "--taste") tasteSpec = next();
         else if (k == "--loose") loose = true;
@@ -375,6 +378,8 @@ int main (int argc, char** argv)
     }
     std::FILE* flog = flyLog.empty() ? nullptr : std::fopen (flyLog.c_str(), "w");
     engine.setControls (feed, space, false, itch, false);
+    if (glowMode >= 0)
+        engine.setTail (glowMode);
     engine.prepare ((float) in.sampleRate);
     std::FILE* log = itchLog.empty() ? nullptr : std::fopen (itchLog.c_str(), "w");
     if (log)

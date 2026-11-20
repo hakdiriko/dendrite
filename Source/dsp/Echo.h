@@ -56,6 +56,12 @@ public:
     // the tape (the itch heads). Returns the echo as Mid/Side in wm/ws.
     void process (float xm, float xs, float im, float is, float& wm, float& ws) noexcept;
 
+    // What the itch throws (2.6): 0 rides the echo's own loop for about a bar (2.5), 1 lives
+    // on in a tape of its own and dissolves (the afterglow), 2 the same, and the afterglow
+    // spirals as it dissolves.
+    void setTail (int t) noexcept { tail = std::clamp (t, 0, 2); }
+    int getTail() const noexcept { return tail; }
+
     // 0: dotted 1/8 + 1/4, 1: 1/4 triplet + 1/4, 2: half time (dotted 1/4 + 1/2)
     void setTiming (int t) noexcept { timing = std::clamp (t, 0, 2); }
 
@@ -72,6 +78,7 @@ public:
         // echo's own level (echoBody); the strongest hit since the last takeHit() is separate
         float body = 0.0f, echoBody = 0.0f;
         float runaway = 0.0f; // 0..1: how far a throw held at endless has run away
+        float glow = 0.0f;    // 0..1: how much of the itch's afterglow is still alive
     };
     View view() const noexcept;
 
@@ -83,6 +90,9 @@ public:
         hitPeak = 0.0f;
         return h;
     }
+
+    // For the offline tools: what the afterglow played this sample (Mid, Side), before the ceiling.
+    float probeGlowM = 0.0f, probeGlowS = 0.0f;
 
     bool takeOnset (float& level, bool& thrown) noexcept
     {
@@ -118,6 +128,8 @@ private:
     };
 
     void updatePaths() noexcept;
+    void updateGlow (float passSeconds) noexcept;
+    void processGlow (float xm, float xs, float dDelay, float qDelay, float duckLevel, float& gm, float& gs) noexcept;
 
     float sampleRate = 48000.0f, sixteenth = 6000.0f;
     int timing = 0;
@@ -155,9 +167,22 @@ private:
     bool onsetThrown = false;
     int64_t silentFor = 0, count = 0, heard = 0;
 
+    // the itch's afterglow (2.6): what the itch throws, on a tape of its own. It writes while
+    // the itch throws, keeps feeding itself, then dissolves: each pass a little quieter than
+    // the one before, a little darker and more blurred, further out around the head.
+    int tail = 2;
+    Ring glowM, glowS;
+    TapePass glowTapeM, glowTapeS;
+    PhasePair glowPair, glowSpinM, glowSpinS;
+    OnePole glowDarkM, glowDarkS, glowToneM, glowToneS;
+    float glowGate = 0.0f, glowAge = 1.0e9f, glowLife = 12.0f, glowEnvM = 0.0f, glowEnvS = 0.0f, glowDir = 0.0f;
+    float glowMu = 0.0f, glowAlive = 0.0f, glowYouth = 0.0f, glowDiffusion = 0.38f, glowSpin = 0.0f, glowSpinSide = 0.0f, glowPhaseM = 0.0f, glowPhaseS = 0.0f;
+    float glowFallback = 0.7f, cGateUp = 0.0f, cGateDown = 0.0f, cGlowDir = 0.0f;
+    bool wasThrowing = false;
+
     // coefficients
     float cFast = 0, rFast = 0, cSlow = 0, aDuck = 0, rDuck = 0, cShort = 0, cLong = 0, cPeak = 0, cLean = 0,
-          cFillUp = 0, cFillDown = 0, cControl = 0, cHeldUp = 0, cHeldDown = 0, cThrowDown = 0, cThrowTail = 0, cHead = 0,
+          cFillUp = 0, cFillDown = 0, cFillFade = 0, cControl = 0, cHeldUp = 0, cHeldDown = 0, cThrowDown = 0, cThrowTail = 0, cHead = 0,
           aLoop = 0, rLoop = 0, aOut = 0, rOut = 0, cLaunch = 0, cTurnHeal = 0, cTurn = 0;
 };
 } // namespace dendrite
