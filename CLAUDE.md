@@ -32,3 +32,5 @@ python3 tools/discovery_audit.py build/dendrite_artefacts/Release/VST3/dendrite.
 Done means: CI green on all three platforms (pluginval passes), the audit shows 0 FAIL, and `CHANGELOG.md` is updated.
 Hakan is on Windows 11 with Ableton Live 12, so the Windows VST3 artifact is the one he loads.
 Never change `PLUGIN_MANUFACTURER_CODE`/`PLUGIN_CODE` (or the bundle id, or the APVTS state type `"viber"`): hosts identify the plug-in by them, and saved sessions would lose it or its settings.
+
+UI backup: if Hakan says "bring back the simulative arcade", restore the UI (`Source/ui/`, `Source/Editor.*`, `Resources/lamps/`, and the display parts of `Processor`) from branch `ui-simulative-arcade` (also tag `ui-simulative-arcade` where it exists), saved 2026-11-20 at a8ed4a5, right before the dark science rebuild.
