@@ -41,6 +41,7 @@ public:
     double stimulusSeconds() const noexcept { return touching ? clockNow - touchStarted : 0.0; }
 
     juce::String getTooltip() override;
+    void hoverForTools (juce::Point<float> p) noexcept { hoverAt = p; } // the snapshot tool's hand
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -55,6 +56,9 @@ private:
     void paintRegions (juce::Graphics&, const Hairline&);
     void paintElectrode (juce::Graphics&, const Hairline&);
     void measureTip();
+    int findHover() const;
+    void paintHover (juce::Graphics&, const Hairline&);
+    juce::Point<float> neuronPoint (int n) const noexcept;
     juce::Point<float> tipPoint() const noexcept;
     float tipRadius() const noexcept { return tipMicrons * brain.getWidth() / widthMicrons; }
     bool nearTip (juce::Point<float> p) const noexcept { return p.getDistanceFrom (tipPoint()) < tipRadius() + 8.0f; }
@@ -65,6 +69,7 @@ private:
     juce::Rectangle<float> brain;
     juce::Image points; // the neurons, at the screen's own pixels
     Recorded tip;
+    int hovered = -1; // the neuron under the hand, at the last paint
 
     // the parameters, as the window last heard them (the host's value, or the hand's while it drags)
     float feed = DendriteProcessor::defaultFeed, space = DendriteProcessor::defaultSpace;
@@ -73,7 +78,7 @@ private:
 
     // the hand
     bool hoverTip = false, hoverPlate = false, dragging = false, pending = false, touching = false, fine = false;
-    juce::Point<float> grabMouse, grabUnit, pressAt;
+    juce::Point<float> grabMouse, grabUnit, pressAt, hoverAt { -1.0f, -1.0f };
     double clockNow = 0.0, pressStarted = 0.0, touchStarted = 0.0;
 };
 } // namespace dendrite::ui

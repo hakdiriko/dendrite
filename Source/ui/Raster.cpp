@@ -64,6 +64,14 @@ void Raster::paint (juce::Graphics& g)
         }
     }
 
+    // at rest no time passes for the specimen: the raster says so instead of scrolling an empty record
+    if (juce::roundToInt (processor.params.getRawParameterValue ("frames")->load()) == 0)
+    {
+        g.setColour (tone::grey (tone::mid));
+        g.drawText (juce::String (juce::CharPointer_UTF8 ("at rest \xc2\xb7 its brain does not step")), area.withTrimmedRight (8.0f),
+                    juce::Justification::centredRight);
+    }
+
     // the time axis: a tick every second back from now, a 1 s scale bar, and the bin as measured
     const float axis = area.getBottom() + 4.0f;
     g.setColour (tone::grey (tone::dim));

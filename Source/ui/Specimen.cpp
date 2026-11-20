@@ -1,5 +1,6 @@
 #include "Specimen.h"
 #include "rig/Recording.h"
+#include "rig/Identities.h"
 
 namespace dendrite::ui
 {
@@ -142,10 +143,74 @@ void Specimen::paint (juce::Graphics& g)
     g.setImageResamplingQuality (juce::Graphics::lowResamplingQuality);
     g.drawImageTransformed (points, juce::AffineTransform::scale (1.0f / line.px)
                                         .translated (line.snap (brain.getX()) - 0.5f / line.px, line.snap (brain.getY()) - 0.5f / line.px));
+    hovered = findHover();
     paintScale (g, line);
     paintRegions (g, line);
     measureTip();
     paintElectrode (g, line);
+    paintHover (g, line);
+}
+
+juce::Point<float> Specimen::neuronPoint (int n) const noexcept
+{
+    return { brain.getX() + brain.getWidth() * (float) flydata::neuronX[n] / 65535.0f,
+             brain.getY() + brain.getHeight() * (float) flydata::neuronY[n] / 65535.0f };
+}
+
+int Specimen::findHover() const
+{
+    if (dragging || touching || hoverTip || ! brain.expanded (6.0f).contains (hoverAt))
+        return -1;
+    int nearest = -1;
+    float best = 8.0f * 8.0f;
+    for (int n = 0; n < neurons; ++n)
+    {
+        const float d = neuronPoint (n).getDistanceSquaredFrom (hoverAt);
+        if (d < best)
+        {
+            best = d;
+            nearest = n;
+        }
+    }
+    return nearest;
+}
+
+void Specimen::paintHover (juce::Graphics& g, const Hairline& line)
+{
+    // the neuron under the hand: who it is in FlyWire, and its rate now
+    const int nearest = hovered;
+    if (nearest < 0)
+        return;
+    // how crowded it is there: the neurons within 5 um of it
+    const auto at = neuronPoint (nearest);
+    const float r5 = 5.0f * brain.getWidth() / widthMicrons;
+    int near = 0;
+    for (int n = 0; n < neurons; ++n)
+        if (neuronPoint (n).getDistanceSquaredFrom (at) <= r5 * r5)
+            ++near;
+
+    namespace id = rig::identities;
+    g.setColour (tone::grey (tone::live));
+    g.drawEllipse (juce::Rectangle<float> (9.0f, 9.0f).withCentre ({ line.snap (at.x), line.snap (at.y) }), line.width());
+    const auto dot = utf8 ("  \xc2\xb7  ");
+    const juce::String type (id::typeName[id::type[nearest]]);
+    juce::String text = juce::String ((juce::int64) id::rootId[nearest]) + dot + (type.isEmpty() ? juce::String ("untyped") : type);
+    if (const juce::String nt (id::transmitterName[id::transmitter[nearest]]); nt.isNotEmpty())
+        text << dot << nt;
+    if (const juce::String c (id::className[id::superClass[nearest]]); c.isNotEmpty())
+        text << dot << c.replaceCharacter ('_', ' ');
+    if (const juce::String s (id::sideName[id::side[nearest]]); s.isNotEmpty())
+        text << dot << s;
+    text << dot << juce::String (processor.recording.trace (nearest) / (float) rig::Recording::traceSeconds, 1) << " Hz";
+    if (near > 1)
+        text << dot << near << " within 5" << utf8 (" \xc2\xb5m");
+    const int scarred = processor.recording.scars (nearest);
+    if (scarred > 0)
+        text << dot << scarred << (scarred == 1 ? " scar" : " scars");
+    // written in the caption's second line, in place of what the picture is
+    g.setColour (tone::grey (tone::bright));
+    g.setFont (fonts->at (type::small));
+    g.drawText (text, juce::Rectangle<float> (14.0f, 24.0f, (float) getWidth() - 28.0f, 16.0f), juce::Justification::centredLeft, true);
 }
 
 void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
@@ -218,7 +283,8 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
     const auto what = "frontal projection" + dot + "anchor points" + dot + microns (widthMicrons) + utf8 (" \xc3\x97 ") + microns (heightMicrons);
     // top left, as on a slide's label
     g.drawText (counts, juce::Rectangle<float> (14.0f, 8.0f, 600.0f, 16.0f), juce::Justification::centredLeft);
-    g.drawText (what, juce::Rectangle<float> (14.0f, 24.0f, 600.0f, 16.0f), juce::Justification::centredLeft);
+    if (hovered < 0)
+        g.drawText (what, juce::Rectangle<float> (14.0f, 24.0f, 600.0f, 16.0f), juce::Justification::centredLeft);
 }
 
 void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
@@ -389,6 +455,7 @@ juce::String Specimen::getTooltip()
 
 void Specimen::mouseMove (const juce::MouseEvent& e)
 {
+    hoverAt = e.position;
     hoverTip = nearTip (e.position);
     hoverPlate = ! hoverTip;
     setMouseCursor (hoverTip ? juce::MouseCursor::DraggingHandCursor : juce::MouseCursor::CrosshairCursor);
@@ -396,6 +463,7 @@ void Specimen::mouseMove (const juce::MouseEvent& e)
 
 void Specimen::mouseExit (const juce::MouseEvent&)
 {
+    hoverAt = { -1.0f, -1.0f };
     hoverTip = hoverPlate = false;
 }
 

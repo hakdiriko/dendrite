@@ -113,8 +113,8 @@ void DendriteProcessor::watchRig()
     if (! w.sessionLogged && sr > 0.0f)
     {
         w.sessionLogged = true;
-        recording.log ("session" + dot + juce::Time::getCurrentTime().formatted ("%Y-%m-%d %H:%M:%S") + dot + juce::String (sr / 1000.0f, 1) + " kHz" + dot
-                       + juce::String (d.blockSize.load (relaxed)) + " smp");
+        recording.log ("session" + dot + juce::Time::getCurrentTime().formatted ("%d %b %H:%M").toLowerCase());
+        recording.log (juce::String (sr / 1000.0f, 1) + " kHz" + dot + juce::String (d.blockSize.load (relaxed)) + " smp");
     }
     if (w.restoredPending)
     {

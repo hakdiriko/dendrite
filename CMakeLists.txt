@@ -62,7 +62,8 @@ set(DENDRITE_UI_SOURCES
     Source/ui/Raster.cpp
     Source/ui/Log.cpp
     Source/ui/HostFocus.cpp
-    Source/rig/Recording.cpp)
+    Source/rig/Recording.cpp
+    Source/rig/Identities.cpp)
 
 set(DENDRITE_DSP_SOURCES
     Source/dsp/Echo.cpp

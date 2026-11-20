@@ -10,6 +10,7 @@
 //   DENDRITE_AUDIO=out.wav             also write what came out of the plug-in
 //   DENDRITE_KEEP_OUT=dir              at the end, write the last finished itch as keep would drag it
 //   DENDRITE_TIME=1                    how long one frame of the window takes to paint
+//   DENDRITE_HOVER=x,y                 the hand rests over the specimen there (window pixels)
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
 #include "Editor.h"
@@ -67,6 +68,11 @@ int main (int argc, char** argv)
     editor->setSize ((int) (DendriteEditor::designWidth * scale), (int) (DendriteEditor::designHeight * scale));
     if (const auto size = env ("DENDRITE_SIZE"); size.isNotEmpty()) // w,h in pixels: any window shape
         editor->setSize (size.upToFirstOccurrenceOf (",", false, false).getIntValue(), size.fromFirstOccurrenceOf (",", false, false).getIntValue());
+    if (const auto hover = env ("DENDRITE_HOVER"); hover.isNotEmpty())
+        for (auto* c : editor->getChildren())
+            if (auto* s = dynamic_cast<dendrite::ui::Specimen*> (c))
+                s->hoverForTools (c->getLocalPoint (editor, juce::Point<float> (hover.upToFirstOccurrenceOf (",", false, false).getFloatValue(),
+                                                                                 hover.fromFirstOccurrenceOf (",", false, false).getFloatValue())));
 
     std::unique_ptr<juce::AudioFormatWriter> audioOut;
     if (env ("DENDRITE_AUDIO").isNotEmpty())

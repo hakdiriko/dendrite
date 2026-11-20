@@ -1,5 +1,6 @@
 #include "Instruments.h"
 #include "rig/Recording.h"
+#include "rig/Identities.h"
 
 namespace dendrite::ui
 {
@@ -111,11 +112,15 @@ void Instruments::paint (juce::Graphics& g)
          "the tip's place over the specimen, from the box's left and bottom edges: right is space, up is feed");
     row ("units", { { juce::String (tip.units) }, { " in r 25" + um, true } }, "neurons within the tip's recording radius");
     row ("mean rate", { { juce::String (tip.meanHz, 1) }, { " Hz", true } }, "their mean firing rate over the last 300 ms");
-    if (tip.busiest >= 0)
-        row ("busiest", { { "n ", true }, { juce::String (tip.busiest) }, { "  ", true }, { juce::String (tip.busiestHz, 1) }, { " Hz", true } },
-             "the busiest neuron under the tip: its index in the cut, and its rate");
+    if (tip.busiest >= 0 && tip.busiestHz > 0.0f)
+    {
+        namespace id = rig::identities;
+        const juce::String type (id::typeName[id::type[tip.busiest]]);
+        row ("busiest", { { type.isNotEmpty() ? type : juce::String ("untyped") }, { "  ", true }, { juce::String (tip.busiestHz, 1) }, { " Hz", true } },
+             "the busiest neuron under the tip: FlyWire " + juce::String ((juce::int64) id::rootId[tip.busiest]) + ", its cell type and rate");
+    }
     else
-        row ("busiest", { { "-" } }, "no neuron under the tip", tone::mid);
+        row ("busiest", { { "-" } }, tip.units > 0 ? "none of the neurons under the tip is firing" : "no neuron under the tip", tone::mid);
 
     heading ("delay line");
     const float level = bypassed ? tone::dim : tone::bright;
