@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.3.0 (the trace: what the fly does to your sound)
+
+Hakan, on 3.0: the window "feels like it doesn't have a purpose". Asked what he wants from it while making music, he picked "see what it does to my sound". The control (the electrode, X-Y) is replaced in the imaging work, not here. The sound does not change (null test below).
+
+- **The trace** takes the raster's place under the specimen, at the same height. Four rows on one time axis, the last 8 bars while the host plays (16 s, marked "host stopped", when it does not): **your sound** (the input), **the fly** (a square and a line for each reflex, with its move and the tape speeds it went through, e.g. "leap +15.9 -12.0 st"; grey ticks where it groomed a band of the echo; a faint line for its steer), **your echo** (the echo alone, without your dry, white where the reflex bent the tape) and **tape pitch** (the tape's speed in semitones, 0 is the echo as you set it). Your throws are marked under your sound. Levels are linear, a full row is 0 dBFS. Hover for the bar, levels, tape speed and move at that moment.
+- Every mark is measured: the engine reports each call's loudest input and echo sample and its clock; the processor sends one frame per engine call to the message thread through a lock-free FIFO (no allocation, no lock on the audio thread), where `rig::Timeline` keeps the last minute in 10 ms bins plus the reflexes, grooms and throws with their real start and length. Nothing new is saved with the set.
+- The raster (13 populations) is gone from the window; the recorder still keeps its data.
+- The snapshot tool takes `DENDRITE_PLAY=bpm` (a host transport playing in 4/4), so the bar grid can be checked.
+- **The sound is bit-identical.** `tools/nulltest` on 3.2.0 (993eedb) and on this branch, loop and song, 48 kHz/512, 44.1 kHz/333, 44.1 kHz/512 and 48 kHz/128, with throws and itch changes: 4 of 4 identical to the bit.
+- The manual's section 6 describes the trace; its window picture is new.
+
 ## 3.2.0 (imaging: the same spikes, seen by different instruments)
 
 Hakan picked from the research page "dendrite, imaged" (kept in `docs/research/imaging/`): several imaging methods the player chooses between, 2-DG visible in the dark as a small brain, and the goniometer. Built on the male fly. The sound does not change (null test below).

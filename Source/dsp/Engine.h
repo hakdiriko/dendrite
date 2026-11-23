@@ -54,6 +54,11 @@ public:
         std::array<float, Heads::count> lamps {};
         bool itching = false;
         float correlation = 1.0f, inLevel = 0.0f, outLevel = 0.0f;
+        // the last process() call, for the window's timeline (3.3): its loudest input sample, its
+        // loudest echo sample (after the safety limiter, without the dry), and where the clock was
+        // when it began (the host's song position while it plays, dendrite's own clock otherwise)
+        float inPeak = 0.0f, wetPeak = 0.0f, barBeats = 4.0f;
+        double beatAtStart = 0.0;
         // for the window, 0..1 against the track's own recent peaks: the strongest hit this
         // block, how loud the input is held, how loud the echo is
         float hit = 0.0f, body = 0.0f, echoBody = 0.0f, runaway = 0.0f;

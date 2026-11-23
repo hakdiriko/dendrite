@@ -3,7 +3,7 @@
 using namespace dendrite::ui;
 
 DendriteEditor::DendriteEditor (DendriteProcessor& p)
-    : AudioProcessorEditor (p), processor (p), header (p), specimen (p), instruments (p, specimen), settings (p), raster (p), log (p)
+    : AudioProcessorEditor (p), processor (p), header (p), specimen (p), instruments (p, specimen), settings (p), trace (p), log (p)
 {
     setLookAndFeel (&lookAndFeel);
     setOpaque (true);
@@ -11,7 +11,7 @@ DendriteEditor::DendriteEditor (DendriteProcessor& p)
     addAndMakeVisible (specimen);
     addAndMakeVisible (instruments);
     addAndMakeVisible (settings);
-    addAndMakeVisible (raster);
+    addAndMakeVisible (trace);
     addAndMakeVisible (log);
 
     // any shape, up to a whole 8K screen; hosts' maximise and fullscreen work
@@ -40,7 +40,7 @@ void DendriteEditor::resized()
     auto column = r.removeFromRight (Instruments::width);
     instruments.setBounds (column.removeFromTop (Instruments::height));
     log.setBounds (column);
-    raster.setBounds (r.removeFromBottom (Raster::height));
+    trace.setBounds (r.removeFromBottom (Trace::height));
     specimen.setBounds (r);
 }
 
@@ -54,7 +54,7 @@ void DendriteEditor::animateTo (double seconds)
     // the recording itself ticks in the processor; the window only draws what it holds
     specimen.tick (seconds);
     specimen.repaint();
-    raster.repaint();
+    trace.repaint();
     if (frame++ % 3 == 0)
     {
         header.repaint();

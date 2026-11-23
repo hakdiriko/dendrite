@@ -95,6 +95,14 @@ void DendriteProcessor::rigTick (double nowSeconds)
     recording.setStepping (itchChoice > 0); // off: the fly rests, its brain does not step
     recording.step (nowSeconds);
     recording.noteState ({ d.flyArousal.load (relaxed), d.flyFatigue.load (relaxed), d.flyFear.load (relaxed), d.flyMemory.load (relaxed) });
+    timeline.setSampleRate (d.sampleRate.load (relaxed));
+    {
+        const auto scope = d.traceFifo.read (d.traceFifo.getNumReady());
+        for (int i = 0; i < scope.blockSize1; ++i)
+            timeline.add (d.traceFrames[(size_t) (scope.startIndex1 + i)]);
+        for (int i = 0; i < scope.blockSize2; ++i)
+            timeline.add (d.traceFrames[(size_t) (scope.startIndex2 + i)]);
+    }
     watchRig();
 }
 
@@ -334,6 +342,7 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
             const int m = std::min (n - done, keep.tapSize());
             engine.process (left + done, right + done, m, piece);
             keep.capture (left + done, right + done, m, engine.view(), piece, frameChoice);
+            pushTrace (m, piece);
             piece.ppq += m * piece.bpm / 60.0 / getSampleRate();
             done += m;
         }
@@ -354,6 +363,34 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
     publish();
     keepLife();
     keepFly (n);
+}
+
+void DendriteProcessor::pushTrace (int samples, const dendrite::HostTime& time) noexcept
+{
+    // one frame of the timeline: no allocation, no lock; when the FIFO is full the frame is dropped
+    const auto& v = engine.view();
+    auto& d = display;
+    const auto scope = d.traceFifo.write (1);
+    if (scope.blockSize1 + scope.blockSize2 < 1)
+    {
+        d.traceDropped.fetch_add (1, std::memory_order_relaxed);
+        return;
+    }
+    auto& f = d.traceFrames[(size_t) (scope.blockSize1 > 0 ? scope.startIndex1 : scope.startIndex2)];
+    f.samples = samples;
+    f.in = v.inPeak;
+    f.wet = v.wetPeak;
+    f.semitones = v.fly.semitones;
+    f.jump = v.fly.jump;
+    f.scratch = v.fly.scratch;
+    f.scratchHz = v.fly.scratchHz;
+    f.turn = v.fly.turn;
+    f.bpm = (float) v.bpm;
+    f.barBeats = v.barBeats;
+    f.beat = v.beatAtStart;
+    f.move = v.fly.move;
+    f.thrown = throwParam->load() > 0.5f;
+    f.playing = time.playing;
 }
 
 void DendriteProcessor::keepFly (int samples) noexcept

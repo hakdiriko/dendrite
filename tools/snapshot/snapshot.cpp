@@ -14,6 +14,7 @@
 //   DENDRITE_IMAGING=two-photon        the imaging method (trace, two-photon, voltage, photons, tracts, 2-dg)
 //   DENDRITE_YAW=30 DENDRITE_PITCH=-10 the goniometer's angles, in degrees
 //   DENDRITE_TURN=deg                  with DENDRITE_FRAMES: the yaw turns this many degrees a second
+//   DENDRITE_PLAY=bpm                  a host transport playing from bar 1 at this tempo, in 4/4
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
 #include "Editor.h"
@@ -25,6 +26,23 @@ juce::String env (const char* name)
     const char* v = std::getenv (name);
     return v != nullptr ? juce::String (v) : juce::String();
 }
+
+// a host's transport, playing from the start in 4/4
+struct Transport : juce::AudioPlayHead
+{
+    double bpm = 120.0, sampleRate = 48000.0;
+    juce::int64 position = 0;
+    juce::Optional<PositionInfo> getPosition() const override
+    {
+        PositionInfo info;
+        info.setBpm (bpm);
+        info.setTimeSignature (TimeSignature { 4, 4 });
+        info.setIsPlaying (true);
+        info.setTimeInSamples (position);
+        info.setPpqPosition ((double) position / sampleRate * bpm / 60.0);
+        return info;
+    }
+};
 
 bool writePng (juce::Component& c, const juce::File& out, float scale)
 {
@@ -62,6 +80,13 @@ int main (int argc, char** argv)
     DendriteProcessor processor;
     processor.setPlayConfigDetails (2, 2, reader->sampleRate, 512);
     processor.prepareToPlay (reader->sampleRate, 512);
+    Transport transport;
+    transport.sampleRate = reader->sampleRate;
+    if (env ("DENDRITE_PLAY").isNotEmpty())
+    {
+        transport.bpm = env ("DENDRITE_PLAY").getDoubleValue();
+        processor.setPlayHead (&transport);
+    }
     processor.params.getParameter ("feed")->setValueNotifyingHost (feed);
     processor.params.getParameter ("space")->setValueNotifyingHost (space);
     processor.params.getParameter ("frames")->setValueNotifyingHost (processor.params.getParameter ("frames")->convertTo0to1 ((float) itch));
@@ -110,6 +135,7 @@ int main (int argc, char** argv)
         const double now = (double) pos / reader->sampleRate;
         const bool throwing = throwAt >= 0.0 && now >= throwAt && now < throwAt + throwLen;
         processor.params.getParameter ("throw")->setValueNotifyingHost (throwing ? 1.0f : 0.0f);
+        transport.position = pos;
         processor.processBlock (buffer, midi);
         if (audioOut != nullptr)
             audioOut->writeFromAudioSampleBuffer (buffer, 0, 512);

@@ -4,14 +4,14 @@
 #include "ui/Header.h"
 #include "ui/Instruments.h"
 #include "ui/Log.h"
-#include "ui/Raster.h"
 #include "ui/Rig.h"
 #include "ui/Settings.h"
 #include "ui/Specimen.h"
+#include "ui/Trace.h"
 
 // dendrite's window (3.0): the display of a rig recording a fly's brain. The header names the
 // specimen and keeps the clock; the instruments stand in a column on the right with the log under
-// them, the raster runs under the specimen, the settings along the bottom, and the specimen takes
+// them, the trace (what the fly does to your sound, 3.3) runs under the specimen, the settings along the bottom, and the specimen takes
 // the rest. Any size from 900 x 640 up; type keeps its
 // size, the column keeps its width, and the specimen takes the room.
 class DendriteEditor : public juce::AudioProcessorEditor, private juce::Timer
@@ -38,7 +38,7 @@ private:
     dendrite::ui::Specimen specimen;
     dendrite::ui::Instruments instruments;
     dendrite::ui::Settings settings;
-    dendrite::ui::Raster raster;
+    dendrite::ui::Trace trace;
     dendrite::ui::Log log;
     juce::TooltipWindow tooltips { this, 900 };
     int frame = 0;

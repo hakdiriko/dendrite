@@ -8,7 +8,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(dendrite VERSION 3.2.0 LANGUAGES C CXX)
+project(dendrite VERSION 3.3.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -72,10 +72,11 @@ set(DENDRITE_UI_SOURCES
     Source/ui/Specimen.cpp
     Source/ui/Instruments.cpp
     Source/ui/Settings.cpp
-    Source/ui/Raster.cpp
+    Source/ui/Trace.cpp
     Source/ui/Log.cpp
     Source/ui/HostFocus.cpp
     Source/rig/Recording.cpp
+    Source/rig/Timeline.cpp
     Source/flies/${DENDRITE_FLY}/Identities.cpp
     Source/flies/${DENDRITE_FLY}/Depth.cpp)
 

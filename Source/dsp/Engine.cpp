@@ -213,9 +213,13 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
 
     fly.setAwake (flyItch ? awakeFor (itchChoice) : 0.0f);
     fly.setEmptyHz (emptyBandHz());
+    state.beatAtStart = beat;
+    state.barBeats = (float) barBeats;
+    float inPeak = 0.0f, wetPeak = 0.0f;
     for (int i = 0; i < numSamples; ++i)
     {
         const float l = left[i], r = right[i];
+        inPeak = std::max (inPeak, std::max (std::abs (l), std::abs (r)));
         const float mid = 0.5f * (l + r), side = 0.5f * (l - r);
 
         listener.push (mid);
@@ -269,6 +273,7 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
         limiterEnv = room < limiterEnv ? room : room + limiterRelease * (limiterEnv - room);
         wetL *= limiterEnv;
         wetR *= limiterEnv;
+        wetPeak = std::max (wetPeak, std::max (std::abs (wetL), std::abs (wetR)));
         const float outL = dl + wetL;
         const float outR = dr + wetR;
         left[i] = outL;
@@ -284,6 +289,8 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
     const float denom = std::sqrt (corrLL * corrRR);
     state.echo = echo.view();
     state.correlation = denom > 1e-9f ? corrLR / denom : 1.0f;
+    state.inPeak = inPeak;
+    state.wetPeak = wetPeak;
     state.inLevel = std::sqrt (std::max (0.0f, inPower));
     state.outLevel = std::sqrt (std::max (0.0f, outPower));
     state.hit = echo.takeHit();
