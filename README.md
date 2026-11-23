@@ -62,4 +62,4 @@ Design decisions are in [DECISIONS.md](DECISIONS.md); changes per version in [CH
 
 The font in `Resources/fonts/` (Fragment Mono) is under the SIL Open Font License; JUCE is used under its own licence.
 
-The fly's wiring comes from the FlyWire connectome (Dorkenwald et al. 2024, Schlegel et al. 2024), released under CC BY-NC 4.0: dendrite with the fly inside may only be distributed non-commercially unless FlyWire grants otherwise. Full credits: [packaging/CREDITS.txt](packaging/CREDITS.txt).
+The fly's wiring comes from Janelia's male CNS connectome v1.0 (Berg et al. 2026), released under CC BY 4.0. Full credits: [packaging/CREDITS.txt](packaging/CREDITS.txt). Until 3.0 the fly came from the FlyWire connectome (CC BY-NC 4.0, non-commercial); it can still be built with `-DDENDRITE_FLY=flywire` (credits: [packaging/CREDITS-flywire.txt](packaging/CREDITS-flywire.txt)) but is not for sale without FlyWire's permission.

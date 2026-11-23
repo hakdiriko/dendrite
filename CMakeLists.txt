@@ -8,7 +8,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(dendrite VERSION 3.0.0 LANGUAGES C CXX)
+project(dendrite VERSION 3.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,6 +52,19 @@ juce_add_binary_data(dendrite_fonts
         Resources/fonts/FragmentMono-Regular.ttf)
 
 # the window (3.0, the rig) and the recorders it reads
+# Which fly lives inside (Source/flies/): malecns (Janelia's male CNS, CC BY 4.0; the default since 3.1)
+# or flywire (FlyWire 783, CC BY-NC 4.0: not for sale without FlyWire's permission)
+set(DENDRITE_FLY "malecns" CACHE STRING "The fly inside: malecns or flywire")
+set_property(CACHE DENDRITE_FLY PROPERTY STRINGS flywire malecns)
+if(NOT DENDRITE_FLY MATCHES "^(flywire|malecns)$")
+    message(FATAL_ERROR "DENDRITE_FLY must be flywire or malecns")
+endif()
+set(DENDRITE_FLY_SOURCES Source/flies/${DENDRITE_FLY}/FlyData.cpp)
+if(DENDRITE_FLY STREQUAL "flywire")
+    add_compile_definitions(DENDRITE_FLY_FLYWIRE=1)
+endif()
+message(STATUS "dendrite: the fly inside is ${DENDRITE_FLY}")
+
 set(DENDRITE_UI_SOURCES
     Source/Editor.cpp
     Source/ui/Rig.cpp
@@ -63,7 +76,7 @@ set(DENDRITE_UI_SOURCES
     Source/ui/Log.cpp
     Source/ui/HostFocus.cpp
     Source/rig/Recording.cpp
-    Source/rig/Identities.cpp)
+    Source/flies/${DENDRITE_FLY}/Identities.cpp)
 
 set(DENDRITE_DSP_SOURCES
     Source/dsp/Echo.cpp
@@ -72,7 +85,7 @@ set(DENDRITE_DSP_SOURCES
     Source/dsp/Creature.cpp
     Source/dsp/Hand.cpp
     Source/dsp/Fly.cpp
-    Source/dsp/FlyData.cpp
+    ${DENDRITE_FLY_SOURCES}
     Source/keep/Keep.cpp)
 
 target_sources(dendrite PRIVATE
@@ -100,7 +113,7 @@ target_link_libraries(dendrite
 # Local tools (not built in CI): the offline renderer and a window snapshot.
 option(DENDRITE_TOOLS "Build the offline renderer and the window snapshot tool" OFF)
 if(DENDRITE_TOOLS)
-    add_executable(dendrite_render tools/render/render.cpp Source/dsp/Echo.cpp Source/dsp/Itch.cpp Source/dsp/Engine.cpp Source/dsp/Creature.cpp Source/dsp/Hand.cpp Source/dsp/Fly.cpp Source/dsp/FlyData.cpp)
+    add_executable(dendrite_render tools/render/render.cpp Source/dsp/Echo.cpp Source/dsp/Itch.cpp Source/dsp/Engine.cpp Source/dsp/Creature.cpp Source/dsp/Hand.cpp Source/dsp/Fly.cpp ${DENDRITE_FLY_SOURCES})
     target_include_directories(dendrite_render PRIVATE Source)
 
     juce_add_console_app(dendrite_snapshot PRODUCT_NAME "dendrite_snapshot")
