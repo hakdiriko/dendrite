@@ -1,6 +1,6 @@
 """How a whole-brain run (sim.py) behaves, by the numbers dendrite reads: neurons that fired, the brain's spike
 rate, and the rates of the escape neurons, DNg11 (grooming), DNa01/02 (steering) per side, over the run.
-usage (in tools/fly): [FLY=malecns] python3 compare_runs.py run.npz [run.npz ...]"""
+usage (in tools/fly): [FLY=flywire] python3 compare_runs.py run.npz [run.npz ...]"""
 import sys, numpy as np
 runs = sys.argv[1:]; sys.argv = ['x']
 import sim

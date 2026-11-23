@@ -33,9 +33,9 @@ jobs:
       matrix:
         # While Hakan tests on Windows, pushes build Windows and Linux (the audit) only.
         # Run the workflow by hand (workflow_dispatch), or push a v* tag, to add the Mac build.
-        # The -male entries build the same plug-in with Janelia's male fly inside (DENDRITE_FLY=malecns),
-        # validated and audited the same way; they make no release packages.
-        include: ${{ fromJSON((github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"macos","runner":"macos-15","pluginval-zip":"pluginval_macOS.zip","pluginval-bin":"./pluginval.app/Contents/MacOS/pluginval"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"},{"os-name":"windows-male","fly":"malecns","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"linux-male","fly":"malecns","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]' || '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"},{"os-name":"windows-male","fly":"malecns","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"linux-male","fly":"malecns","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]') }}
+        # Since 3.1 the fly inside is Janelia's male (DENDRITE_FLY=malecns, CC BY). linux-flywire keeps the
+        # FlyWire fly (CC BY-NC) building, validated and audited the same way; it makes no release packages.
+        include: ${{ fromJSON((github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"macos","runner":"macos-15","pluginval-zip":"pluginval_macOS.zip","pluginval-bin":"./pluginval.app/Contents/MacOS/pluginval"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"},{"os-name":"linux-flywire","fly":"flywire","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]' || '[{"os-name":"windows","runner":"windows-2022","pluginval-zip":"pluginval_Windows.zip","pluginval-bin":"./pluginval.exe"},{"os-name":"linux","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"},{"os-name":"linux-flywire","fly":"flywire","runner":"ubuntu-24.04","pluginval-zip":"pluginval_Linux.zip","pluginval-bin":"./pluginval"}]') }}
     defaults:
       run:
         shell: bash
@@ -58,7 +58,7 @@ jobs:
 
       - name: Configure and build
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DDENDRITE_FLY=${{ matrix.fly || 'flywire' }}
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DDENDRITE_FLY=${{ matrix.fly || 'malecns' }}
           cmake --build build --config Release --parallel 4
 
       # GitHub's release downloads can fail for minutes at a time (504), so keep the zips in
@@ -122,7 +122,7 @@ jobs:
           mkdir -p dist
           cp -R "$BUNDLE_DIR/VST3/dendrite.vst3" dist/
           cp "$MANUAL" dist/
-          if [ "${{ matrix.fly }}" = "malecns" ]; then cp packaging/CREDITS-malecns.txt dist/CREDITS.txt; fi
+          cp packaging/CREDITS.txt dist/
 
       - name: Windows VST3 for Live
         if: runner.os == 'Windows'

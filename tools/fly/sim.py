@@ -13,7 +13,7 @@ READOUT = {'groomGain': 1.0, 'leanGain': 1.0, 'excitedScale': 1.0, 'feelingRest'
 INH = 1.0  # inhibitory synapses' extra weight (malecns.py)
 GAIN = {}  # per (sense, side): input rate scale for a fly whose senses were reconstructed differently (malecns.py)
 
-FLY = os.environ.get('FLY', 'flywire')  # flywire: the 783 female brain (CC BY-NC); malecns: Janelia's male brain (CC BY)
+FLY = os.environ.get('FLY', 'malecns')  # malecns: Janelia's male brain (CC BY, dendrite's fly since 3.1); flywire: the 783 female brain (CC BY-NC)
 
 def load():
     global WSYN, GAIN, INH, READOUT

@@ -1,7 +1,7 @@
 """The reflex cut for any fly: every neuron that fired in the given sim.py runs, plus every sense neuron and
 every neuron dendrite reads (escape, grooming, steering).
 (prune.py made the FlyWire fly's cut from its eight pieces by name; this takes the runs as arguments.)
-usage (in tools/fly): [FLY=malecns] python3 prune_runs.py keep.npy run1.npz [run2.npz ...]"""
+usage (in tools/fly): [FLY=flywire] python3 prune_runs.py keep.npy run1.npz [run2.npz ...]"""
 import sys, numpy as np
 out, runs = sys.argv[1], sys.argv[2:]
 sys.argv = ['x']

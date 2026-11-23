@@ -1,5 +1,5 @@
 // The fly: the itch is a real fly's nervous system. The part of its brain that answers music
-// (FlyData.h: 11,705 neurons from the FlyWire connectome) runs live as Shiu et al. (2024) run the
+// (FlyData.h: since 3.1 13,065 neurons of Janelia's male CNS; until 3.0 11,705 from FlyWire) runs live as Shiu et al. (2024) run the
 // whole brain: leaky integrate-and-fire neurons, each connection as strong as its synapse count,
 // excitatory or inhibitory by its transmitter. Nothing about its wiring is designed here.
 //

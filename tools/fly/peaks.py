@@ -1,6 +1,6 @@
 """Peaks of what the reflexes read, from a sim.py run: escape (DNp01/02/04/11) and DNg11, smoothed as Fly.cpp
 smooths them (30 ms and 150 ms), as percentiles over the run, and how often escape crosses 45 Hz.
-usage (in tools/fly): [FLY=malecns] python3 peaks.py run.npz [...]"""
+usage (in tools/fly): [FLY=flywire] python3 peaks.py run.npz [...]"""
 import sys, numpy as np
 runs = sys.argv[1:]; sys.argv = ['x']
 import sim
