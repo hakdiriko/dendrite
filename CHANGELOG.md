@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.1.0 (imaging: the same spikes, seen by different instruments)
+## 3.2.0 (imaging: the same spikes, seen by different instruments)
 
 Hakan picked from the research page "dendrite, imaged" (kept in `docs/research/imaging/`): several imaging methods the player chooses between, 2-DG visible in the dark as a small brain, and the goniometer. Built on the male fly. The sound does not change (null test below).
 
@@ -9,16 +9,18 @@ Hakan picked from the research page "dendrite, imaged" (kept in `docs/research/i
 - **The goniometer**: drag the dial to turn (across, a half turn each way) and tilt (up, a quarter turn) the specimen; shift: fine; double-click: frontal. Every neuron sits at its real depth from its atlas (`tools/rig/depth.py`, x and y proven against FlyData), so any angle is a true projection; the male's ascending neurons, whose bodies sit in the nerve cord, trail behind the brain. Region labels show only from the front. The electrode stays the same control (feed, space) and records whatever the projection puts under its tip.
 - The method and the angles are saved with the set (in the "rig" child); older sets open frontal on the trace.
 - The snapshot tool takes `DENDRITE_IMAGING`, `DENDRITE_YAW`, `DENDRITE_PITCH` and `DENDRITE_TURN`.
-- **The sound is bit-identical.** `tools/nulltest` on main (3.0.0) and on this branch (FlyWire build), loop and drums, 48 kHz/512 and 44.1 kHz/333: 4 of 4 identical to the bit. Nothing new runs on the audio thread.
+- **The sound is bit-identical.** `tools/nulltest` on 3.0.0 and on this branch (FlyWire build), loop and drums, 48 kHz/512 and 44.1 kHz/333: 4 of 4 identical to the bit. Nothing new runs on the audio thread.
 - The manual's map section names the rail.
 
-## Unreleased (the male fly, an A/B)
+## 3.1.0 (the male fly)
 
-FlyWire's data are CC BY-NC (no selling without Princeton's permission). Janelia's male fly brain (male CNS v1.0, Berg et al. 2026) is CC BY: free to sell with credit. This adds it as a second fly you can load next to today's, so Hakan can hear whether it is as alive.
+FlyWire's data are CC BY-NC (no selling without Princeton's permission). Janelia's male fly brain (male CNS v1.0, Berg et al. 2026) is CC BY: free to sell with credit. On 2026-11-21 he was built as an A/B next to the FlyWire fly; on 2026-11-23 Hakan chose him. He is now the fly inside dendrite.
 
-- **Two flies, one switch.** The default build is today's fly, bit-identical to 3.0.0 (renderer on keys, groove and voice: identical to the bit). A second build carries the male fly: 13,065 of his 144,076 brain neurons, 1.76 M connections, with his ears, eyes, giant fiber, grooming and steering neurons, mushroom body and smell. CI builds it for Windows and Linux as `dendrite-windows-male-vst3` (with CREDITS.txt for Janelia).
+- **The male fly is the default.** 13,065 of his 144,076 brain neurons, 1.76 M connections, with his ears, eyes, giant fiber, grooming and steering neurons, mushroom body and smell. Every download carries CREDITS.txt for Janelia (CC BY 4.0), and the manual's footer credits him.
+- **The FlyWire fly stays buildable** (`-DDENDRITE_FLY=flywire`, CI's linux-flywire job), bit-identical to 3.0.0 (renderer on keys, groove and voice: identical to the bit), with its own credits (`packaging/CREDITS-flywire.txt`). It is not for sale without FlyWire's permission.
+- **Saved sets** open with all their settings. The fly's learned memory and the rig's history (scars, exposure) start fresh once, because they belonged to the FlyWire fly.
 - **Calibrated to sound like the same animal.** Janelia counts more synapses per connection and predicts transmitters a little differently, so each synapse weighs half as much, inhibition a little more, and each sense reaches his brain as hard as it reached hers. His grooming, steering, excitement and mood are read at the same scale. On six loops he itches about as often as she does (pad: 8 against 23 times a minute), jumps as often, and grooms as much; his steering neurons barely fire, so he turns less on grooves.
-- **The window** names him: "adult male, male cns v1.0", 754 x 496 um, hover shows Janelia body ids and types. The scale bar and legend move left when the map is narrower so the row fits.
+- **The window** names him: "adult male, male cns v1.0", 754 x 496 um, hover shows Janelia body ids and types. The manual says the same. The scale bar and legend move left when the map is narrower so the row fits.
 - About a quarter more CPU than the FlyWire fly.
 
 ## 3.0.0 (the preparation: the window becomes an electrophysiology rig)

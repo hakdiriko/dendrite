@@ -7,4 +7,4 @@ copy is https://claude.ai/artifact/WsHSV9aAyrMDf9TziXV672).
 
 Hakan's picks (2026-11-23): two-photon yes, voltage (ASAP2f) yes, 2-deoxyglucose yes, tractography
 yes, the goniometer yes; the window glowing as long as the echo, light-sheet, photon counting and
-Golgi maybe; fMRI no, micro-CT no. Built in 3.1.0 (see CHANGELOG.md). The XY crosshair stays for now.
+Golgi maybe; fMRI no, micro-CT no. Built in 3.2.0 (see CHANGELOG.md). The XY crosshair stays for now.

@@ -1,4 +1,4 @@
-// The specimen (3.0): the fly's 11,705 neurons at the places FlyWire mapped them, seen from the
+// The specimen (3.0): the cut's neurons at the places their atlas mapped them (since 3.1 Janelia's male CNS), seen from the
 // front, each one a point. A point is as bright as its own firing over the last 300 ms; under
 // that, every spike of this session leaves it a little brighter for good (the exposure). A
 // neuron that has not fired sits at the floor. Nothing moves unless a neuron fired.
@@ -7,7 +7,7 @@
 // (right), the same two parameters. Its tip records the neurons within 25 um of it. Pressing
 // anywhere else on the specimen holds the throw (the stimulus), as pressing the dark did.
 //
-// 3.1: the rail on the right. The imaging method picks which memory of the same spikes the plate
+// 3.2: the rail on the right. The imaging method picks which memory of the same spikes the plate
 // shows (rig::Recording keeps them all); the small brain under it is this session's 2-DG uptake,
 // and pressing it plays how the uptake built up. The goniometer turns the specimen: each neuron
 // has its real depth (rig/Depth.h), so the plate is a true projection at any angle.

@@ -8,7 +8,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(dendrite VERSION 3.1.0 LANGUAGES C CXX)
+project(dendrite VERSION 3.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,15 +52,16 @@ juce_add_binary_data(dendrite_fonts
         Resources/fonts/FragmentMono-Regular.ttf)
 
 # the window (3.0, the rig) and the recorders it reads
-# Which fly lives inside (Source/flies/): flywire (FlyWire 783, CC BY-NC 4.0) or malecns (Janelia's male CNS, CC BY 4.0)
-set(DENDRITE_FLY "flywire" CACHE STRING "The fly inside: flywire or malecns")
+# Which fly lives inside (Source/flies/): malecns (Janelia's male CNS, CC BY 4.0; the default since 3.1)
+# or flywire (FlyWire 783, CC BY-NC 4.0: not for sale without FlyWire's permission)
+set(DENDRITE_FLY "malecns" CACHE STRING "The fly inside: malecns or flywire")
 set_property(CACHE DENDRITE_FLY PROPERTY STRINGS flywire malecns)
 if(NOT DENDRITE_FLY MATCHES "^(flywire|malecns)$")
     message(FATAL_ERROR "DENDRITE_FLY must be flywire or malecns")
 endif()
 set(DENDRITE_FLY_SOURCES Source/flies/${DENDRITE_FLY}/FlyData.cpp)
-if(DENDRITE_FLY STREQUAL "malecns")
-    add_compile_definitions(DENDRITE_FLY_MALECNS=1)
+if(DENDRITE_FLY STREQUAL "flywire")
+    add_compile_definitions(DENDRITE_FLY_FLYWIRE=1)
 endif()
 message(STATUS "dendrite: the fly inside is ${DENDRITE_FLY}")
 
@@ -144,7 +145,7 @@ if(DENDRITE_TOOLS)
     target_sources(dendrite_nulltest PRIVATE tools/nulltest/nulltest.cpp ${dendrite_snapshot_sources})
     target_include_directories(dendrite_nulltest PRIVATE Source)
     target_compile_definitions(dendrite_nulltest PRIVATE
-        JucePlugin_Name="dendrite" JucePlugin_VersionString="3.1.0"
+        JucePlugin_Name="dendrite" JucePlugin_VersionString="3.2.0"
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(dendrite_nulltest PRIVATE dendrite_fonts juce::juce_audio_utils juce::juce_recommended_config_flags)
 endif()

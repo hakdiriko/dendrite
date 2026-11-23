@@ -10,7 +10,7 @@
 //   scars     at each reflex, the 64 neurons that were firing hardest; burned in, never removed,
 //             saved with the set (per neuron: how many scars, and when the last one was made)
 //   log       what happened, with the session clock; this session only
-// and for the imaging methods (3.1), each a different memory of the same spikes:
+// and for the imaging methods (3.2), each a different memory of the same spikes:
 //   calcium   GCaMP6s as a kernel on each neuron's spikes (rises in 0.1 s, decays in 0.8 s)
 //   frame     the spikes of the last tick alone (voltage imaging: the indicator forgets in 2.5 ms)
 //   photons   each neuron's spikes over the last second (photon counting: one spike, one photon)

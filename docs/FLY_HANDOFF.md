@@ -2,14 +2,14 @@
 
 How dendrite's itch became a real fly's brain, how it works, and where it stands. It is written so another agent, thread or a separate product (Hakan has floated selling the fly as an add-on) can take it over cold. Keep it current: when the fly changes, change this file in the same commit.
 
-Last updated: 2026-11-21 (section 4 has the male fly, an A/B; section 3 the per-fly folders). Before that: 2026-11-14, version 2.4.0 (section 5b is new: read it before the Reflexes section, which describes the 2.3 body, still there behind `setMusical (false)`). Main holds 2.2.1 (PR #9 and #10 merged on 2026-11-14). The fly is now worked on in its own project ("fly"); standard dendrite (echo, window) continues in the other project. The fly project touches only `Fly*`, `FlyData*`, `FlyBrain*`, `tools/fly/` and the small hooks that connect them (Engine, Echo's Touch, Processor's fly state).
+Last updated: 2026-11-23: since 3.1.0 the fly is Janelia's male (section 4); the FlyWire fly below is the history and a build option (`-DDENDRITE_FLY=flywire`). Section 3 has the per-fly folders. Every tool in tools/fly now defaults to the male (`FLY=flywire` for the old one); numbers measured before 2026-11-21 are the FlyWire fly's. Before that: 2026-11-14, version 2.4.0 (section 5b is new: read it before the Reflexes section, which describes the 2.3 body, still there behind `setMusical (false)`). Main holds 2.2.1 (PR #9 and #10 merged on 2026-11-14). The fly is now worked on in its own project ("fly"); standard dendrite (echo, window) continues in the other project. The fly project touches only `Fly*`, `FlyData*`, `FlyBrain*`, `tools/fly/` and the small hooks that connect them (Engine, Echo's Touch, Processor's fly state).
 
 ## 0. Start here (first hour for whoever takes it over)
 
 1. Read `CLAUDE.md`, `docs/PROJECT_BRIEF.md` and `docs/DSP_PLAYBOOK.md`, then this file to the end.
 2. Build the renderer:
    ```
-   g++ -O3 -march=x86-64-v2 -std=c++20 -I Source tools/render/render.cpp Source/dsp/*.cpp Source/flies/flywire/FlyData.cpp -o build/render
+   g++ -O3 -march=x86-64-v2 -std=c++20 -I Source tools/render/render.cpp Source/dsp/*.cpp Source/flies/malecns/FlyData.cpp -o build/render
    ```
 3. Hear it. Render any loop twice:
    - `build/render loop.wav out.wav --repeat 16 --fly-log fly.csv` is the fly with its inner life;
@@ -78,7 +78,7 @@ It is **not trained**. "Training" so far only means it learns during use; taste 
 | Path | What |
 |---|---|
 | `Source/dsp/Fly.h`, `Fly.cpp` | The live fly. Senses, LIF brain, inner life, reflexes, the Touch it outputs. No JUCE; pure C++20. |
-| `Source/flies/<fly>/` | One folder per fly (since 2026-11-21): `flywire` (the default, FlyWire 783) and `malecns` (Janelia's male CNS, an A/B). Each holds `FlyData.h/.cpp` (the generated brain, never edit by hand; regenerate with `tools/fly/export.py`), `Atlas.h` (synapse weight, inhibition, sense gains, readout calibration, box, names) and `Identities.h/.cpp` (who each neuron is). CMake `-DDENDRITE_FLY=flywire|malecns` picks one; `Source/dsp/FlyData.h` and `Source/rig/Identities.h` are wrappers. |
+| `Source/flies/<fly>/` | One folder per fly (since 2026-11-21): `malecns` (Janelia's male CNS, the default since 3.1.0) and `flywire` (FlyWire 783, the fly of 2.1 to 3.0). Each holds `FlyData.h/.cpp` (the generated brain, never edit by hand; regenerate with `tools/fly/export.py`), `Atlas.h` (synapse weight, inhibition, sense gains, readout calibration, box, names) and `Identities.h/.cpp` (who each neuron is). CMake `-DDENDRITE_FLY=malecns|flywire` picks one (the renderer: `-DDENDRITE_FLY_FLYWIRE=1` and the flywire FlyData.cpp for the old fly); `Source/dsp/FlyData.h` and `Source/rig/Identities.h` are wrappers. |
 | `Source/dsp/Hand.h` | Defines `Touch`, the fly's only output to the echo: speed, feed, space, band, bandHz, freeze, throwing, lift. |
 | `Source/dsp/Engine.cpp` | Owns `Fly fly`. Sets awake from the itch knob (`awakeFor`), sets `emptyBandHz`, calls `fly.process(l, r)` per sample, passes the Touch to `echo.setTouch`. `useFly(bool)` (default on) skips the heads. |
 | `Source/dsp/Echo.cpp` | Applies the Touch (look for `touchNow`). |
@@ -104,9 +104,9 @@ Raw data (about 135 MB) goes in `tools/fly/data/`. It is not in the repo; in ses
 
 **Credit (keep it in any product):** FlyWire connectome, Dorkenwald et al. 2024 and Schlegel et al. 2024 (Nature); model after Shiu et al. 2024 (Nature). **Licence:** the FlyWire data are released for open use with citation, and Shiu's code is MIT. 2026-11-21: FlyWire's data licence is CC BY-NC 4.0 (non-commercial); selling needs Princeton's permission (Hakan asked). The male fly below is the CC BY alternative.
 
-### The male fly (2026-11-21, an A/B)
+### The male fly (built 2026-11-21 as an A/B; dendrite's fly since 3.1.0, 2026-11-23)
 
-FlyWire's data are CC BY-NC 4.0, so selling dendrite with them needs Princeton's permission. Janelia's male CNS v1.0 (Berg et al., Cell 2026) is CC BY 4.0: anyone may sell with credit (`packaging/CREDITS-malecns.txt`). `tools/fly/malecns.py` loads it in sim.py's shape (`FLY=malecns` for every tool in tools/fly), brain only (both optic lobes, no nerve cord): 144,076 neurons, 21.9 M connections. Data: the public bucket `gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/` (three feathers, about 570 MB, plus `syn-partners` (3 GB) once for places), in `tools/fly/data/malecns/`.
+FlyWire's data are CC BY-NC 4.0, so selling dendrite with them needs Princeton's permission. Janelia's male CNS v1.0 (Berg et al., Cell 2026) is CC BY 4.0: anyone may sell with credit (`packaging/CREDITS.txt`; FlyWire's are in `CREDITS-flywire.txt`). `tools/fly/malecns.py` loads it in sim.py's shape (the default for every tool in tools/fly since 3.1; `FLY=flywire` for the old fly), brain only (both optic lobes, no nerve cord): 144,076 neurons, 21.9 M connections. Data: the public bucket `gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/` (three feathers, about 570 MB, plus `syn-partners` (3 GB) once for places), in `tools/fly/data/malecns/`.
 
 Its calibration, each measured against the FlyWire fly on the same music (details in malecns.py):
 - synapse 0.275 / 2.0 mV (Janelia finds about 1.77 times more synapses per connection), inhibitory synapses x 1.17 (back to FlyWire's 40.4% inhibitory share; without it the central complex and DNg33 fire on their own);
@@ -369,4 +369,4 @@ A preference model (Bradley-Terry over his picks) or a simple evolution strategy
 - Non-ASCII in C++ strings must be escapes (for example `"\xc2\xb7"`).
 - In export.py, floats must be printed with a decimal point or exponent (`'{:.5e}f'`): `1f` is not a valid C++ literal.
 - `/mnt/project-files` is a network mount: write, then re-read after a few seconds.
-- The renderer needs no JUCE: `g++ -O3 -march=x86-64-v2 -std=c++20 -I Source tools/render/render.cpp Source/dsp/*.cpp Source/flies/flywire/FlyData.cpp -o build/render`.
+- The renderer needs no JUCE: `g++ -O3 -march=x86-64-v2 -std=c++20 -I Source tools/render/render.cpp Source/dsp/*.cpp Source/flies/malecns/FlyData.cpp -o build/render`.

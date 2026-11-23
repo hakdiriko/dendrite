@@ -228,7 +228,7 @@ juce::ValueTree Recording::save() const
     rig.setProperty ("exposure", juce::Base64::toBase64 (packed.getData(), packed.getDataSize()), nullptr);
     // the history this set carries: what it came with plus this session
     rig.setProperty ("seconds", savedLived + std::max (0.0, now - started), nullptr);
-    // how it was being looked at (3.1)
+    // how it was being looked at (3.2)
     rig.setProperty ("imaging", juce::String (methodName (method.load())), nullptr);
     rig.setProperty ("yaw", yaw.load(), nullptr);
     rig.setProperty ("pitch", pitch.load(), nullptr);
@@ -240,7 +240,7 @@ void Recording::load (const juce::ValueTree& rig)
     // a later version adds fields; it never changes these, so anything from version 1 on loads
     if (! rig.hasType (tag) || (int) rig.getProperty ("version", 0) < 1 || (int) rig.getProperty ("neurons", 0) != neurons)
         return;
-    // how it was being looked at (absent before 3.1: the frontal trace)
+    // how it was being looked at (absent before 3.2: the frontal trace)
     {
         const auto name = rig.getProperty ("imaging", "trace").toString();
         for (int m = 0; m < methods; ++m)

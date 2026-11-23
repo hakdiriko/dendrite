@@ -2,8 +2,8 @@
 // build holds; generated per fly by tools/rig/depth.py, the place proven against FlyData's).
 #pragma once
 
-#if defined (DENDRITE_FLY_MALECNS)
- #include "../flies/malecns/Depth.h"
-#else
+#if defined (DENDRITE_FLY_FLYWIRE)
  #include "../flies/flywire/Depth.h"
+#else
+ #include "../flies/malecns/Depth.h"
 #endif
