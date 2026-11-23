@@ -8,7 +8,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(dendrite VERSION 3.0.0 LANGUAGES C CXX)
+project(dendrite VERSION 3.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -75,7 +75,8 @@ set(DENDRITE_UI_SOURCES
     Source/ui/Log.cpp
     Source/ui/HostFocus.cpp
     Source/rig/Recording.cpp
-    Source/flies/${DENDRITE_FLY}/Identities.cpp)
+    Source/flies/${DENDRITE_FLY}/Identities.cpp
+    Source/flies/${DENDRITE_FLY}/Depth.cpp)
 
 set(DENDRITE_DSP_SOURCES
     Source/dsp/Echo.cpp
@@ -143,7 +144,7 @@ if(DENDRITE_TOOLS)
     target_sources(dendrite_nulltest PRIVATE tools/nulltest/nulltest.cpp ${dendrite_snapshot_sources})
     target_include_directories(dendrite_nulltest PRIVATE Source)
     target_compile_definitions(dendrite_nulltest PRIVATE
-        JucePlugin_Name="dendrite" JucePlugin_VersionString="3.0.0"
+        JucePlugin_Name="dendrite" JucePlugin_VersionString="3.1.0"
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(dendrite_nulltest PRIVATE dendrite_fonts juce::juce_audio_utils juce::juce_recommended_config_flags)
 endif()

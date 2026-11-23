@@ -1,0 +1,281 @@
+<title>dendrite, imaged</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* layout: one long lab notebook, a narrow text column beside wide plates; the rig's own black and five greys */
+:root {
+  --bg: #000000;
+  --plate: #0b0b0b;
+  --floor: #1f1f1f;
+  --dim: #474747;
+  --mid: #7a7a7a;
+  --bright: #b8b8b8;
+  --live: #f2f2f2;
+  --mono: "Fragment Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--bright); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 40px 120px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { display: grid; gap: 6px; border-bottom: 1px solid var(--floor); padding-bottom: 22px; }
+.eyebrow, .k { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--mid); text-transform: lowercase; }
+h1 { font-family: var(--mono); font-weight: 400; font-size: clamp(26px, 4vw, 40px); color: var(--live); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+h2 { font-family: var(--mono); font-weight: 400; font-size: 22px; color: var(--live); margin: 0; text-wrap: balance; }
+h3 { font-family: var(--mono); font-weight: 400; font-size: 16px; color: var(--live); margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 18px; color: var(--bright); max-width: 70ch; }
+section { display: grid; gap: 22px; padding-block: 56px 8px; border-bottom: 1px solid var(--floor); }
+.sechead { display: grid; gap: 8px; }
+.num { font-family: var(--mono); color: var(--mid); font-size: 13px; }
+.prose { display: grid; gap: 14px; }
+.prose strong { color: var(--live); font-weight: 500; }
+figure { margin: 0; display: grid; gap: 8px; }
+figure img, figure video { width: 100%; height: auto; display: block; border: 1px solid var(--floor); background: var(--plate); }
+figcaption { font-family: var(--mono); font-size: 12px; color: var(--mid); }
+table { border-collapse: collapse; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; width: 100%; }
+.tablewrap { overflow-x: auto; }
+th, td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--floor); vertical-align: top; }
+th { color: var(--mid); font-weight: 400; }
+td.n, th.n { text-align: right; }
+td { color: var(--bright); }
+td.live { color: var(--live); }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; }
+@media (max-width: 820px) { .two { grid-template-columns: minmax(0, 1fr); } }
+
+/* concept cards: a plate, its name, what it is, and the pick */
+.cards { display: grid; gap: 34px; }
+.card { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .card { grid-template-columns: minmax(0, 1fr); } }
+.card .body { display: grid; gap: 10px; min-width: 0; }
+.card .tag { font-family: var(--mono); font-size: 12px; color: var(--mid); }
+.card p { font-size: 15px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: 14px; }
+.facts .k { padding-top: 2px; }
+.pick { display: flex; gap: 0; margin-top: 6px; border: 1px solid var(--dim); width: max-content; }
+.pick button { font-family: var(--mono); font-size: 13px; background: transparent; color: var(--mid); border: 0; border-right: 1px solid var(--dim); padding: 7px 14px; cursor: pointer; }
+.pick button:last-child { border-right: 0; }
+.pick button:hover { color: var(--live); }
+.pick button:focus-visible { outline: 1px solid var(--live); outline-offset: 2px; }
+.pick button[aria-pressed="true"] { background: var(--live); color: var(--bg); }
+.ideas { display: grid; gap: 16px; }
+.idea { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 6px 22px; padding-block: 14px; border-top: 1px solid var(--floor); align-items: start; }
+.idea .body { display: grid; gap: 4px; min-width: 0; }
+.idea p { font-size: 15px; }
+.idea .cost { font-family: var(--mono); font-size: 12px; color: var(--mid); }
+@media (max-width: 700px) { .idea { grid-template-columns: minmax(0, 1fr); } }
+.tally { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--dim); padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-family: var(--mono); font-size: 13px; color: var(--bright); display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.tally .state { color: var(--mid); }
+.tally button { font-family: var(--mono); font-size: 13px; background: transparent; color: var(--live); border: 1px solid var(--dim); padding: 6px 12px; cursor: pointer; }
+.sources { font-size: 14px; display: grid; gap: 6px; }
+.sources a { color: var(--bright); }
+a { color: var(--live); }
+.note { font-family: var(--mono); font-size: 12px; color: var(--mid); max-width: 90ch; }
+@media (prefers-reduced-motion: reduce) { video { display: none; } }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">dendrite · the male fly (janelia male cns v1.0) · groove loop · 21 november 2026</div>
+  <h1>dendrite, imaged</h1>
+  <p class="lede">Your four questions, answered with measurements and renders. Almost every image here is made from real data: the fly's own spikes from dendrite's engine, and this exact fly's own micro-CT, electron micrographs, synapse map and neuron shapes from Janelia. Tick yes, maybe or no on each concept. Your picks are saved here and I read them back.</p>
+</header>
+
+<section id="cut">
+  <div class="sechead">
+    <span class="num">question 1</span>
+    <h2>Why 13,065 of 144,076 neurons</h2>
+  </div>
+  <figure>
+    <img src="img/q1-dark-brain.png" alt="Front view of all male brain somata; the cut neurons lit by their firing on a minute of groove, the rest grey." loading="lazy">
+    <figcaption>every soma of the male brain. white: the neurons that fired in dendrite on one minute of groove. grey: the ones that never did.</figcaption>
+  </figure>
+  <div class="two">
+    <div class="prose">
+      <p><strong>The short answer: the other 131,011 neurons never fire on music, and a neuron that never fires changes nothing.</strong> In this model (Shiu et al. 2024, the one dendrite runs), neurons only talk through spikes. A silent neuron sends nothing, so removing it leaves every other spike exactly where it was. The cut is the whole brain, spike for spike, on the music it was cut on.</p>
+      <p><strong>Why are they silent? Because the music only enters through three doors.</strong> Dendrite feeds sound into 834 sense neurons: the ears (Johnston's organ), the looming detectors of the eyes (LPLC2, LC4), and smell. Within three synapses, that signal reaches 143,838 of the 144,076 neurons (99.8%). So it reaches almost everything, but only as a whisper. A neuron here fires when about 50 synapses' worth of input lands within its 20 ms memory (7 mV from rest to threshold, 0.14 mV a synapse). Only 10,914 neurons get that much on the groove.</p>
+      <p><strong>Most of the brain waits for senses we don't give it.</strong> 65% of the brain is the optic lobes (93,493 neurons). They need a picture: 800 little eyes, moving edges, colour. Dendrite gives the eyes a shortcut (a loudness swell that looks like something coming closer), so only 1.3% of the optic lobes ever fire. The rest of the dark brain waits for taste, temperature, the legs and wings, gravity and the clock.</p>
+    </div>
+    <div class="prose">
+      <h3>What the whole brain would cost</h3>
+      <div class="tablewrap"><table>
+        <tr><th></th><th class="n">the cut</th><th class="n">whole brain</th></tr>
+        <tr><td>neurons</td><td class="n">13,065</td><td class="n">144,076</td></tr>
+        <tr><td>connections</td><td class="n">1.76 M</td><td class="n">21.9 M</td></tr>
+        <tr><td>synapses</td><td class="n">12.7 M</td><td class="n">107.4 M</td></tr>
+        <tr><td>wiring in memory</td><td class="n">14 MB</td><td class="n">175 MB</td></tr>
+        <tr><td>one core, silent</td><td class="n">2.8%</td><td class="n">28%</td></tr>
+        <tr><td>one core, hearing a steady sound</td><td class="n">4 to 19%</td><td class="n live">110 to 250%</td></tr>
+        <tr><td>whole plug-in today</td><td class="n">~15%</td><td class="n">-</td></tr>
+      </table></div>
+      <p class="note">measured here: a benchmark of dendrite's own brain step (the same lif neurons, 0.5 ms step, 2.5 ms delay, restless kicks) on both wirings, 20 s each, one core of the cloud machine. the plug-in's 15% is the male fly rendering the groove.</p>
+      <p>So a whole-brain fly would need one to two and a half whole CPU cores for one plug-in, against 15% now. Its 175 MB of wiring doesn't fit in the processor's cache, so every spike becomes a trip to slow memory. The plug-in file would grow by about 200 MB. And today's wiring format counts neurons with 16 bits, so it stops at 65,535.</p>
+      <p><strong>One honest caveat.</strong> The cut is exact for the music it was cut on. In my benchmark, a steady buzz on every ear and eye (no tiring, unlike real music) woke 2,892 neurons outside the cut. New kinds of sound can wake neurons we cut away. That is a reason to re-cut on Hakan's own loops, not to run the whole brain.</p>
+    </div>
+  </div>
+  <h3>What a bigger fly could add</h3>
+  <div class="ideas">
+    <div class="idea" data-id="q1-eyes"><div class="body"><h3>Eyes that see the music</h3><p>Show the fly a picture of the sound: the spectrogram scrolling past its 800 little eyes. Its motion detectors (T4 and T5, 13,580 neurons) would see a rising pitch as an edge moving up. Its object detectors would treat a note as a small moving thing, and a swelling chord as something about to hit it. The looming reflex would come from real shapes, not from our loudness shortcut.</p><span class="cost">cost: +93k neurons, ~1 to 2 cores. possible as a slower second brain (below)</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q1-slowmind"><div class="body"><h3>Two brains at two speeds</h3><p>Keep the 13k reflex brain in the audio thread, where it must never be late. Run the whole 144k brain on a background thread, a few hundred milliseconds behind, as the fly's slow mind. It would feed the moods, fear and attention, and it could never cause a click, because the audio thread only reads what it last said.</p><span class="cost">cost: one background core while the window is open, or only while playing. real-time safe</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q1-song"><div class="body"><h3>The male's own song</h3><p>The male fly sings to a female with one wing: pulses about every 35 ms, and a hum near 150 Hz. The circuit is in this brain (P1 and pIP10 command it) and in the nerve cord (the pattern). With the nerve cord added, the fly could make a voice of its own, from its own wiring. It's a gamble: nobody has shown that this model sings by itself.</p><span class="cost">cost: +22k nerve-cord neurons; research first, offline</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q1-compass"><div class="body"><h3>The compass</h3><p>The central complex keeps the fly's heading as a bump of activity running around a ring (the 46 EPG neurons, already in the cut). Fed with your stereo image, the bump would follow where the sound sits, and the window could draw the real needle. It is cheap and visible, and it is honest.</p><span class="cost">cost: about 3k neurons, a few % of a core</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q1-recut"><div class="body"><h3>Re-cut on your own loops</h3><p>Run the whole brain offline on 20 of your loops (drums, voice, field recordings, full mixes) and keep every neuron that ever fired. The cut stays exact for the music you really make. It's the cheapest way to more brain.</p><span class="cost">cost: an hour offline; the cut might grow by a few thousand</span></div><div class="pick"></div></div>
+  </div>
+</section>
+
+<section id="past-light">
+  <div class="sechead">
+    <span class="num">question 2</span>
+    <h2>The past light, through every way of seeing a brain</h2>
+  </div>
+  <div class="prose">
+    <p><strong>How I read "past light":</strong> the light that stays after the firing is gone. In the 3.0 window, a neuron's brightness is the past: a 300 ms trace, plus the session's exposure. In sound, the same idea is the itch's afterglow. Every imaging method in science is, at heart, a choice of how long the past keeps glowing. Voltage imaging forgets in 3 ms; calcium in a second; fMRI shows what happened five seconds ago; a 2-deoxyglucose film keeps the whole session. So I rendered the same moment of the same fly through each one. The moment is 34.8 s into the groove, a reflex: the giant fiber at 71 Hz.</p>
+  </div>
+  <figure>
+    <img src="img/q2-past-light-kernels.png" alt="The giant fiber's real spikes over 30 seconds, shown through eight imaging time kernels, plus the echo's output level." loading="lazy">
+    <figcaption>one real spike train, eight memories of it. the bottom line is your echo, the sound's own afterglow.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card" data-id="q2-glow"><figure><img src="img/q2-e-glow-as-long-as-the-echo.png" alt="Three front views; the brain stays lit longer as feed rises." loading="lazy"></figure><div class="body"><span class="tag">my favourite · ties the picture to the sound</span><h3>The window glows as long as your echo</h3><p>The neurons' light decays with the echo's own measured tail. At whisper only the now is lit; at endless the last half minute still glows. You can see your echo's memory as the brain's memory.</p><div class="facts"><span class="k">measured</span><span>tail to -40 dB: 1.2 s, 16.2 s, 27.7 s</span><span class="k">changes</span><span>the window only</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-twophoton"><figure><img src="img/q2-two-photon.png" alt="A two-photon calcium optical section with active neuropil glowing." loading="lazy"></figure><div class="body"><span class="tag">calcium · the lab standard</span><h3>Two-photon calcium</h3><p>One optical section, gcamp6s. The real spikes are painted on each neuron's real synapse sites, so the glow sits in the neuropil where it would in a real fly. The past lasts about a second.</p><div class="facts"><span class="k">past light</span><span>~1 s</span><span class="k">real in flies</span><span>since about 2010</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-voltage"><figure><img src="img/q2-voltage.png" alt="A voltage imaging frame where firing neurons dim." loading="lazy"></figure><div class="body"><span class="tag">voltage · only the now</span><h3>Voltage imaging (asap2f)</h3><p>The only method with no past: the protein dims while the membrane fires and recovers in 3 ms. Here, firing is darkness. It's noisy and alive, a strange inversion for the rig.</p><div class="facts"><span class="k">past light</span><span>~3 ms</span><span class="k">real in flies</span><span>yang et al. 2016</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-lightsheet"><figure><img src="img/q2-light-sheet.png" alt="A contact sheet of twelve planes through the active brain." loading="lazy"></figure><div class="body"><span class="tag">volumetric</span><h3>Light-sheet contact sheet</h3><p>The whole brain at once as twelve planes, front to back, the way the microscope saves a volume. It's the natural home for "rotate" and "zoom", since the data is already 3D.</p><div class="facts"><span class="k">past light</span><span>~0.4 s</span><span class="k">real in flies</span><span>aimon 2019, mann 2017</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-fmri"><figure><img src="img/q2-fmri.png" alt="Three orthogonal MRI views with activation, and a BOLD time course." loading="lazy"></figure><div class="body"><span class="tag">a thought experiment</span><h3>fMRI, if a fly had blood</h3><p>Three views with a crosshair, as every fMRI viewer has. The activation is the real spikes through the textbook blood response, five seconds late. Flies breathe through air tubes and have no blood oxygen signal, so this can never be real. That's said on the image.</p><div class="facts"><span class="k">past light</span><span>5 s late, ~20 s long</span><span class="k">mr microscopy</span><span>12.5 µm in a live fly</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-2dg"><figure><img src="img/q2-autoradiograph.png" alt="A white autoradiograph film with dark silver grains where neurons worked." loading="lazy"></figure><div class="body"><span class="tag">the whole session · white paper</span><h3>2-deoxyglucose autoradiograph</h3><p>Everything since the session started, kept as silver grains on film. It's 3.0's exposure made physical, and the one bright image among the dark ones. It could become each take's portrait (see the ideas).</p><div class="facts"><span class="k">past light</span><span>forever</span><span class="k">real in flies</span><span>buchner, 1980s</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-photons"><figure><img src="img/q2-photons.png" alt="Single photon dots accumulating in the shape of the active brain." loading="lazy"></figure><div class="body"><span class="tag">light the neurons make themselves</span><h3>Photon counting (gfp-aequorin)</h3><p>No laser. The neurons glow by themselves when calcium rises, and a camera counts single photons. Each dot is one photon; you choose afterwards how long to sum them. It's the most literal "past light" there is.</p><div class="facts"><span class="k">past light</span><span>any window, chosen later</span><span class="k">real in flies</span><span>martin et al. 2007</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-tracts"><figure><img src="img/q2-tractography.png" alt="Fibre-like curves between neurons, brightest where spikes travelled." loading="lazy"></figure><div class="body"><span class="tag">the light path</span><h3>Tractography of the real wiring</h3><p>The 25,000 busiest of the cut's 1.76 million connections, drawn the way diffusion MRI draws fibre tracts, lit by the spikes that travelled them in the last second. These are the routes the light actually takes.</p><div class="facts"><span class="k">past light</span><span>the last second's traffic</span><span class="k">note</span><span>the curves are drawn, the links are real</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-golgi"><figure><img src="img/q2-golgi.png" alt="A Golgi-style ink drawing of 17 real neurons on paper." loading="lazy"></figure><div class="body"><span class="tag">cajal's eye · real shapes</span><h3>Golgi stain</h3><p>Seventeen real neurons drawn whole from Janelia's skeletons: both giant fibers, grooming and steering commands, an ear neuron, looming detectors, Kenyon cells, memory and dopamine neurons, a compass neuron. Black means it fired hard in the last second. The scars could become inked neurons like these.</p><div class="facts"><span class="k">past light</span><span>none (a fixed brain)</span><span class="k">real in flies</span><span>since the 1900s; mcfo today</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q2-ct"><figure><img src="img/q2-micro-ct.png" alt="Six X-ray renderings of the real fly brain turned on its axis." loading="lazy"></figure><div class="body"><span class="tag">the real specimen · x-ray</span><h3>Micro-CT of this very fly</h3><p>Janelia X-rayed this male's nervous system before slicing it for the electron microscope. This is the actual specimen whose neurons dendrite runs, turned on its axis. A CT can't see firing, so it's the body you hold, not the mind.</p><div class="facts"><span class="k">past light</span><span>none</span><span class="k">data</span><span>1.2 µm voxels, cc by 4.0</span></div><div class="pick"></div></div></div>
+  </div>
+</section>
+
+<section id="controls">
+  <div class="sechead">
+    <span class="num">question 3</span>
+    <h2>Replacing the XY crosshair</h2>
+  </div>
+  <div class="prose">
+    <p>The crosshair fails for a simple reason. Its two axes are abstract, so the hand has nothing to hold and the eye has nothing to read. Every concept below keeps the same two parameters (feed and space), the same ids and the same saved values. What changes is the gesture, and each gesture means something physical you can see. The press-anywhere throw stays.</p>
+  </div>
+  <div class="cards">
+    <div class="card" data-id="q3-zoom"><figure><img src="img/q3-zoom-into-the-light.png" alt="Five frames zooming from the whole brain to an 8 nm electron micrograph of the ear-to-giant-fiber synapse." loading="lazy"></figure><div class="body"><span class="tag">your idea: zoom into the light · real data</span><h3>Zoom into the light</h3><p>From the whole brain down to one synapse: the 709 places where the ear talks to the giant fiber. Every frame is a real electron micrograph of this fly, 122 times closer at the end. The giant fiber's membrane is traced in white from Janelia's segmentation.</p><div class="facts"><span class="k">scales</span><span>750 µm to 6 µm</span><span class="k">what it shows</span><span>the cause of every jump</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q3-objective"><figure><img src="img/q3-b-objective.png" alt="An objective turret control and four zoom levels mapped to feed." loading="lazy"></figure><div class="body"><span class="tag">control b · feed is how close you look</span><h3>The objective</h3><p>Turn the turret or scroll. Feed sets the magnification: at whisper you see the whole brain firing, and at endless you are among real vesicles at the electrode's tip. Space moves where in the brain you look. The echo's depth becomes visual depth.</p><div class="facts"><span class="k">feed</span><span>magnification 4x to em</span><span class="k">space</span><span>where you look</span><span class="k">cost</span><span>a ~40 MB atlas of em tiles</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q3-goniometer"><figure><video src="img/q3-a-goniometer.mp4" poster="img/q3-a-goniometer.png" autoplay muted loop playsinline aria-label="The brain's real neurons turning in 3D while firing to the groove."></video><img src="img/q3-a-goniometer.png" alt="The goniometer control: four rotated views, an engraved arc for space and a ruler for feed." loading="lazy"></figure><div class="body"><span class="tag">control a · your idea: rotate the brain</span><h3>The goniometer</h3><p>Drag sideways and the brain turns about its own axis: that's space, from inside (front view) to beyond (seen from behind). Drag up and it tips toward you: that's feed. Every neuron sits at its real 3D place and fires for real. The engraved arcs read in degrees and in words.</p><div class="facts"><span class="k">space</span><span>turn 0 to 180°</span><span class="k">feed</span><span>tip 0 to 75°</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q3-iris"><figure><img src="img/q3-c-focus-iris.png" alt="Three optical sections at different focus depths, each with an iris aperture." loading="lazy"></figure><div class="body"><span class="tag">control c · the microscope's two rings</span><h3>Focus and iris</h3><p>The focus ring moves the optical section from front to back (feed: deeper echo, deeper plane). The iris opens the aperture (space): wide open, one thin plane is sharp and the rest dissolves into halo, like a wide echo around your head. Closed, everything is near and sharp.</p><div class="facts"><span class="k">feed</span><span>focus depth in µm</span><span class="k">space</span><span>aperture, depth of field</span></div><div class="pick"></div></div></div>
+    <div class="card" data-id="q3-dials"><figure><img src="img/q3-d-dials.png" alt="Two engraved oscilloscope-style dials for feed and space." loading="lazy"></figure><div class="body"><span class="tag">control d · the fallback</span><h3>Two calibrated dials</h3><p>Two engraved dials like an oscilloscope's. You can read them from across the room. You lose the feeling of touching the specimen.</p><div class="pick"></div></div></div>
+  </div>
+</section>
+
+<section id="ideas">
+  <div class="sechead">
+    <span class="num">question 4</span>
+    <h2>More ideas, one or two per question</h2>
+  </div>
+  <div class="ideas">
+    <div class="idea" data-id="q4-portrait"><div class="body"><h3>Every take gets its portrait</h3><p>When keep saves a take for Live, it also saves a 2-deoxyglucose image of what the brain did during those bars: a brain-print of the sound. You'd get the WAV and its autoradiograph side by side in the log, and the picture could go with the file.</p><span class="cost">question 2 · window and keep</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q4-optogenetics"><div class="body"><h3>Optogenetics: press to light real neurons</h3><p>In labs, red light opens a channel (CsChrimson) and makes chosen neurons fire. Here, pressing on a region of the specimen would really make those neurons fire in the simulation. Press the ears and the fly hears a ghost; press the giant fiber and it jumps. The fly answers with its own reflex, so you play the fly instead of the echo.</p><span class="cost">question 3 · changes the sound: a new feature, an a/b build first</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q4-method-switch"><div class="body"><h3>A method switch on the rig</h3><p>One small selector: voltage, calcium, bold, 2-dg. It changes only how long the past glows and how it looks. The fly and the sound stay the same, so it's honest and cheap.</p><span class="cost">question 2 · window only</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q4-em-tip"><div class="body"><h3>The electrode shows its tissue</h3><p>A small inset at the electrode's tip shows the real electron micrograph of the tissue it sits in, with the busiest neuron's membrane traced. As you move it, you pass through real axons and synapses.</p><span class="cost">question 3 · window only, needs the em atlas</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q4-scars-inked"><div class="body"><h3>Scars drawn as whole neurons</h3><p>When a neuron is scarred, draw it whole, in Golgi ink, from its real skeleton. After an hour the window becomes a Cajal drawing of everything that hurt the fly.</p><span class="cost">question 2 · window only, needs skeletons of the cut (about 60 MB)</span></div><div class="pick"></div></div>
+    <div class="idea" data-id="q4-scrub"><div class="body"><h3>Scrub the past light</h3><p>Hold and drag back along the raster to see the brain as it was a few seconds or a minute ago. Keep already holds the last minute of sound, so letting go there could mark a take from that moment.</p><span class="cost">question 2 · window and keep</span></div><div class="pick"></div></div>
+  </div>
+</section>
+
+<section id="sources">
+  <div class="sechead"><span class="num">sources and data</span><h2>Where everything comes from</h2></div>
+  <div class="sources">
+    <p>Data: <a href="https://male-cns.janelia.org/download/" target="_blank" rel="noopener">Janelia male CNS v1.0</a> (Berg et al. 2026, CC BY 4.0): wiring, synapse sites, skeletons, segmentation, EM, micro-CT. Spikes: dendrite's male fly (PR #22) in the offline renderer, groove loop, default settings.</p>
+    <p>MRI of a living fly: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2474967" target="_blank" rel="noopener">Null et al. 2008, 18.8 T, 12.5 to 19.5 µm</a>. Voltage imaging: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5606228" target="_blank" rel="noopener">Yang et al. 2016, ASAP2f</a>. Photon counting: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC1803028/" target="_blank" rel="noopener">Martin et al. 2007</a>. Light-field whole brain: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6395010" target="_blank" rel="noopener">Aimon et al. 2019</a>. Whole-brain calcium network: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5967399" target="_blank" rel="noopener">Mann, Gordon and Scott 2017</a>. 2-deoxyglucose in the fly: <a href="https://link.springer.com/article/10.1007/BF00611912" target="_blank" rel="noopener">Buchner and Buchner</a>.</p>
+    <p class="note">simulated, and labelled so on every image: optics (blur, noise, depth of field), indicator time courses, the bold response, film grain and photon draws. never simulated: positions, wiring, shapes, micrographs, x-rays, spikes, and the echo's measured tails.</p>
+  </div>
+</section>
+</div>
+
+<div class="tally" aria-live="polite">
+  <span id="tally-text">no picks yet</span>
+  <span class="state" id="save-state">picks save on this page once it connects</span>
+  <button type="button" id="copy">copy my picks</button>
+</div>
+
+<script>
+(function () {
+  const items = Array.from(document.querySelectorAll('[data-id]'));
+  const titles = {};
+  items.forEach(el => { const h = el.querySelector('h3'); titles[el.dataset.id] = h ? h.textContent : el.dataset.id; });
+  const picks = {};
+  let db = null;
+  const choices = ['yes', 'maybe', 'no'];
+
+  function render() {
+    items.forEach(el => {
+      const box = el.querySelector('.pick');
+      if (!box) return;
+      if (!box.childElementCount) {
+        choices.forEach(c => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.textContent = c; b.dataset.choice = c;
+          b.id = 'pick-' + el.dataset.id + '-' + c;
+          b.setAttribute('aria-pressed', 'false');
+          b.addEventListener('click', () => choose(el.dataset.id, c));
+          box.appendChild(b);
+        });
+      }
+      box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(picks[el.dataset.id] === b.dataset.choice)));
+    });
+    const yes = Object.keys(picks).filter(k => picks[k] === 'yes').map(k => titles[k]);
+    const maybe = Object.keys(picks).filter(k => picks[k] === 'maybe').length;
+    const no = Object.keys(picks).filter(k => picks[k] === 'no').length;
+    document.getElementById('tally-text').textContent = Object.keys(picks).length
+      ? `yes ${yes.length} · maybe ${maybe} · no ${no}` + (yes.length ? ' — ' + yes.join(', ') : '')
+      : 'no picks yet';
+  }
+
+  function summary() {
+    return items.filter(el => picks[el.dataset.id]).map(el => `${titles[el.dataset.id]}: ${picks[el.dataset.id]}`).join('; ');
+  }
+
+  async function choose(id, c) {
+    if (picks[id] === c) delete picks[id]; else picks[id] = c;
+    render();
+    if (!db) return;
+    const state = document.getElementById('save-state');
+    try {
+      if (picks[id]) await db.collection('picks').doc(id).set({ choice: picks[id], title: titles[id], at: new Date().toISOString() });
+      else await db.collection('picks').doc(id).delete();
+      state.textContent = 'saved';
+    } catch (e) {
+      state.textContent = 'not saved here; use copy my picks and paste it in the thread';
+    }
+  }
+
+  document.getElementById('copy').addEventListener('click', () => {
+    const text = summary() || 'no picks yet';
+    const state = document.getElementById('save-state');
+    try {
+      navigator.clipboard.writeText(text).then(() => { state.textContent = 'copied'; }, () => { state.textContent = text; });
+    } catch (e) { state.textContent = text; }
+  });
+
+  render();
+
+  (async () => {
+    for (let i = 0; i < 30 && !(window.claude && window.claude.use); i++) await new Promise(r => setTimeout(r, 100));
+    if (!window.claude || !window.claude.use) { document.getElementById('save-state').textContent = 'picks stay on this screen; use copy my picks'; return; }
+    try {
+      db = await window.claude.use('db');
+    } catch (e) { db = null; }
+    const state = document.getElementById('save-state');
+    if (!db) { state.textContent = 'picks stay on this screen; use copy my picks'; return; }
+    state.textContent = 'connected: picks save as you tick';
+    const timer = setTimeout(() => { state.textContent = 'still connecting; your ticks will save when it answers'; }, 10000);
+    db.collection('picks').onSnapshot(snap => {
+      clearTimeout(timer);
+      Object.keys(picks).forEach(k => delete picks[k]);
+      const docs = Array.isArray(snap) ? snap : ((snap && snap.docs) || []);
+      docs.forEach(d => { const v = typeof d.data === 'function' ? d.data() : (d.data || d); if (v && choices.includes(v.choice)) picks[d.id] = v.choice; });
+      render();
+    }, () => { clearTimeout(timer); state.textContent = 'cannot read saved picks; use copy my picks'; });
+  })();
+})();
+</script>

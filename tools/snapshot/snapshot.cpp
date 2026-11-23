@@ -11,6 +11,9 @@
 //   DENDRITE_KEEP_OUT=dir              at the end, write the last finished itch as keep would drag it
 //   DENDRITE_TIME=1                    how long one frame of the window takes to paint
 //   DENDRITE_HOVER=x,y                 the hand rests over the specimen there (window pixels)
+//   DENDRITE_IMAGING=two-photon        the imaging method (trace, two-photon, voltage, photons, tracts, 2-dg)
+//   DENDRITE_YAW=30 DENDRITE_PITCH=-10 the goniometer's angles, in degrees
+//   DENDRITE_TURN=deg                  with DENDRITE_FRAMES: the yaw turns this many degrees a second
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
 #include "Editor.h"
@@ -63,6 +66,13 @@ int main (int argc, char** argv)
     processor.params.getParameter ("space")->setValueNotifyingHost (space);
     processor.params.getParameter ("frames")->setValueNotifyingHost (processor.params.getParameter ("frames")->convertTo0to1 ((float) itch));
 
+    if (const auto m = env ("DENDRITE_IMAGING"); m.isNotEmpty())
+        for (int k = 0; k < dendrite::rig::Recording::methods; ++k)
+            if (m == dendrite::rig::Recording::methodName (k))
+                processor.recording.method = k;
+    processor.recording.yaw = env ("DENDRITE_YAW").getFloatValue();
+    processor.recording.pitch = env ("DENDRITE_PITCH").getFloatValue();
+    const float turn = env ("DENDRITE_TURN").getFloatValue();
     std::unique_ptr<juce::AudioProcessorEditor> base (processor.createEditor());
     auto* editor = dynamic_cast<DendriteEditor*> (base.get());
     editor->setSize ((int) (DendriteEditor::designWidth * scale), (int) (DendriteEditor::designHeight * scale));
@@ -107,6 +117,11 @@ int main (int argc, char** argv)
         {
             t = now;
             processor.rigTick (now); // the recorders, as the processor's timer would
+            if (turn != 0.0f)
+            {
+                float yaw = env ("DENDRITE_YAW").getFloatValue() + turn * (float) (now - framesFrom);
+                processor.recording.yaw = yaw - 360.0f * std::round (yaw / 360.0f);
+            }
             editor->animateTo (now);
         }
         if (framesDir != juce::File() && now >= nextFrame)

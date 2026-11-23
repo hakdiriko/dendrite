@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.0 (imaging: the same spikes, seen by different instruments)
+
+Hakan picked from the research page "dendrite, imaged" (kept in `docs/research/imaging/`): several imaging methods the player chooses between, 2-DG visible in the dark as a small brain, and the goniometer. Built on the male fly. The sound does not change (null test below).
+
+- **The rail** (right of the specimen). *Imaging* picks which memory of the same spikes the plate shows: **trace** (3.0's 300 ms, with exposure and scars), **two-photon** (GCaMP6s as a kernel on each neuron's spikes: rises in 0.1 s, decays in 0.8 s; white at 50 Hz held), **voltage** (ASAP2f forgets in 2.5 ms, faster than a frame, so a frame holds only its own spikes: every neuron glows at rest and darkens when it fires), **photons** (photon counting, GFP-aequorin: one grain a spike over the last second, within 3 um of its neuron), **tracts** (the three strongest outputs of every neuron firing at 5 Hz or more, up to 600, bright excitatory, mid inhibitory), **2-dg**. The legend and the caption change with the method and say what each grey means.
+- **2-DG**, always on the rail: a small brain from the front showing this session's uptake (every spike since the plug-in opened, tritium's few-micron blur, log scale), the session clock and its spike count under it. Only this session, never saved. Press it: the plate plays how the uptake built up, from the session's first second to now, in 8 s (up to 120 keyframes that thin out as the session grows), then holds on now.
+- **The goniometer**: drag the dial to turn (across, a half turn each way) and tilt (up, a quarter turn) the specimen; shift: fine; double-click: frontal. Every neuron sits at its real depth from its atlas (`tools/rig/depth.py`, x and y proven against FlyData), so any angle is a true projection; the male's ascending neurons, whose bodies sit in the nerve cord, trail behind the brain. Region labels show only from the front. The electrode stays the same control (feed, space) and records whatever the projection puts under its tip.
+- The method and the angles are saved with the set (in the "rig" child); older sets open frontal on the trace.
+- The snapshot tool takes `DENDRITE_IMAGING`, `DENDRITE_YAW`, `DENDRITE_PITCH` and `DENDRITE_TURN`.
+- **The sound is bit-identical.** `tools/nulltest` on main (3.0.0) and on this branch (FlyWire build), loop and drums, 48 kHz/512 and 44.1 kHz/333: 4 of 4 identical to the bit. Nothing new runs on the audio thread.
+- The manual's map section names the rail.
+
 ## Unreleased (the male fly, an A/B)
 
 FlyWire's data are CC BY-NC (no selling without Princeton's permission). Janelia's male fly brain (male CNS v1.0, Berg et al. 2026) is CC BY: free to sell with credit. This adds it as a second fly you can load next to today's, so Hakan can hear whether it is as alive.
