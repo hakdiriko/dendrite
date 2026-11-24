@@ -10,7 +10,7 @@ From the design review of 24 Nov (Hakan: "brilliant, we should add these"). The 
 - **The next bar.** While the host plays, the trace adds one bar after "now", dashed: what the fly has decided and not played yet. Its neurons choose a move the moment its giant fiber fires, and the move waits for its line of the grid (a 16th when it is wide awake, the next bar or half bar for a big one). That wait is shown: a hollow square where it will land, "armed", the bar and beat, how soon, and its size. At 1/4 bar the fly is so awake it lands within a 16th; at 1 bar and slower a big move waits for the bar line, up to a bar (on the test groove usually under a beat, since its hits come late in the bar).
 - Every mark is real state: the fly reports (for the window only) whether a move is armed, its size and the 16th it lands on, and which side's looming fired it; the processor carries them through the trace's lock-free FIFO. Nothing new is saved with the set.
 - The snapshot tool's scripted hand (`DENDRITE_SCRIPT`) now reaches whichever part of the window is under it (trace, settings line), with `move` and a `click` up.
-- **The sound is bit-identical** (null test below).
+- **The sound is bit-identical.** `tools/nulltest` on 3.3.0 (f137e12) and on this branch, 38 s of the groove and keys loops at 48 kHz/512, 44.1 kHz/333 (with a throw and an itch change), 48 kHz/128 and 44.1 kHz/512: 4 of 4 identical to the bit.
 
 ## 3.3.0 (the trace: what the fly does to your sound)
 
