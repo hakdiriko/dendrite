@@ -26,15 +26,16 @@ namespace
     {
         const char* anchor;
         const char* name;
+        const char* shortName; // when the full names don't fit the window's width
         bool above;
     };
     const Region regions[] = {
-        { "eyeLeft", "LPLC2 left, looming", true },
-        { "mushroomBody", "KC, mushroom body left", true },
-        { "eyeRight", "LPLC2 right, looming", true },
-        { "ears", "JO, johnston's organ", false },
-        { "giantFiber", "DNp01, giant fiber", false },
-        { "grooming", "DNg11, grooming", false },
+        { "eyeLeft", "LPLC2 left, looming", "LPLC2 left", true },
+        { "mushroomBody", "KC, mushroom body left", "KC left", true },
+        { "eyeRight", "LPLC2 right, looming", "LPLC2 right", true },
+        { "ears", "JO, johnston's organ", "JO", false },
+        { "giantFiber", "DNp01, giant fiber", "DNp01", false },
+        { "grooming", "DNg11, grooming", "DNg11", false },
     };
 
 } // namespace
@@ -308,39 +309,55 @@ void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
         float x, w;
         juce::String text;
     };
+    // the names stay inside the window: the row is spread so no two touch, then slid to fit
+    // between the margins; if the full names can't fit side by side, the short ones are used
+    const float leftLimit = 14.0f, rightLimit = (float) getWidth() - 14.0f;
     for (const bool above : { true, false })
     {
         std::vector<Placed> row;
-        for (const auto& r : regions)
+        for (const bool shortNames : { false, true })
         {
-            if (r.above != above)
-                continue;
-            for (int k = 0; k < flydata::anchorCount; ++k)
-                if (juce::String (flydata::anchors[k].name) == r.anchor)
-                {
-                    const juce::Point<float> at { brain.getX() + brain.getWidth() * flydata::anchors[k].x,
-                                                  brain.getY() + brain.getHeight() * flydata::anchors[k].y };
-                    const juce::String text (r.name);
-                    const float w = juce::GlyphArrangement::getStringWidth (font, text);
-                    row.push_back ({ at, at.x - 0.5f * w, w, text });
-                }
-        }
-        std::sort (row.begin(), row.end(), [] (const Placed& a, const Placed& b) { return a.at.x < b.at.x; });
+            row.clear();
+            for (const auto& r : regions)
+            {
+                if (r.above != above)
+                    continue;
+                for (int k = 0; k < flydata::anchorCount; ++k)
+                    if (juce::String (flydata::anchors[k].name) == r.anchor)
+                    {
+                        const juce::Point<float> at { brain.getX() + brain.getWidth() * flydata::anchors[k].x,
+                                                      brain.getY() + brain.getHeight() * flydata::anchors[k].y };
+                        const juce::String text (shortNames ? r.shortName : r.name);
+                        const float w = juce::GlyphArrangement::getStringWidth (font, text);
+                        row.push_back ({ at, at.x - 0.5f * w, w, text });
+                    }
+            }
+            std::sort (row.begin(), row.end(), [] (const Placed& a, const Placed& b) { return a.at.x < b.at.x; });
 
-        // side by side in one row, never touching; below, where the regions crowd the midline,
-        // the row is centred on them again so the leaders fan out both ways
-        for (size_t k = 1; k < row.size(); ++k)
-            row[k].x = std::max (row[k].x, row[k - 1].x + row[k - 1].w + 32.0f);
-        if (! above && ! row.empty())
-        {
-            float anchorsMid = 0.0f;
-            for (const auto& p : row)
-                anchorsMid += p.at.x / (float) row.size();
+            // side by side in one row, never touching; below, where the regions crowd the midline,
+            // the row is centred on them again so the leaders fan out both ways
+            for (size_t k = 1; k < row.size(); ++k)
+                row[k].x = std::max (row[k].x, row[k - 1].x + row[k - 1].w + 32.0f);
+            if (row.empty())
+                break;
+            if (! above)
+            {
+                float anchorsMid = 0.0f;
+                for (const auto& p : row)
+                    anchorsMid += p.at.x / (float) row.size();
+                const float rowLeft = row.front().x, rowRight = row.back().x + row.back().w;
+                float shift = anchorsMid - 0.5f * (rowLeft + rowRight);
+                shift = juce::jlimit (brain.getX() - rowLeft, brain.getRight() - rowRight, shift);
+                for (auto& p : row)
+                    p.x += shift;
+            }
             const float rowLeft = row.front().x, rowRight = row.back().x + row.back().w;
-            float shift = anchorsMid - 0.5f * (rowLeft + rowRight);
-            shift = juce::jlimit (brain.getX() - rowLeft, brain.getRight() - rowRight, shift);
+            float shift = std::max (0.0f, leftLimit - rowLeft);
+            shift -= std::max (0.0f, rowRight + shift - rightLimit);
             for (auto& p : row)
                 p.x += shift;
+            if (rowRight - rowLeft <= rightLimit - leftLimit)
+                break;
         }
 
         const float textY = above ? brain.getY() - 26.0f : brain.getBottom() + 34.0f;
