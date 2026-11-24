@@ -59,7 +59,11 @@ void Trace::paint (juce::Graphics& g)
     const auto R = rows();
     const auto data = fonts->at (type::data), small = fonts->at (type::small);
     const double now = tl.now(), sp = span();
-    const float left = R.plot.getX(), right = R.plot.getRight(), width = R.plot.getWidth();
+    // 3.4: while the host plays, the last of nine bar widths is what the fly has decided and
+    // not played yet; the past keeps its 8 bars in the rest
+    const float left = R.plot.getX(), plotRight = R.plot.getRight();
+    const float future = tl.playing() ? futureWidth() : 0.0f;
+    const float right = plotRight - future, width = right - left;
     auto xAt = [&] (double t) { return right - (float) ((now - t) / sp) * width; };
 
     g.setColour (tone::grey (tone::dim));
@@ -119,7 +123,7 @@ void Trace::paint (juce::Graphics& g)
                 const float x = xAt (tl.binTime (back - 1));
                 g.setColour (tone::grey (tone::floor));
                 line.v (x, R.plot.getY(), R.pitch.getBottom());
-                if (lastBarLabel - x > 44.0f && x < right - 84.0f)
+                if (lastBarLabel - x > 44.0f && x < right - (future > 0.0f ? 44.0f : 84.0f))
                 {
                     g.setFont (small);
                     g.setColour (tone::grey (tone::dim));
@@ -150,6 +154,8 @@ void Trace::paint (juce::Graphics& g)
     line.v (right, R.plot.getY(), R.pitch.getBottom());
     g.setFont (small);
     g.drawText ("now", juce::Rectangle<float> (right - 40.0f, 3.0f, 40.0f, 13.0f), juce::Justification::centredRight);
+    if (future > 0.0f)
+        paintFuture (g, line, R, right, future);
 
     // your throws, under your sound
     for (int k = 0; k < tl.throws(); ++k)
@@ -305,9 +311,108 @@ void Trace::paint (juce::Graphics& g)
     // the caption: what is shown, and the scale
     g.setFont (small);
     g.setColour (tone::grey (tone::dim));
-    const juce::String shown = tl.playing() ? juce::String (barsShown) + " bars" : utf8 ("16 s  \xc2\xb7  host stopped");
+    const juce::String shown = tl.playing() ? juce::String (barsShown) + utf8 (" bars  \xc2\xb7  dashed: decided, not yet heard") : utf8 ("16 s  \xc2\xb7  host stopped");
     g.drawText (shown + utf8 ("  \xc2\xb7  white: bent by the fly  \xc2\xb7  full row = 0 dBFS")
                 , juce::Rectangle<float> (left, R.pitch.getBottom() + 4.0f, width, 13.0f), juce::Justification::centredLeft);
+}
+
+float Trace::futureWidth() const noexcept
+{
+    return std::round (rows().plot.getWidth() / (float) (barsShown + 1));
+}
+
+void Trace::paintFuture (juce::Graphics& g, const Hairline& line, const Rows& R, float nowX, float width)
+{
+    const auto& tl = processor.timeline;
+    const float barBeats = std::max (1.0f, tl.barBeats());
+    const double beatNow = tl.beat();
+    auto xAt = [&] (double beat) { return nowX + (float) ((beat - beatNow) / (double) barBeats) * width; };
+    auto dashed = [&] (float x, float y0, float y1) {
+        for (float y = y0; y < y1; y += 6.0f)
+            line.v (x, y, std::min (y1, y + 3.0f));
+    };
+    const auto small = fonts->at (type::small), data = fonts->at (type::data);
+
+    // the grid ahead: beats faint, the next bar line named
+    for (int b = (int) std::floor (beatNow) + 1; b <= (int) std::floor (beatNow + barBeats); ++b)
+    {
+        const float x = xAt ((double) b);
+        if (x <= nowX + 1.0f || x >= nowX + width)
+            continue;
+        const bool bar = std::fmod ((double) b, (double) barBeats) < 1.0e-6;
+        g.setColour (tone::grey (bar ? tone::dim : tone::floor));
+        dashed (x, R.plot.getY(), R.pitch.getBottom());
+        if (bar && x < nowX + width - 40.0f)
+        {
+            g.setFont (small);
+            g.setColour (tone::grey (tone::dim));
+            g.drawText ("bar " + juce::String ((int) std::llround (b / (double) barBeats) + 1),
+                        juce::Rectangle<float> (x + 4.0f, 3.0f, 60.0f, 13.0f), juce::Justification::centredLeft);
+        }
+    }
+
+    if (! tl.armed() || juce::roundToInt (processor.params.getRawParameterValue ("frames")->load()) == 0)
+        return;
+    // the move decided: a hollow square where it will land, its line dashed down to the pitch
+    const double land = tl.armedLandBeat();
+    const float x = juce::jlimit (nowX + 3.0f, nowX + width - 3.0f, xAt (land));
+    g.setColour (tone::grey (tone::live));
+    dashed (x, R.fly.getY() + 7.0f, R.pitch.getBottom());
+    g.drawRect (juce::Rectangle<float> (x - 2.5f, R.fly.getY() + 2.0f, 5.0f, 5.0f), line.width());
+
+    const double bars = land / (double) barBeats;
+    const int bar = (int) std::floor (bars + 1.0e-6) + 1;
+    const double inBar = land - (double) (bar - 1) * barBeats;
+    juce::String where = "bar " + juce::String (bar);
+    if (inBar > 0.01)
+        where << utf8 (" \xc2\xb7") << juce::String (inBar + 1.0, std::abs (inBar - std::round (inBar)) < 0.01 ? 0 : 2);
+    const double beatsAway = std::max (0.0, land - beatNow);
+    const juce::String when = beatsAway < 1.0 ? juce::String ("now") : "in " + juce::String ((int) std::ceil (beatsAway - 1.0e-6)) + (beatsAway <= 1.0 ? " beat" : " beats");
+
+    // its words where they fit: right of the square, or left of it near the edge
+    const juce::String first = "armed", second = where + utf8 (" \xc2\xb7 ") + when, third = "size " + juce::String (tl.armedSize(), 2);
+    const float w = std::max ({ juce::GlyphArrangement::getStringWidth (data, first), juce::GlyphArrangement::getStringWidth (small, second),
+                                juce::GlyphArrangement::getStringWidth (small, third) }) + 6.0f;
+    const bool fitsRight = x + 6.0f + w < (float) getWidth() - 4.0f;
+    const float tx = fitsRight ? x + 6.0f : x - 6.0f - w;
+    const auto just = fitsRight ? juce::Justification::centredLeft : juce::Justification::centredRight;
+    g.setFont (data);
+    g.setColour (tone::grey (tone::live));
+    g.drawText (first, juce::Rectangle<float> (tx, R.fly.getY() + 1.0f, w, 14.0f), just);
+    g.setFont (small);
+    g.setColour (tone::grey (tone::bright));
+    g.drawText (second, juce::Rectangle<float> (tx, R.fly.getY() + 15.0f, w, 13.0f), just);
+    g.setColour (tone::grey (tone::mid));
+    g.drawText (third, juce::Rectangle<float> (tx, R.echo.getY() + 2.0f, w, 13.0f), just);
+}
+
+int Trace::reflexAt (juce::Point<float> p) const
+{
+    // the reflex whose line is under the hand (within 4 px), newest first
+    const auto R = rows();
+    const auto& tl = processor.timeline;
+    if (p.y < R.fly.getY() || p.y > R.pitch.getBottom())
+        return -1;
+    const float right = R.plot.getRight() - (tl.playing() ? futureWidth() : 0.0f);
+    const double sp = span(), now = tl.now();
+    for (int k = 0; k < tl.reflexes(); ++k)
+    {
+        const auto& r = tl.reflex (k);
+        if (r.at < now - sp)
+            break;
+        const float x = right - (float) ((now - r.at) / sp) * (right - R.plot.getX());
+        if (std::abs (x - p.x) <= 4.0f)
+            return k;
+    }
+    return -1;
+}
+
+void Trace::mouseMove (const juce::MouseEvent& e)
+{
+    hoverAt = e.position;
+    const int k = reflexAt (e.position);
+    if (k >= 0 && onReflexHover)
+        onReflexHover (processor.timeline.reflex (k).cause, processor.timeline.reflex (k).move);
 }
 
 juce::String Trace::getTooltip()
@@ -327,7 +432,11 @@ juce::String Trace::getTooltip()
     }
     const auto& tl = processor.timeline;
     const double sp = span(), now = tl.now();
-    const double t = now - (double) ((R.plot.getRight() - hoverAt.x) / R.plot.getWidth()) * sp;
+    const float right = R.plot.getRight() - (tl.playing() ? futureWidth() : 0.0f);
+    if (hoverAt.x > right)
+        return tl.armed() ? utf8 ("decided, not yet heard: the fly's neurons have chosen a move and it waits for this line of the grid")
+                          : utf8 ("what the fly has decided and not played yet (nothing now)");
+    const double t = now - (double) ((right - hoverAt.x) / (right - R.plot.getX())) * sp;
     const double binLength = tl.bins() > 1 ? tl.binTime (0) - tl.binTime (1) : Timeline::binSeconds;
     const int back = (int) std::floor ((tl.binTime (0) - t) / binLength);
     if (back < 0 || back >= tl.bins())

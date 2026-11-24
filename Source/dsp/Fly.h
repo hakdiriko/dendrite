@@ -130,6 +130,13 @@ public:
         float feeling = 0.0f;                      // its MBONs: -1 keep away .. 1 come closer
         float fear = 0.0f;                         // 0..1: how much of what it smells now once hurt
         int move = 0;                              // which Move it is in the middle of
+        // 3.4, for the window only (reading them changes nothing it does): a move its neurons have
+        // decided but the grid has not played yet, how big, and the 16th it lands on (counted
+        // from the host's beat 0); and which eye's looming fired the giant fiber for the last move
+        bool armed = false;
+        float armedSize = 0.0f;
+        double armedLand16 = 0.0;
+        int cause = 0;                             // 0 unknown, 1 left eye, 2 right eye, 3 its ears
     };
     const Doing& doing() const noexcept { return now; }
     uint16_t takeSpikes (int neuron) noexcept { return spikes[(size_t) neuron].exchange (0, std::memory_order_relaxed); }

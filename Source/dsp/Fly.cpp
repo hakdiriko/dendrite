@@ -833,6 +833,9 @@ void Fly::reflexes() noexcept
             armedSize = std::min (1.0f, escape / 80.0f * (innerLife ? 0.7f + 0.6f * arousal : 1.0f));
             armedFear = innerLife ? fear : 1.0f;
             sinceJump = 0.0f;
+            // which side's looming drove it (the window's lit path); its ears when neither eye loomed
+            const float leftLoom = std::max ({ drive[6], drive[8], drive[10] }), rightLoom = std::max ({ drive[7], drive[9], drive[11] });
+            now.cause = std::max (leftLoom, rightLoom) < 0.2f ? 3 : leftLoom >= rightLoom ? 1 : 2;
         }
         if (tick)
         {
@@ -913,6 +916,18 @@ void Fly::reflexes() noexcept
         now.feeling = feeling;
         now.fear = fear;
         now.move = moveNow;
+        now.armed = armed;
+        if (armed)
+        {
+            // the same lines the tick above waits for: the next one it will meet
+            const int grid = awakeNow > 0.75f ? 1 : 2;
+            const bool big = armedSize * taste.lurch / 0.4f > 0.5f;
+            const long long bar16 = std::max (4LL, std::llround (4.0 * barNow));
+            const long long g = big ? (awakeNow > 0.75f ? std::max (4LL, bar16 / 2) : bar16) : grid;
+            const long long tickAt = (long long) std::floor (beatNow * 4.0);
+            now.armedSize = armedSize;
+            now.armedLand16 = (double) ((tickAt >= 0 ? tickAt / g : (tickAt - g + 1) / g) + 1) * (double) g;
+        }
         return;
     }
     if (wantsJump)
@@ -982,6 +997,7 @@ void Fly::reflexes() noexcept
     now.memory = memory;
     now.feeling = feeling;
     now.fear = fear;
+    now.armed = false;
 }
 void Fly::scramble (uint64_t seed)
 {

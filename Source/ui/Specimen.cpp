@@ -389,7 +389,10 @@ void Specimen::paint (juce::Graphics& g)
     hovered = findHover();
     paintScale (g, line);
     if (frontal())
+    {
         paintRegions (g, line);
+        paintPath (g, line);
+    }
     measureTip();
     paintElectrode (g, line);
     paintHover (g, line);
@@ -650,6 +653,75 @@ void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
     }
 }
 
+void Specimen::lightPath (int cause, int move)
+{
+    pathCause = cause;
+    pathMove = move;
+    pathFrom = clockSeconds;
+}
+
+void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
+{
+    // a new reflex lights its own path
+    const auto& tl = processor.timeline;
+    if (tl.reflexesEver() != reflexesLit)
+    {
+        reflexesLit = tl.reflexesEver();
+        if (tl.reflexes() > 0)
+            lightPath (tl.reflex (0).cause, tl.reflex (0).move);
+    }
+    const double age = clockSeconds - pathFrom;
+    if (pathCause <= 0 || age > 2.0 || age < 0.0)
+        return;
+    const float fade = (float) (age < 1.4 ? 1.0 : 1.0 - (age - 1.4) / 0.6);
+
+    auto anchor = [&] (const char* name) -> juce::Point<float> {
+        for (int k = 0; k < flydata::anchorCount; ++k)
+            if (juce::String (flydata::anchors[k].name) == name)
+                return { brain.getX() + brain.getWidth() * flydata::anchors[k].x, brain.getY() + brain.getHeight() * flydata::anchors[k].y };
+        return brain.getCentre();
+    };
+    // the rest of the brain steps back, so the path reads
+    g.setColour (juce::Colours::black.withAlpha (0.55f * fade));
+    g.fillRect (brain.expanded (8.0f));
+
+    // the sound reaches its ears; the looming eye on that side (if one loomed); the giant fiber;
+    // then down the neck to the tape, where the trace below shows the move
+    std::vector<std::pair<juce::Point<float>, juce::String>> stops;
+    stops.push_back ({ anchor ("ears"), "JO" });
+    if (pathCause == 1)
+        stops.push_back ({ anchor ("eyeLeft"), "LPLC2 left" });
+    else if (pathCause == 2)
+        stops.push_back ({ anchor ("eyeRight"), "LPLC2 right" });
+    stops.push_back ({ anchor ("giantFiber"), "DNp01" });
+    const auto neck = juce::Point<float> (stops.back().first.x, (float) getHeight() - 1.0f);
+
+    juce::Path p;
+    p.startNewSubPath (stops.front().first);
+    for (size_t k = 1; k < stops.size(); ++k)
+        p.lineTo (stops[k].first);
+    p.lineTo (neck);
+    g.setColour (tone::grey (tone::live).withAlpha (fade));
+    g.strokePath (p, juce::PathStrokeType (1.5f * line.width()));
+    const auto small = fonts->at (type::small);
+    g.setFont (small);
+    for (size_t k = 0; k < stops.size(); ++k)
+    {
+        const auto at = stops[k].first;
+        g.setColour (tone::black);
+        g.fillRect (juce::Rectangle<float> (7.0f, 7.0f).withCentre (at));
+        g.setColour (tone::grey (tone::live).withAlpha (fade));
+        g.drawRect (juce::Rectangle<float> (7.0f, 7.0f).withCentre (at), line.width());
+        const float w = juce::GlyphArrangement::getStringWidth (small, stops[k].second) + 4.0f;
+        const bool leftSide = at.x < brain.getCentreX() && k + 1 < stops.size();
+        g.drawText (stops[k].second, juce::Rectangle<float> (leftSide ? at.x - 8.0f - w : at.x + 8.0f, at.y - 6.0f, w, 12.0f),
+                    leftSide ? juce::Justification::centredRight : juce::Justification::centredLeft);
+    }
+    const juce::String what = juce::String (rig::Timeline::moveName (pathMove)) + utf8 (" \xc2\xb7 on the tape below");
+    g.setColour (tone::grey (tone::bright).withAlpha (fade));
+    g.drawText (what, juce::Rectangle<float> (neck.x + 8.0f, neck.y - 16.0f, 220.0f, 13.0f), juce::Justification::centredLeft);
+}
+
 //==============================================================================
 // the tracts and the rail
 
@@ -842,6 +914,7 @@ void Specimen::paintElectrode (juce::Graphics& g, const Hairline& line)
 
 void Specimen::tick (double nowSeconds)
 {
+    clockSeconds = nowSeconds;
     clockNow = nowSeconds;
     // a press becomes a throw once it has lasted a moment, so a click that only focuses the window is not one
     if (pending && nowSeconds - pressStarted >= 0.08)

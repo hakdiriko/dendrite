@@ -67,6 +67,10 @@ void Timeline::add (const Frame& f) noexcept
     lastBpm = f.bpm;
     lastBarBeats = f.barBeats;
     lastPlaying = f.playing;
+    lastArmed = f.armed && f.playing;
+    lastArmedSize = f.armedSize;
+    lastArmedLand16 = f.armedLand16;
+    lastBeat = f.beat + seconds * (double) f.bpm / 60.0;
 
     // events, at the frame's start: the same edges the rig's log uses
     if (f.jump > 0.01f && ! jumping)
@@ -76,7 +80,9 @@ void Timeline::add (const Frame& f) noexcept
         r.at = t;
         r.beat = f.beat;
         r.move = f.move;
+        r.cause = f.cause;
         r.open = true;
+        ++reflexesSeen;
         r.playing = f.playing;
     }
     if (jumping && reflexCount > 0)

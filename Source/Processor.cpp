@@ -389,6 +389,10 @@ void DendriteProcessor::pushTrace (int samples, const dendrite::HostTime& time) 
     f.barBeats = v.barBeats;
     f.beat = v.beatAtStart;
     f.move = v.fly.move;
+    f.armed = v.fly.armed;
+    f.armedSize = v.fly.armedSize;
+    f.armedLand16 = v.fly.armedLand16;
+    f.cause = v.fly.cause;
     f.thrown = throwParam->load() > 0.5f;
     f.playing = time.playing;
 }

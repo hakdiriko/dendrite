@@ -13,6 +13,8 @@ DendriteEditor::DendriteEditor (DendriteProcessor& p)
     addAndMakeVisible (settings);
     addAndMakeVisible (trace);
     addAndMakeVisible (log);
+    // one story (3.4): the hand on a reflex in the trace lights the path that made it
+    trace.onReflexHover = [this] (int cause, int move) { specimen.lightPath (cause, move); };
 
     // any shape, up to a whole 8K screen; hosts' maximise and fullscreen work
     setResizable (true, true);

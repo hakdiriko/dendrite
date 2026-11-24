@@ -28,6 +28,12 @@ public:
         double beat = 0.0;                        // the clock at the frame's start (quarter notes)
         int move = 0;                             // dendrite::Fly::Move
         bool thrown = false, playing = false;     // your throw held; the host's transport
+        // 3.4: a move decided and waiting for its line (16th it lands on, from beat 0), and
+        // which eye's looming fired the giant fiber (0 unknown, 1 left, 2 right, 3 its ears)
+        bool armed = false;
+        float armedSize = 0.0f;
+        double armedLand16 = 0.0;
+        int cause = 0;
     };
 
     struct Bin
@@ -42,7 +48,7 @@ public:
     struct Reflex
     {
         double at = 0.0, length = 0.0, beat = 0.0;
-        int move = 0, steps = 0;
+        int move = 0, steps = 0, cause = 0;
         std::array<float, 4> semitones {};
         bool open = false, playing = false;
     };
@@ -78,6 +84,13 @@ public:
 
     static const char* moveName (int move) noexcept;
 
+    // the move the fly has decided and the grid has not played yet (3.4)
+    bool armed() const noexcept { return lastArmed; }
+    float armedSize() const noexcept { return lastArmedSize; }
+    double armedLandBeat() const noexcept { return lastArmedLand16 / 4.0; }
+    double beat() const noexcept { return lastBeat; } // the clock at the newest frame's end
+    int reflexesEver() const noexcept { return reflexesSeen; }
+
 private:
     void finishBin() noexcept;
     Reflex& newReflex() noexcept;
@@ -93,6 +106,10 @@ private:
     int64_t finishedBins = 0;
     float lastBpm = 120.0f, lastBarBeats = 4.0f;
     bool lastPlaying = false;
+    bool lastArmed = false;
+    float lastArmedSize = 0.0f;
+    double lastArmedLand16 = 0.0, lastBeat = 0.0;
+    int reflexesSeen = 0;
 
     std::array<Reflex, eventCount> reflexRing {};
     int reflexHead = 0, reflexCount = 0;

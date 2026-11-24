@@ -47,6 +47,9 @@ public:
 
     juce::String getTooltip() override;
     void hoverForTools (juce::Point<float> p) noexcept { hoverAt = p; } // the snapshot tool's hand
+    // 3.4, one story: light the path that made a reflex (cause as Timeline::Reflex::cause) for two
+    // seconds; a new reflex lights its own path by itself
+    void lightPath (int cause, int move);
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -67,6 +70,9 @@ private:
     const float* lapsePicture (double& atSeconds, float& most); // the 2-DG frame the plate shows now
     void paintScale (juce::Graphics&, const Hairline&);
     void paintRegions (juce::Graphics&, const Hairline&);
+    void paintPath (juce::Graphics&, const Hairline&);
+    int pathCause = 0, pathMove = 0, reflexesLit = 0;
+    double pathFrom = -10.0, clockSeconds = 0.0; // the window's clock (tick)
     void paintElectrode (juce::Graphics&, const Hairline&);
     void measureTip();
     int findHover() const;
