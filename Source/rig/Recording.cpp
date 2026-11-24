@@ -232,6 +232,9 @@ juce::ValueTree Recording::save() const
     rig.setProperty ("imaging", juce::String (methodName (method.load())), nullptr);
     rig.setProperty ("yaw", yaw.load(), nullptr);
     rig.setProperty ("pitch", pitch.load(), nullptr);
+    rig.setProperty ("zoom", zoom.load(), nullptr);
+    rig.setProperty ("zoomX", zoomX.load(), nullptr);
+    rig.setProperty ("zoomY", zoomY.load(), nullptr);
     return rig;
 }
 
@@ -248,6 +251,9 @@ void Recording::load (const juce::ValueTree& rig)
                 method = m;
         yaw = juce::jlimit (-180.0f, 180.0f, (float) rig.getProperty ("yaw", 0.0f));
         pitch = juce::jlimit (-90.0f, 90.0f, (float) rig.getProperty ("pitch", 0.0f));
+        zoom = juce::jlimit (minZoom, maxZoom, (float) rig.getProperty ("zoom", 1.0f));
+        zoomX = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("zoomX", 0.5f));
+        zoomY = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("zoomY", 0.5f));
     }
     juce::MemoryOutputStream packed;
     if (! juce::Base64::convertFromBase64 (packed, rig.getProperty ("exposure").toString()))

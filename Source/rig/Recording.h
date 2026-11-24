@@ -72,6 +72,9 @@ public:
     static const char* methodName (int m) noexcept;
     std::atomic<int> method { traceMethod };
     std::atomic<float> yaw { 0.0f }, pitch { 0.0f };
+    // the objective: magnification, and where it looks (the field's centre, as fractions of the box)
+    std::atomic<float> zoom { 1.0f }, zoomX { 0.5f }, zoomY { 0.5f };
+    static constexpr float minZoom = 0.5f, maxZoom = 16.0f;
 
     // the raster: populations, each a set of neurons the fly really has
     enum Population { earsLeft, earsRight, eyesLeft, eyesRight, smell, kenyon, mbon, ppl1, pam, steerLeft, steerRight, groom, giantFiber, populations };
