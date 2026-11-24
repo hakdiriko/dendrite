@@ -833,7 +833,7 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
     else if (pathCause == 2)
         stops.push_back ({ anchor ("eyeRight"), "LPLC2 right" });
     stops.push_back ({ anchor ("giantFiber"), "DNp01" });
-    const auto neck = juce::Point<float> (stops.back().first.x, (float) getHeight() - 1.0f);
+    const auto neck = juce::Point<float> (stops.back().first.x, brain.getBottom());
 
     juce::Path p;
     p.startNewSubPath (stops.front().first);
@@ -856,9 +856,11 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
         g.drawText (stops[k].second, juce::Rectangle<float> (leftSide ? at.x - 8.0f - w : at.x + 8.0f, at.y - 6.0f, w, 12.0f),
                     leftSide ? juce::Justification::centredRight : juce::Justification::centredLeft);
     }
-    const juce::String what = juce::String (rig::Timeline::moveName (pathMove)) + utf8 (" \xc2\xb7 on the tape below");
+    // what it did, under the giant fiber's name: the same move the trace below marks
+    const auto gf = stops.back().first;
+    const juce::String what = utf8 ("\xe2\x86\x93 ") + rig::Timeline::moveName (pathMove) + utf8 (" \xc2\xb7 the tape");
     g.setColour (tone::grey (tone::bright).withAlpha (fade));
-    g.drawText (what, juce::Rectangle<float> (neck.x + 8.0f, neck.y - 16.0f, 220.0f, 13.0f), juce::Justification::centredLeft);
+    g.drawText (what, juce::Rectangle<float> (gf.x + 8.0f, gf.y + 8.0f, 200.0f, 12.0f), juce::Justification::centredLeft);
 }
 
 //==============================================================================

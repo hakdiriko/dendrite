@@ -16,7 +16,8 @@
 //   DENDRITE_ZOOM=4,0.3,0.6            the objective, and the field's centre as fractions of the box
 //   DENDRITE_DRAG=x0,y0,x1,y1          before playing, the hand drags across the specimen (window pixels)
 //   DENDRITE_SCRIPT=file               with DENDRITE_FRAMES: the hand, one event a line, "t kind x y [more]" in window pixels:
-//                                      down/drag/up (more: left, right, alt, shift), wheel (more: notches); played at t seconds
+//                                      down/drag/up (more: left, right, alt, shift; up: click = not a drag), move, wheel (more: notches);
+//                                      played at t seconds, on whichever part of the window is under the hand
 //   DENDRITE_TURN=deg                  with DENDRITE_FRAMES: the yaw turns this many degrees a second
 //   DENDRITE_PLAY=bpm                  a host transport playing from bar 1 at this tempo, in 4/4
 #include <juce_audio_formats/juce_audio_formats.h>
@@ -187,8 +188,17 @@ int main (int argc, char** argv)
     size_t nextAct = 0;
     juce::Point<float> downAt;
     juce::ModifierKeys held;
+    juce::Component* target = nullptr; // the window's part under the hand (the specimen, the trace, the settings line)
     auto play = [&] (const Act& a) {
         auto& src = *juce::Desktop::getInstance().getMouseSource (0);
+        if (a.kind == "down" || a.kind == "move" || a.kind == "wheel" || target == nullptr)
+        {
+            target = specimen;
+            for (auto* c : editor->getChildren())
+                if (c->getBounds().toFloat().contains (a.at))
+                    target = c;
+        }
+        auto* specimen = target;
         const auto p = specimen->getLocalPoint (editor, a.at);
         if (a.kind == "down")
         {
@@ -199,7 +209,7 @@ int main (int argc, char** argv)
             downAt = p;
         }
         const auto ev = juce::MouseEvent (src, p, held, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, specimen, specimen, juce::Time::getCurrentTime(), downAt,
-                                          juce::Time::getCurrentTime(), 1, a.kind != "down");
+                                          juce::Time::getCurrentTime(), 1, a.kind != "down" && ! a.more.contains ("click"));
         if (a.kind == "down") specimen->mouseDown (ev);
         else if (a.kind == "drag") specimen->mouseDrag (ev);
         else if (a.kind == "up") { specimen->mouseUp (ev); held = {}; }

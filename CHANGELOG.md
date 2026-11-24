@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.4.0 (one story: the window joins cause to effect)
+
+From the design review of 24 Nov (Hakan: "brilliant, we should add these"). The sound does not change (null test below).
+
+- **The itch selector has no menu any more.** A click opens its scale in the bottom line itself: off, then 1/4 to 8 bars, wide awake on the left, the choice white and underlined, and next to it how awake that keeps the fly ("awake 0.75", "rests" when off). Click a value or drag along the scale; the wheel steps (open or closed), so do the arrow keys; escape, a click on its name or a moment without the hand folds it away. JUCE's popup is gone from the window.
+- **heads** shows all three rhythms (dotted, triplet, half), the one playing bright; click the one you want.
+- **One story.** When the fly bends your echo, the path that made it lights on the specimen for two seconds: its ears (JO), the eye whose looming fired (LPLC2 left or right, or none when it was the ears alone), the giant fiber (DNp01), and down to the tape, named with the move ("leap", "duck"...). The rest of the brain steps back while it shows. Hover a reflex's line in the trace and its path lights again.
+- **The next bar.** While the host plays, the trace adds one bar after "now", dashed: what the fly has decided and not played yet. Its neurons choose a move the moment its giant fiber fires, and the move waits for its line of the grid (a 16th when it is wide awake, the next bar or half bar for a big one). That wait is shown: a hollow square where it will land, "armed", the bar and beat, how soon, and its size. At 1/4 bar the fly is so awake it lands within a 16th; at 1 bar and slower you can see a big move coming a beat to a bar ahead.
+- Every mark is real state: the fly reports (for the window only) whether a move is armed, its size and the 16th it lands on, and which side's looming fired it; the processor carries them through the trace's lock-free FIFO. Nothing new is saved with the set.
+- The snapshot tool's scripted hand (`DENDRITE_SCRIPT`) now reaches whichever part of the window is under it (trace, settings line), with `move` and a `click` up.
+- **The sound is bit-identical** (null test below).
+
 ## 3.3.0 (the trace: what the fly does to your sound)
 
 Hakan, on 3.0: the window "feels like it doesn't have a purpose". Asked what he wants from it while making music, he picked "see what it does to my sound". The control (the electrode, X-Y) is replaced in the imaging work, not here. The sound does not change (null test below).

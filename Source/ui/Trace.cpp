@@ -327,7 +327,8 @@ void Trace::paint (juce::Graphics& g)
 
 float Trace::futureWidth() const noexcept
 {
-    return std::round (rows().plot.getWidth() / (float) (barsShown + 1));
+    // a bar's width, but never so narrow that its words don't fit
+    return std::round (std::max (110.0f, rows().plot.getWidth() / (float) (barsShown + 1)));
 }
 
 void Trace::paintFuture (juce::Graphics& g, const Hairline& line, const Rows& R, float nowX, float width)
@@ -378,21 +379,17 @@ void Trace::paintFuture (juce::Graphics& g, const Hairline& line, const Rows& R,
     const double beatsAway = std::max (0.0, land - beatNow);
     const juce::String when = beatsAway < 1.0 ? juce::String ("now") : "in " + juce::String ((int) std::ceil (beatsAway - 1.0e-6)) + (beatsAway <= 1.0 ? " beat" : " beats");
 
-    // its words where they fit: right of the square, or left of it near the edge
-    const juce::String first = "armed", second = where + utf8 (" \xc2\xb7 ") + when, third = "size " + juce::String (tl.armedSize(), 2);
-    const float w = std::max ({ juce::GlyphArrangement::getStringWidth (data, first), juce::GlyphArrangement::getStringWidth (small, second),
-                                juce::GlyphArrangement::getStringWidth (small, third) }) + 6.0f;
-    const bool fitsRight = x + 6.0f + w < (float) getWidth() - 4.0f;
-    const float tx = fitsRight ? x + 6.0f : x - 6.0f - w;
-    const auto just = fitsRight ? juce::Justification::centredLeft : juce::Justification::centredRight;
+    // its words inside the zone, under the square's row: never over the past
+    const float tx = nowX + 6.0f, tw = width - 8.0f;
     g.setFont (data);
     g.setColour (tone::grey (tone::live));
-    g.drawText (first, juce::Rectangle<float> (tx, R.fly.getY() + 1.0f, w, 14.0f), just);
+    g.drawText ("armed", juce::Rectangle<float> (tx + 8.0f, R.fly.getY() + 1.0f, 60.0f, 14.0f), juce::Justification::centredLeft);
     g.setFont (small);
     g.setColour (tone::grey (tone::bright));
-    g.drawText (second, juce::Rectangle<float> (tx, R.fly.getY() + 15.0f, w, 13.0f), just);
+    const juce::String second = juce::GlyphArrangement::getStringWidth (small, where + utf8 (" \xc2\xb7 ") + when) < tw ? where + utf8 (" \xc2\xb7 ") + when : where;
+    g.drawText (second, juce::Rectangle<float> (tx, R.fly.getY() + 15.0f, tw, 13.0f), juce::Justification::centredLeft);
     g.setColour (tone::grey (tone::mid));
-    g.drawText (third, juce::Rectangle<float> (tx, R.echo.getY() + 2.0f, w, 13.0f), just);
+    g.drawText ("size " + juce::String (tl.armedSize(), 2), juce::Rectangle<float> (tx, R.echo.getY() + 2.0f, tw, 13.0f), juce::Justification::centredLeft);
 }
 
 int Trace::reflexAt (juce::Point<float> p) const
