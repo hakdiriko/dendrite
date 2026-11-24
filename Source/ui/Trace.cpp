@@ -123,7 +123,7 @@ void Trace::paint (juce::Graphics& g)
                 const float x = xAt (tl.binTime (back - 1));
                 g.setColour (tone::grey (tone::floor));
                 line.v (x, R.plot.getY(), R.pitch.getBottom());
-                if (lastBarLabel - x > 44.0f && x < right - (future > 0.0f ? 44.0f : 84.0f))
+                if (lastBarLabel - x > 44.0f && x < right - (future > 0.0f ? 76.0f : 84.0f))
                 {
                     g.setFont (small);
                     g.setColour (tone::grey (tone::dim));
