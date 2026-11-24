@@ -22,6 +22,13 @@ namespace
 
     juce::String microns (float um) { return juce::String (juce::roundToInt (um)) + juce::String (juce::CharPointer_UTF8 (" \xc2\xb5m")); }
 
+    // "0.5x", "4x", "3.2x"
+    juce::String magnification (float z)
+    {
+        const bool whole = std::abs (z - std::round (z)) < 0.05f;
+        return (whole ? juce::String (juce::roundToInt (z)) : juce::String (z, 1)) + juce::String (juce::CharPointer_UTF8 ("\xc3\x97"));
+    }
+
     // where FlyData's anchors are, and what the rig calls them
     struct Region
     {
@@ -64,6 +71,17 @@ Specimen::Specimen (DendriteProcessor& p)
         place[(size_t) n] = { ((float) flydata::neuronX[n] / 65535.0f - 0.5f) * widthMicrons,
                               ((float) flydata::neuronY[n] / 65535.0f - 0.5f) * heightMicrons,
                               depths[(size_t) n] - zc };
+    {
+        // the reach the dial's small brain is scaled to: 98% of the neurons lie within it
+        std::vector<float> reach ((size_t) neurons);
+        for (int n = 0; n < neurons; ++n)
+        {
+            const auto& q = place[(size_t) n];
+            reach[(size_t) n] = std::sqrt (q.x * q.x + q.y * q.y + q.z * q.z);
+        }
+        std::nth_element (reach.begin(), reach.begin() + neurons * 98 / 100, reach.end());
+        placeRadius = std::max (1.0f, reach[(size_t) (neurons * 98 / 100)]);
+    }
 
     // the tracts: each neuron's three strongest outputs, by synapse count (inhibitory ones too)
     tractTo.assign ((size_t) neurons * tractsPerNeuron, 0);
@@ -113,18 +131,22 @@ void Specimen::resized()
     r.removeFromLeft (52.0f);
     r.removeFromRight (24.0f);
     // the rail: the imaging method, the 2-DG brain, the goniometer
-    rail = r.removeFromRight (150.0f).withTrimmedTop (44.0f).withTrimmedBottom (44.0f); // clear of the legend's row
+    rail = r.removeFromRight (150.0f).withTrimmedTop (44.0f).withTrimmedBottom (10.0f); // under the caption; the legend stops short of it
     r.removeFromRight (24.0f);
     {
         auto c = rail;
         c.removeFromTop (20.0f); // its title
         methodList = c.removeFromTop (railRow * (float) rig::Recording::methods);
         c.removeFromTop (28.0f);
-        const float insetH = std::round (c.getWidth() * heightMicrons / widthMicrons);
-        insetArea = c.removeFromTop (insetH);
-        c.removeFromTop (48.0f); // the session's clock under it, the goniometer's title
-        const float d = juce::jlimit (48.0f, 112.0f, std::min (c.getWidth(), c.getHeight()));
-        goniometer = c.removeFromTop (d).withSizeKeepingCentre (d, d);
+        // the 2-DG brain, two thirds of the rail across; the session's clock and spikes beside it
+        const float insetW = std::round (rail.getWidth() * 0.64f);
+        insetArea = c.removeFromTop (std::round (insetW * heightMicrons / widthMicrons)).withWidth (insetW);
+        c.removeFromTop (34.0f); // the goniometer's title
+        // the goniometer's ball, as large as the rail allows, the objective's column beside it, the angles under it
+        const float d = juce::jlimit (48.0f, 132.0f, std::min (c.getWidth() - 44.0f, c.getHeight() - 20.0f));
+        auto row = c.removeFromTop (d);
+        goniometer = row.removeFromLeft (d);
+        objectiveRow = row.removeFromRight (36.0f).withSizeKeepingCentre (36.0f, railRow * (float) objectiveCount);
     }
     r.removeFromTop (72.0f);
     r.removeFromBottom (84.0f);
@@ -135,10 +157,13 @@ void Specimen::resized()
 
 void Specimen::project()
 {
+    adoptField();
     yawNow = processor.recording.yaw.load();
     pitchNow = processor.recording.pitch.load();
+    const bool turned = ! frontal();
     const float a = juce::degreesToRadians (yawNow), b = juce::degreesToRadians (pitchNow);
     const float ca = std::cos (a), sa = std::sin (a), cb = std::cos (b), sb = std::sin (b);
+    projDepth.resize ((size_t) neurons);
     for (size_t n = 0; n < (size_t) neurons; ++n)
     {
         // turned about the vertical axis (yaw), then tilted about the horizontal (pitch); seen from the front
@@ -147,9 +172,107 @@ void Specimen::project()
         const float y = p.y * cb - z * sb;
         projUm[2 * n] = x + 0.5f * widthMicrons;
         projUm[2 * n + 1] = y + 0.5f * heightMicrons;
-        proj[n] = { brain.getX() + brain.getWidth() * projUm[2 * n] / widthMicrons,
-                    brain.getY() + brain.getHeight() * projUm[2 * n + 1] / heightMicrons };
+        proj[n] = toScreen (projUm[2 * n], projUm[2 * n + 1]);
+        // how far back it now lies (0 nearest), so the far side of a turned brain reads as far
+        projDepth[n] = turned ? juce::jlimit (0.0f, 1.0f, 0.5f + 0.5f * (p.y * sb + z * cb) / placeRadius) : 0.0f;
     }
+}
+
+//==============================================================================
+// the objective: how much of the plate the window sees, and where
+
+namespace
+{
+    // the field's centre on one axis, so the field never leaves the box (smaller than the box: centred)
+    float fieldCentre (float c, float size, float z) noexcept
+    {
+        const float half = 0.5f * size / z;
+        return half >= 0.5f * size ? 0.5f * size : juce::jlimit (half, size - half, c);
+    }
+} // namespace
+
+void Specimen::clampField()
+{
+    zoomCx = fieldCentre (zoomCx, widthMicrons, zoomNow);
+    zoomCy = fieldCentre (zoomCy, heightMicrons, zoomNow);
+}
+
+void Specimen::storeField()
+{
+    auto& rec = processor.recording;
+    seenZoom = zoomNow;
+    seenX = zoomCx / widthMicrons;
+    seenY = zoomCy / heightMicrons;
+    rec.zoom = seenZoom;
+    rec.zoomX = seenX;
+    rec.zoomY = seenY;
+}
+
+void Specimen::adoptField()
+{
+    const auto& rec = processor.recording;
+    const float z = rec.zoom.load(), x = rec.zoomX.load(), y = rec.zoomY.load();
+    if (z == seenZoom && x == seenX && y == seenY)
+        return;
+    zoomNow = zoomGoal = juce::jlimit (rig::Recording::minZoom, rig::Recording::maxZoom, z);
+    zoomCx = x * widthMicrons;
+    zoomCy = y * heightMicrons;
+    easing = false;
+    clampField();
+    storeField();
+}
+
+void Specimen::setZoom (float z, juce::Point<float> keepAt)
+{
+    const auto u = toMicrons (keepAt);
+    zoomNow = zoomGoal = juce::jlimit (rig::Recording::minZoom, rig::Recording::maxZoom, z);
+    easing = false;
+    const float s = pixelsPerMicron();
+    zoomCx = u.x - (keepAt.x - brain.getCentreX()) / s;
+    zoomCy = u.y - (keepAt.y - brain.getCentreY()) / s;
+    clampField();
+    storeField();
+}
+
+void Specimen::zoomTo (float z)
+{
+    zoomGoal = juce::jlimit (rig::Recording::minZoom, rig::Recording::maxZoom, z);
+    goalCx = fieldCentre (space * widthMicrons, widthMicrons, zoomGoal);
+    goalCy = fieldCentre ((1.0f - feed) * heightMicrons, heightMicrons, zoomGoal);
+    easing = true;
+}
+
+void Specimen::followTip()
+{
+    // past the field's inner tenth, the stage moves so the tip stays in sight
+    const float halfX = 0.45f * widthMicrons / zoomNow, halfY = 0.45f * heightMicrons / zoomNow;
+    const float tx = space * widthMicrons, ty = (1.0f - feed) * heightMicrons;
+    const float cx = juce::jlimit (tx - halfX, tx + halfX, zoomCx), cy = juce::jlimit (ty - halfY, ty + halfY, zoomCy);
+    if (cx == zoomCx && cy == zoomCy)
+        return;
+    zoomCx = cx;
+    zoomCy = cy;
+    clampField();
+    storeField();
+}
+
+int Specimen::objectiveAt (juce::Point<float> p) const noexcept
+{
+    if (! objectiveRow.contains (p))
+        return -1;
+    return juce::jlimit (0, objectiveCount - 1, (int) ((p.y - objectiveRow.getY()) / railRow));
+}
+
+void Specimen::turnBy (float dYaw, float dPitch)
+{
+    auto& rec = processor.recording;
+    float yaw = rec.yaw.load() + dYaw;
+    yaw -= 360.0f * std::round (yaw / 360.0f);
+    const float pitch = rec.pitch.load() + dPitch;
+    if (std::abs (pitch) > 90.0f)
+        spinPitch = 0.0f; // the stage stops at a quarter turn up or down
+    rec.yaw = yaw;
+    rec.pitch = juce::jlimit (-90.0f, 90.0f, pitch);
 }
 
 namespace
@@ -183,14 +306,15 @@ void Specimen::renderMethod (int method, float px)
         double at = 0.0;
         float most = 1.0f;
         const float* frame = lapsePicture (at, most);
-        renderUptake (points, frame, most, false, widthMicrons / (float) w);
+        renderUptake (points, frame, most, false, 1.0f / (pixelsPerMicron() * px), toMicrons (brain.getTopLeft()));
         return;
     }
 
     const float most = (float) std::log1p ((double) std::max<uint32_t> (1u, rec.mostExposed()));
     // one logical pixel at the default window (816 um across ~790 px: about 1 um a pixel), growing
     // with the window so a large picture keeps its density; always whole physical pixels
-    const int dot = std::max (1, juce::roundToInt (px * std::max (1.0f, brain.getWidth() / 790.0f)));
+    // under a stronger objective a neuron grows with the square root of the magnification (a soma is a few um across)
+    const int dot = std::max (1, juce::roundToInt (px * std::max (1.0f, brain.getWidth() / 790.0f) * std::sqrt (std::max (1.0f, zoomNow))));
 
     juce::Image::BitmapData bits (points, juce::Image::BitmapData::readWrite);
     for (int y = 0; y < h; ++y)
@@ -212,6 +336,8 @@ void Specimen::renderMethod (int method, float px)
             }
     };
     auto grey = [] (float level) { return (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * level)); };
+    // turned, the far side dims toward the floor (depth cueing): the nearer neuron wins a shared pixel
+    auto cue = [&] (int n, float level) { return tone::floor + (level - tone::floor) * (1.0f - 0.6f * projDepth[(size_t) n]); };
     const float fullCalcium = rig::Recording::calciumAt (50.0f);
 
     for (int n = 0; n < neurons; ++n)
@@ -227,7 +353,7 @@ void Specimen::renderMethod (int method, float px)
             {
                 // GCaMP6s: a calcium kernel on the spikes; grey from the indicator's floor to white at 50 Hz held
                 const float c = rec.calcium (n);
-                put (x0, y0, grey (tone::floor + (tone::live - tone::floor) * juce::jlimit (0.0f, 1.0f, std::sqrt (c / fullCalcium))), dot, false);
+                put (x0, y0, grey (cue (n, tone::floor + (tone::live - tone::floor) * juce::jlimit (0.0f, 1.0f, std::sqrt (c / fullCalcium)))), dot, false);
                 break;
             }
             case M::voltage:
@@ -242,7 +368,7 @@ void Specimen::renderMethod (int method, float px)
             {
                 // one photon a spike, over the last second, each a grain within 3 um of its neuron
                 const int k = std::min (rec.photons (n), 32);
-                const float spread = 3.0f * brain.getWidth() / widthMicrons * px;
+                const float spread = 3.0f * pixelsPerMicron() * px;
                 for (int j = 0; j < k; ++j)
                 {
                     const auto g = grain (n, j);
@@ -256,7 +382,7 @@ void Specimen::renderMethod (int method, float px)
             }
             case M::tracts:
                 // the neurons only as a faint ground; the lines are drawn over them (paintTracts)
-                put (x0, y0, grey (tone::floor + exposed * 0.5f), dot, false);
+                put (x0, y0, grey (cue (n, tone::floor + exposed * 0.5f)), dot, false);
                 break;
             default:
             {
@@ -265,7 +391,7 @@ void Specimen::renderMethod (int method, float px)
                 const float hz = rec.trace (n) / (float) rig::Recording::traceSeconds;
                 if (hz >= 1.0f)
                     level = std::max (level, tone::rate (hz));
-                put (x0, y0, grey (level), dot, false);
+                put (x0, y0, grey (cue (n, level)), dot, false);
                 break;
             }
         }
@@ -291,7 +417,7 @@ void Specimen::renderMethod (int method, float px)
     }
 }
 
-void Specimen::renderUptake (juce::Image& into, const float* uptake, float most, bool front, float umPerPixel)
+void Specimen::renderUptake (juce::Image& into, const float* uptake, float most, bool front, float umPerPixel, juce::Point<float> origin)
 {
     // the film: each neuron's uptake laid down where it is, blurred to tritium's few microns, the
     // densest neuron of the session white, on a log scale
@@ -304,7 +430,7 @@ void Specimen::renderUptake (juce::Image& into, const float* uptake, float most,
             continue;
         const float ux = front ? (float) flydata::neuronX[n] / 65535.0f * widthMicrons : projUm[(size_t) (2 * n)];
         const float uy = front ? (float) flydata::neuronY[n] / 65535.0f * heightMicrons : projUm[(size_t) (2 * n + 1)];
-        const int x = (int) (ux / umPerPixel), y = (int) (uy / umPerPixel);
+        const int x = (int) std::floor ((ux - origin.x) / umPerPixel), y = (int) std::floor ((uy - origin.y) / umPerPixel);
         if (x < 0 || y < 0 || x >= w || y >= h)
             continue;
         scratch[(size_t) (y * w + x)] += (float) std::log1p (u);
@@ -388,13 +514,14 @@ void Specimen::paint (juce::Graphics& g)
         paintTracts (g, line);
     hovered = findHover();
     paintScale (g, line);
-    if (frontal())
+    if (frontal() && std::abs (zoomNow - 1.0f) < 0.01f)
     {
         paintRegions (g, line);
-        paintPath (g, line);
+        paintPath (g, line); // the anchors are placed on the unmagnified plate
     }
     measureTip();
-    paintElectrode (g, line);
+    if (! noElectrode)
+        paintElectrode (g, line);
     paintHover (g, line);
     paintRail (g, line);
 }
@@ -425,7 +552,7 @@ void Specimen::paintHover (juce::Graphics& g, const Hairline& line)
         return;
     // how crowded it is there: the neurons within 5 um of it
     const auto at = neuronPoint (nearest);
-    const float r5 = 5.0f * brain.getWidth() / widthMicrons;
+    const float r5 = 5.0f * pixelsPerMicron();
     int near = 0;
     for (int n = 0; n < neurons; ++n)
         if (neuronPoint (n).getDistanceSquaredFrom (at) <= r5 * r5)
@@ -457,30 +584,39 @@ void Specimen::paintHover (juce::Graphics& g, const Hairline& line)
 
 void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
 {
-    const float umPerPx = widthMicrons / brain.getWidth();
+    const float umPerPx = 1.0f / pixelsPerMicron();
     const float left = brain.getX() - 10.0f, bottom = brain.getBottom() + 10.0f;
 
-    // calibration: a tick every 50 um, longer every 250, on the left and bottom edges
+    // calibration: the field's microns from the box's left and bottom edges, a tick every 1-2-5 step
+    // near 50 px (50 um under the first objective), longer every fifth; the field's corner is labelled
+    const auto low = toMicrons (brain.getBottomLeft()), high = toMicrons (brain.getTopRight());
+    const float u0 = std::max (0.0f, low.x), u1 = std::min (widthMicrons, high.x);
+    const float v0 = std::max (0.0f, heightMicrons - low.y), v1 = std::min (heightMicrons, heightMicrons - high.y);
+    const float step = niceMicrons (50.0f * umPerPx);
     g.setColour (tone::grey (tone::dim));
     line.v (left, brain.getY(), bottom);
     line.h (left, brain.getRight(), bottom);
-    for (int um = 0; (float) um <= widthMicrons; um += 50)
+    for (float um = std::ceil (u0 / step - 1.0e-3f) * step; um <= u1 + 1.0e-3f; um += step)
     {
-        const float x = left + (float) um / umPerPx, len = um % 250 == 0 ? 6.0f : 3.0f;
-        if (x > brain.getRight())
-            break;
-        line.v (x, bottom, bottom + len);
+        const bool major = juce::roundToInt (um / step) % 5 == 0;
+        line.v (toScreen (um, 0.0f).x, bottom, bottom + (major ? 6.0f : 3.0f));
     }
-    for (int um = 0; (float) um <= heightMicrons; um += 50)
+    for (float um = std::ceil (v0 / step - 1.0e-3f) * step; um <= v1 + 1.0e-3f; um += step)
     {
-        const float y = bottom - (float) um / umPerPx, len = um % 250 == 0 ? 6.0f : 3.0f;
-        if (y < brain.getY())
-            break;
-        line.h (left - len, left, y);
+        const bool major = juce::roundToInt (um / step) % 5 == 0;
+        const float len = major ? 6.0f : 3.0f;
+        line.h (left - len, left, toScreen (0.0f, heightMicrons - um).y);
     }
     g.setFont (fonts->at (type::small));
     g.setColour (tone::grey (tone::mid));
-    g.drawText ("0", juce::Rectangle<float> (left - 22.0f, bottom + 2.0f, 16.0f, 12.0f), juce::Justification::centredRight);
+    if (juce::roundToInt (u0) == 0 && juce::roundToInt (v0) == 0)
+        g.drawText ("0", juce::Rectangle<float> (left - 22.0f, bottom + 2.0f, 16.0f, 12.0f), juce::Justification::centredRight);
+    else
+    {
+        // where the field starts: across under the corner, up beside it
+        g.drawText (juce::String (juce::roundToInt (u0)), juce::Rectangle<float> (left - 2.0f, bottom + 8.0f, 60.0f, 12.0f), juce::Justification::centredLeft);
+        g.drawText (juce::String (juce::roundToInt (v0)), juce::Rectangle<float> (left - 52.0f, bottom - 14.0f, 40.0f, 12.0f), juce::Justification::centredRight);
+    }
 
     // the scale bar: a 1-2-5 length near 80 px, picked again on every resize
     const float um = niceMicrons (80.0f * umPerPx), len = um / umPerPx;
@@ -568,9 +704,12 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
         }
         default: how = "trace" + dot + "300 ms"; break;
     }
-    const auto view = frontal() ? juce::String ("frontal projection")
+    const bool first = std::abs (zoomNow - 1.0f) < 0.01f;
+    const auto view = frontal() ? juce::String (first ? "frontal projection" : "frontal")
                                 : "yaw " + juce::String (juce::roundToInt (yawNow)) + utf8 ("\xc2\xb0 pitch ") + juce::String (juce::roundToInt (pitchNow)) + utf8 ("\xc2\xb0");
-    const auto what = how + dot + view + dot + microns (widthMicrons) + utf8 (" \xc3\x97 ") + microns (heightMicrons);
+    const auto field = first ? microns (widthMicrons) + utf8 (" \xc3\x97 ") + microns (heightMicrons)
+                             : magnification (zoomNow) + dot + microns (widthMicrons / zoomNow) + utf8 (" \xc3\x97 ") + microns (heightMicrons / zoomNow);
+    const auto what = (first ? how : how.upToFirstOccurrenceOf (dot, false, false)) + dot + view + dot + field;
     // top left, as on a slide's label
     g.drawText (counts, juce::Rectangle<float> (14.0f, 8.0f, rail.getX() - 28.0f, 16.0f), juce::Justification::centredLeft);
     if (hovered < 0)
@@ -807,41 +946,131 @@ void Specimen::paintRail (juce::Graphics& g, const Hairline& line)
         g.setFont (fonts->at (type::small));
         g.setColour (tone::grey (tone::dim));
         const auto spikes = rec.spikesInSession();
-        const auto under = juce::Rectangle<float> (rail.getX(), insetArea.getBottom() + 5.0f, rail.getWidth(), 14.0f);
-        g.drawText (clock (rec.sessionSeconds()).fromFirstOccurrenceOf ("+", false, false).upToLastOccurrenceOf (".", false, false), under, juce::Justification::centredLeft);
-        g.drawText (spikes >= 1000000 ? juce::String ((double) spikes / 1.0e6, 1) + " M spikes" : grouped (spikes) + " spikes", under, juce::Justification::centredRight);
+        auto beside = juce::Rectangle<float> (insetArea.getRight() + 6.0f, insetArea.getY() - 1.0f, rail.getRight() - insetArea.getRight() - 6.0f, 14.0f);
+        auto elapsed = clock (rec.sessionSeconds()).fromFirstOccurrenceOf ("+", false, false).upToLastOccurrenceOf (".", false, false);
+        if (elapsed.startsWith ("00:"))
+            elapsed = elapsed.substring (3); // under an hour: minutes and seconds
+        g.drawText (elapsed, beside, juce::Justification::centredRight);
+        beside.translate (0.0f, 14.0f);
+        g.drawText (spikes >= 1000000 ? juce::String ((double) spikes / 1.0e6, 1) + " M" : spikes >= 100000 ? juce::String (juce::roundToInt ((double) spikes / 1.0e3)) + " k" : grouped (spikes),
+                    beside, juce::Justification::centredRight);
+        beside.translate (0.0f, 14.0f);
+        g.drawText ("spikes", beside, juce::Justification::centredRight);
     }
 
-    // the goniometer: the dot is the specimen's angle (yaw across, pitch up), graduated every 30 degrees
-    title (goniometer.getY() - 24.0f, "goniometer");
     {
-        const auto c = goniometer.getCentre();
-        const float r = 0.5f * goniometer.getWidth();
-        g.setColour (tone::grey (turning || goniometer.contains (hoverAt) ? tone::mid : tone::floor));
-        g.drawEllipse (goniometer, line.width());
-        g.setColour (tone::grey (tone::floor));
-        line.h (goniometer.getX(), goniometer.getRight(), c.y);
-        line.v (c.x, goniometer.getY(), goniometer.getBottom());
-        g.setColour (tone::grey (tone::dim));
-        for (int deg = -180; deg <= 180; deg += 30)
-            line.v (c.x + r * (float) deg / 180.0f, c.y - (deg % 90 == 0 ? 4.0f : 2.0f), c.y + (deg % 90 == 0 ? 4.0f : 2.0f));
-        for (int deg = -90; deg <= 90; deg += 30)
-            line.h (c.x - (deg % 90 == 0 ? 4.0f : 2.0f), c.x + (deg % 90 == 0 ? 4.0f : 2.0f), c.y - r * (float) deg / 90.0f);
-        const juce::Point<float> at { c.x + r * yawNow / 180.0f, c.y - r * pitchNow / 90.0f };
-        g.setColour (tone::grey (tone::live));
-        g.drawEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre (at), line.width());
-        g.fillRect (juce::Rectangle<float> (2.0f, 2.0f).withCentre (at));
-        g.setFont (fonts->at (type::data));
-        g.setColour (tone::grey (tone::bright));
-        auto angle = [] (float v) { const int d = juce::roundToInt (v); return (d > 0 ? "+" : "") + juce::String (d) + utf8 ("\xc2\xb0"); };
-        // the angles in the dial's lower corners, yaw left, pitch right
-        g.setFont (fonts->at (type::small));
-        g.drawText (angle (yawNow), juce::Rectangle<float> (rail.getX(), goniometer.getBottom() - 14.0f, 50.0f, 14.0f), juce::Justification::centredLeft);
-        g.drawText (angle (pitchNow), juce::Rectangle<float> (rail.getRight() - 50.0f, goniometer.getBottom() - 14.0f, 50.0f, 14.0f), juce::Justification::centredRight);
-        g.setColour (tone::grey (tone::dim));
-        g.drawText ("yaw", juce::Rectangle<float> (rail.getX(), goniometer.getBottom() - 28.0f, 50.0f, 14.0f), juce::Justification::centredLeft);
-        g.drawText ("pitch", juce::Rectangle<float> (rail.getRight() - 50.0f, goniometer.getBottom() - 28.0f, 50.0f, 14.0f), juce::Justification::centredRight);
+        bool exact = false;
+        for (float z : objectives)
+            exact = exact || std::abs (zoomGoal - z) < 0.01f;
+        title (goniometer.getY() - 24.0f, exact ? juce::String ("goniometer") : "goniometer" + dot + magnification (zoomNow));
     }
+    paintDial (g, line);
+
+    // the objective: a turret of five, the one in place bright with a bar beside it; between them (the wheel,
+    // a pinch) none is lit and the dial's title says the magnification
+    g.setFont (fonts->at (type::small));
+    for (int k = 0; k < objectiveCount; ++k)
+    {
+        const auto cell = juce::Rectangle<float> (objectiveRow.getX(), objectiveRow.getY() + railRow * (float) k, objectiveRow.getWidth(), railRow);
+        const bool on = std::abs (zoomGoal - objectives[k]) < 0.01f, over = cell.contains (hoverAt);
+        g.setColour (tone::grey (on ? tone::live : over ? tone::bright : tone::dim));
+        g.drawText (magnification (objectives[k]), cell, juce::Justification::centredRight);
+        if (on)
+            g.fillRect (juce::Rectangle<float> (cell.getX(), cell.getCentreY() - 4.0f, 2.0f, 8.0f));
+    }
+}
+
+void Specimen::paintDial (juce::Graphics& g, const Hairline& line)
+{
+    // the goniometer is a trackball with the specimen inside it: the same neurons, small, at the stage's
+    // angles, lit by their firing now; the ball's equator and meridian turn with it, the near half brighter
+    const auto& rec = processor.recording;
+    const auto c = goniometer.getCentre();
+    const float r = 0.5f * goniometer.getWidth();
+    const int side = std::max (1, juce::roundToInt (goniometer.getWidth() * line.px));
+    if (dialImage.getWidth() != side)
+        dialImage = juce::Image (juce::Image::RGB, side, side, true);
+    {
+        juce::Image::BitmapData bits (dialImage, juce::Image::BitmapData::readWrite);
+        for (int y = 0; y < side; ++y)
+            std::memset (bits.getLinePointer (y), 0, (size_t) (bits.pixelStride * side));
+        const float k = 0.86f * r * line.px / placeRadius, mid = 0.5f * (float) side, inside = (r * line.px - 2.0f) * (r * line.px - 2.0f);
+        for (int n = 0; n < neurons; ++n)
+        {
+            const float dx = (projUm[(size_t) (2 * n)] - 0.5f * widthMicrons) * k, dy = (projUm[(size_t) (2 * n + 1)] - 0.5f * heightMicrons) * k;
+            if (dx * dx + dy * dy > inside)
+                continue;
+            const int x = (int) (mid + dx), y = (int) (mid + dy);
+            if (x < 0 || y < 0 || x >= side || y >= side)
+                continue;
+            const float hz = rec.trace (n) / (float) rig::Recording::traceSeconds;
+            float level = hz >= 1.0f ? tone::rate (hz) : rec.exposure (n) > 0 ? tone::dim : 0.5f * (tone::floor + tone::dim);
+            level = tone::floor + (level - tone::floor) * (1.0f - 0.6f * projDepth[(size_t) n]);
+            const auto v = (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * level));
+            auto* p = bits.getPixelPointer (x, y);
+            if (p[0] < v)
+                p[0] = p[1] = p[2] = v;
+        }
+    }
+    g.drawImageTransformed (dialImage, juce::AffineTransform::scale (1.0f / line.px)
+                                           .translated (line.snap (goniometer.getX()) - 0.5f / line.px, line.snap (goniometer.getY()) - 0.5f / line.px));
+
+    const bool active = turning || goniometer.contains (hoverAt) || std::abs (spinYaw) + std::abs (spinPitch) > 0.0f;
+    g.setColour (tone::grey (active ? tone::mid : tone::dim));
+    g.drawEllipse (goniometer, line.width());
+    // the fixed frame: a tick at each quarter of the ring, outside it
+    g.setColour (tone::grey (tone::dim));
+    line.h (goniometer.getX() - 5.0f, goniometer.getX() - 1.0f, c.y);
+    line.h (goniometer.getRight() + 1.0f, goniometer.getRight() + 5.0f, c.y);
+    line.v (c.x, goniometer.getY() - 5.0f, goniometer.getY() - 1.0f);
+    line.v (c.x, goniometer.getBottom() + 1.0f, goniometer.getBottom() + 5.0f);
+
+    // the ball's own circles, turned as the specimen is
+    const float a = juce::degreesToRadians (yawNow), b = juce::degreesToRadians (pitchNow);
+    const float ca = std::cos (a), sa = std::sin (a), cb = std::cos (b), sb = std::sin (b);
+    auto turn = [&] (float x, float y, float z) {
+        const float x1 = x * ca + z * sa, z1 = -x * sa + z * ca;
+        return std::array<float, 3> { x1, y * cb - z1 * sb, y * sb + z1 * cb };
+    };
+    constexpr int segments = 72;
+    for (int circle = 0; circle < 2; ++circle)
+        for (int k = 0; k < segments; ++k)
+        {
+            const float t0 = juce::MathConstants<float>::twoPi * (float) k / (float) segments, t1 = juce::MathConstants<float>::twoPi * (float) (k + 1) / (float) segments;
+            const auto p0 = circle == 0 ? turn (std::cos (t0), 0.0f, std::sin (t0)) : turn (0.0f, std::cos (t0), std::sin (t0));
+            const auto p1 = circle == 0 ? turn (std::cos (t1), 0.0f, std::sin (t1)) : turn (0.0f, std::cos (t1), std::sin (t1));
+            const bool near = p0[2] + p1[2] < 0.0f;
+            g.setColour (tone::grey (near ? tone::mid : tone::floor));
+            g.drawLine (c.x + r * p0[0], c.y + r * p0[1], c.x + r * p1[0], c.y + r * p1[1], line.width());
+        }
+    // under a stronger objective, the field the plate shows, framed on the small brain
+    if (zoomNow > 1.01f)
+    {
+        const float k = 0.86f * r / placeRadius;
+        const auto a0 = toMicrons (brain.getTopLeft()), a1 = toMicrons (brain.getBottomRight());
+        const auto field = juce::Rectangle<float>::leftTopRightBottom (c.x + (a0.x - 0.5f * widthMicrons) * k, c.y + (a0.y - 0.5f * heightMicrons) * k,
+                                                                         c.x + (a1.x - 0.5f * widthMicrons) * k, c.y + (a1.y - 0.5f * heightMicrons) * k);
+        g.setColour (tone::grey (tone::live));
+        g.drawRect (field.expanded (0.5f * line.width()), line.width());
+    }
+    // the ball's front pole: where the specimen's own front now faces
+    {
+        const auto f = turn (0.0f, 0.0f, -1.0f);
+        const juce::Point<float> at { c.x + r * f[0], c.y + r * f[1] };
+        g.setColour (tone::grey (f[2] < 0.0f ? tone::live : tone::dim));
+        g.drawEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (at), line.width());
+    }
+
+    // the angles under the ball: yaw, pitch
+    auto angle = [] (float v) { const int d = juce::roundToInt (v); return (d > 0 ? "+" : "") + juce::String (d) + utf8 ("\xc2\xb0"); };
+    g.setFont (fonts->at (type::small));
+    const auto under = juce::Rectangle<float> (rail.getX(), goniometer.getBottom() + 6.0f, rail.getWidth(), 14.0f);
+    g.setColour (tone::grey (tone::dim));
+    g.drawText ("yaw", under, juce::Justification::centredLeft);
+    g.drawText ("pitch", under.withTrimmedLeft (0.5f * rail.getWidth()), juce::Justification::centredLeft);
+    g.setColour (tone::grey (tone::bright));
+    g.drawText (angle (yawNow), under.withWidth (0.5f * rail.getWidth() - 8.0f), juce::Justification::centredRight);
+    g.drawText (angle (pitchNow), under, juce::Justification::centredRight);
 }
 
 //==============================================================================
@@ -849,7 +1078,7 @@ void Specimen::paintRail (juce::Graphics& g, const Hairline& line)
 
 juce::Point<float> Specimen::tipPoint() const noexcept
 {
-    return { brain.getX() + space * brain.getWidth(), brain.getY() + (1.0f - feed) * brain.getHeight() };
+    return toScreen (space * widthMicrons, (1.0f - feed) * heightMicrons);
 }
 
 void Specimen::measureTip()
@@ -885,6 +1114,18 @@ void Specimen::paintElectrode (juce::Graphics& g, const Hairline& line)
     const auto at = tipPoint();
     const float r = tipRadius();
     const bool live = throwOn || touching;
+    if (! brain.expanded (r).contains (at))
+    {
+        // out of the field (a stronger objective looking elsewhere): a mark on the field's edge, toward it
+        const auto edge = juce::Point<float> (juce::jlimit (brain.getX(), brain.getRight(), at.x), juce::jlimit (brain.getY(), brain.getBottom(), at.y));
+        const auto toward = (at - edge) / std::max (1.0f, at.getDistanceFrom (edge));
+        const auto side = juce::Point<float> (-toward.y, toward.x);
+        juce::Path mark;
+        mark.addTriangle (edge + toward * 2.0f, edge - toward * 7.0f + side * 4.0f, edge - toward * 7.0f - side * 4.0f);
+        g.setColour (tone::grey (live ? tone::live : tone::bright));
+        g.strokePath (mark, juce::PathStrokeType (line.width()));
+        return;
+    }
 
     // the stimulus: a hairline from where the hand presses to the tip, and the press site
     if (touching)
@@ -908,13 +1149,17 @@ void Specimen::paintElectrode (juce::Graphics& g, const Hairline& line)
     // where it sits, marked on the calibration axes
     const float left = brain.getX() - 10.0f, bottom = brain.getBottom() + 10.0f;
     g.setColour (tone::grey (tone::bright));
-    line.h (left - 9.0f, left, at.y);
-    line.v (at.x, bottom, bottom + 9.0f);
+    if (at.y >= brain.getY() && at.y <= brain.getBottom())
+        line.h (left - 9.0f, left, at.y);
+    if (at.x >= brain.getX() && at.x <= brain.getRight())
+        line.v (at.x, bottom, bottom + 9.0f);
 }
 
 void Specimen::tick (double nowSeconds)
 {
     clockSeconds = nowSeconds;
+    const double dt = lastTick < 0.0 ? 0.0 : juce::jlimit (0.0, 0.1, nowSeconds - lastTick);
+    lastTick = nowSeconds;
     clockNow = nowSeconds;
     // a press becomes a throw once it has lasted a moment, so a click that only focuses the window is not one
     if (pending && nowSeconds - pressStarted >= 0.08)
@@ -923,6 +1168,33 @@ void Specimen::tick (double nowSeconds)
         touching = true;
         touchStarted = nowSeconds;
         setThrow (true);
+    }
+    // a flick keeps the stage turning, slowing as a real one does on its bearing
+    if (! turning && (spinYaw != 0.0f || spinPitch != 0.0f))
+    {
+        turnBy (spinYaw * (float) dt, spinPitch * (float) dt);
+        const float keep = std::exp (-1.4f * (float) dt);
+        spinYaw *= keep;
+        spinPitch *= keep;
+        if (std::abs (spinYaw) + std::abs (spinPitch) < 3.0f)
+            spinYaw = spinPitch = 0.0f;
+    }
+    // the objective swings in over about a fifth of a second
+    if (easing)
+    {
+        const float k = 1.0f - std::exp (-14.0f * (float) dt);
+        zoomNow = std::exp (std::log (zoomNow) + (std::log (zoomGoal) - std::log (zoomNow)) * k);
+        zoomCx += (goalCx - zoomCx) * k;
+        zoomCy += (goalCy - zoomCy) * k;
+        if (std::abs (std::log (zoomNow / zoomGoal)) < 0.002f && std::abs (goalCx - zoomCx) + std::abs (goalCy - zoomCy) < 0.05f)
+        {
+            zoomNow = zoomGoal;
+            zoomCx = goalCx;
+            zoomCy = goalCy;
+            easing = false;
+        }
+        clampField();
+        storeField();
     }
 }
 
@@ -934,18 +1206,21 @@ void Specimen::setThrow (bool on)
 
 juce::String Specimen::getTooltip()
 {
+    const auto dot = utf8 (" \xc2\xb7 ");
     if (methodAt (hoverAt) >= 0)
         return "imaging: what the plate shows of the same spikes";
     if (insetArea.expanded (2.0f).contains (hoverAt))
-        return utf8 ("2-dg: every spike of this session only, never saved Â· press: play how it built up");
+        return "2-dg: every spike of this session only, never saved" + dot + "press: play how it built up";
     if (goniometer.contains (hoverAt))
-        return utf8 ("goniometer: drag to turn (across) and tilt (up) the specimen Â· double-click: frontal");
+        return "goniometer: drag the ball to turn the specimen, flick to spin" + dot + "shift: fine" + dot + "double-click: frontal";
+    if (objectiveAt (hoverAt) >= 0)
+        return "objective: magnify the plate about the electrode" + dot + "wheel or pinch on the plate: any step between";
     if (hoverTip)
         return "electrode: drag up for feed (" + DendriteProcessor::feedName (feed) + " " + juce::String (juce::roundToInt (feed * 100.0f))
                + "%), right for space (" + DendriteProcessor::spaceName (space) + " " + juce::String (juce::roundToInt (space * 100.0f))
-               + utf8 ("%) \xc2\xb7 shift: fine \xc2\xb7 wheel: nudge \xc2\xb7 double-click: home");
+               + "%)" + dot + "shift: fine" + dot + "wheel: nudge" + dot + "double-click: home";
     if (hoverPlate)
-        return "press and hold to stimulate (the throw)";
+        return "press and hold to stimulate (the throw)" + dot + "right-drag: turn" + dot + "alt-drag: move the stage" + dot + "wheel: magnify";
     return {};
 }
 
@@ -956,8 +1231,8 @@ void Specimen::mouseMove (const juce::MouseEvent& e)
     {
         hoverTip = hoverPlate = false;
         setMouseCursor (goniometer.contains (e.position) ? juce::MouseCursor::DraggingHandCursor
-                        : methodAt (e.position) >= 0 || insetArea.expanded (2.0f).contains (e.position) ? juce::MouseCursor::PointingHandCursor
-                                                                                                         : juce::MouseCursor::NormalCursor);
+                        : methodAt (e.position) >= 0 || objectiveAt (e.position) >= 0 || insetArea.expanded (2.0f).contains (e.position) ? juce::MouseCursor::PointingHandCursor
+                                                                                                                                           : juce::MouseCursor::NormalCursor);
         return;
     }
     hoverTip = nearTip (e.position);
@@ -974,6 +1249,7 @@ void Specimen::mouseExit (const juce::MouseEvent&)
 void Specimen::mouseDown (const juce::MouseEvent& e)
 {
     auto& rec = processor.recording;
+    spinYaw = spinPitch = 0.0f; // a hand on the stage stops it
     if (const int m = methodAt (e.position); m >= 0)
     {
         rec.method = m;
@@ -987,16 +1263,31 @@ void Specimen::mouseDown (const juce::MouseEvent& e)
         lapseStarted = clockNow; // from the session's first second to now, again
         return;
     }
-    if (goniometer.contains (e.position))
+    if (const int k = objectiveAt (e.position); k >= 0)
+    {
+        zoomTo (objectives[k]);
+        return;
+    }
+    const bool grabBrain = ! rail.contains (e.position) && (e.mods.isPopupMenu() || e.mods.isCommandDown() || e.mods.isCtrlDown());
+    if (goniometer.contains (e.position) || grabBrain)
     {
         turning = true;
-        turnFrom = e.position;
-        yawFrom = rec.yaw.load();
-        pitchFrom = rec.pitch.load();
+        turningPlate = grabBrain;
+        lastTurnAt = e.position;
+        lastTurnTime = clockNow;
+        turnedYaw = turnedPitch = 0.0f;
         return;
     }
     if (rail.contains (e.position))
         return;
+    if (e.mods.isMiddleButtonDown() || e.mods.isAltDown())
+    {
+        panning = true;
+        easing = false;
+        panFrom = e.position;
+        panCentreFrom = { zoomCx, zoomCy };
+        return;
+    }
     if (! nearTip (e.position))
     {
         pending = true;
@@ -1016,12 +1307,34 @@ void Specimen::mouseDrag (const juce::MouseEvent& e)
 {
     if (turning)
     {
-        // the dot follows the hand: across the dial is a half turn each way, up it a quarter
-        const float r = 0.5f * goniometer.getWidth(), scale = e.mods.isShiftDown() ? 0.2f : 1.0f;
-        float yaw = yawFrom + (e.position.x - turnFrom.x) / r * 180.0f * scale;
-        yaw = yaw - 360.0f * std::round (yaw / 360.0f);
-        processor.recording.yaw = yaw;
-        processor.recording.pitch = juce::jlimit (-90.0f, 90.0f, pitchFrom - (e.position.y - turnFrom.y) / r * 90.0f * scale);
+        // a trackball: across the ball is a half turn (across the plate, three quarters), up it a half tilt
+        const float across = turningPlate ? brain.getWidth() / 1.5f : goniometer.getWidth();
+        const float perPixel = 180.0f / std::max (1.0f, across) * (e.mods.isShiftDown() ? 0.2f : 1.0f);
+        const auto moved = e.position - lastTurnAt;
+        const float dYaw = moved.x * perPixel, dPitch = -moved.y * perPixel;
+        turnBy (dYaw, dPitch);
+        lastTurnAt = e.position;
+        turnedYaw += dYaw;
+        turnedPitch += dPitch;
+        const double now = clockNow, dt = now - lastTurnTime;
+        if (dt > 0.004)
+        {
+            // the hand's speed, smoothed over the last few moves, for the flick
+            const float k = (float) std::min (1.0, dt / 0.05);
+            spinYaw += (turnedYaw / (float) dt - spinYaw) * k;
+            spinPitch += (turnedPitch / (float) dt - spinPitch) * k;
+            lastTurnTime = now;
+            turnedYaw = turnedPitch = 0.0f;
+        }
+        return;
+    }
+    if (panning)
+    {
+        const float s = pixelsPerMicron();
+        zoomCx = panCentreFrom.x - (e.position.x - panFrom.x) / s;
+        zoomCy = panCentreFrom.y - (e.position.y - panFrom.y) / s;
+        clampField();
+        storeField();
         return;
     }
     if (touching || pending)
@@ -1031,24 +1344,45 @@ void Specimen::mouseDrag (const juce::MouseEvent& e)
     }
     if (! dragging)
         return;
-    // measured from where the drag began, not added up frame by frame (the host echoes each value late)
+    // measured from where the drag began, not added up frame by frame (the host echoes each value late);
+    // in microns, so under a stronger objective the same hand moves the tip less: finer control
     if (e.mods.isShiftDown() != fine)
     {
         fine = e.mods.isShiftDown();
         grabMouse = e.position;
         grabUnit = { space, 1.0f - feed };
     }
-    const float scale = fine ? 0.2f : 1.0f;
+    const float scale = (fine ? 0.2f : 1.0f) / pixelsPerMicron();
     const auto moved = e.position - grabMouse;
-    space = juce::jlimit (0.0f, 1.0f, grabUnit.x + moved.x / brain.getWidth() * scale);
-    feed = juce::jlimit (0.0f, 1.0f, 1.0f - (grabUnit.y + moved.y / brain.getHeight() * scale));
+    space = juce::jlimit (0.0f, 1.0f, grabUnit.x + moved.x * scale / widthMicrons);
+    feed = juce::jlimit (0.0f, 1.0f, 1.0f - (grabUnit.y + moved.y * scale / heightMicrons));
     spaceLink.setValueAsPartOfGesture (space);
     feedLink.setValueAsPartOfGesture (feed);
+    if (zoomNow > 1.0f)
+    {
+        // the stage follows the tip; the grab is taken again where the hand now is, so nothing jumps
+        const float cx = zoomCx, cy = zoomCy;
+        followTip();
+        if (cx != zoomCx || cy != zoomCy)
+        {
+            grabMouse = e.position;
+            grabUnit = { space, 1.0f - feed };
+        }
+    }
 }
 
 void Specimen::mouseUp (const juce::MouseEvent&)
 {
-    turning = false;
+    if (turning)
+    {
+        // a flick: released while still moving, the stage keeps turning; a hand that stopped first lets it rest
+        const double still = clockNow - lastTurnTime;
+        if (still > 0.08 || std::abs (spinYaw) + std::abs (spinPitch) < 30.0f)
+            spinYaw = spinPitch = 0.0f;
+        spinYaw = juce::jlimit (-360.0f, 360.0f, spinYaw);
+        spinPitch = juce::jlimit (-180.0f, 180.0f, spinPitch);
+    }
+    turning = turningPlate = panning = false;
     if (touching)
         setThrow (false);
     touching = pending = false;
@@ -1064,6 +1398,7 @@ void Specimen::mouseDoubleClick (const juce::MouseEvent& e)
 {
     if (goniometer.contains (e.position))
     {
+        spinYaw = spinPitch = 0.0f;
         processor.recording.yaw = 0.0f; // frontal again
         processor.recording.pitch = 0.0f;
         return;
@@ -1078,10 +1413,26 @@ void Specimen::mouseDoubleClick (const juce::MouseEvent& e)
 
 void Specimen::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
 {
+    if (rail.contains (e.position))
+        return;
+    if (! nearTip (e.position))
+    {
+        // over the plate the wheel is the fine focus of the objective: magnify about the hand
+        const float notch = (w.isReversed ? -1.0f : 1.0f) * w.deltaY;
+        if (notch != 0.0f)
+            setZoom (zoomNow * std::pow (2.0f, juce::jlimit (-1.0f, 1.0f, notch * 2.0f)), e.position);
+        return;
+    }
     const float step = (e.mods.isShiftDown() ? 0.01f : 0.04f) * (w.isReversed ? -1.0f : 1.0f);
     if (std::abs (w.deltaX) > std::abs (w.deltaY))
         spaceLink.setValueAsCompleteGesture (juce::jlimit (0.0f, 1.0f, space + step * (w.deltaX > 0.0f ? 1.0f : -1.0f)));
     else if (std::abs (w.deltaY) > 0.0f)
         feedLink.setValueAsCompleteGesture (juce::jlimit (0.0f, 1.0f, feed + step * (w.deltaY > 0.0f ? 1.0f : -1.0f)));
+}
+
+void Specimen::mouseMagnify (const juce::MouseEvent& e, float scaleFactor)
+{
+    if (! rail.contains (e.position))
+        setZoom (zoomNow * scaleFactor, e.position);
 }
 } // namespace dendrite::ui

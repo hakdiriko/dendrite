@@ -238,7 +238,7 @@ void Trace::paint (juce::Graphics& g)
 
     // the reflexes: one line from the fly down through your echo and the pitch, newest first so
     // the newest keeps its name when two would collide
-    float nameLimit = right + 1000.0f, stepLimit = right + 1000.0f;
+    float limit = right, nameLimit = right;
     for (int k = 0; k < tl.reflexes(); ++k)
     {
         const auto& r = tl.reflex (k);
@@ -258,21 +258,30 @@ void Trace::paint (juce::Graphics& g)
             steps << " st";
         const float nameWidth = (float) juce::GlyphArrangement::getStringWidth (data, name);
         const float stepWidth = steps.isEmpty() ? 0.0f : (float) juce::GlyphArrangement::getStringWidth (small, steps);
-        if (x + 6.0f + nameWidth < std::min (nameLimit - 8.0f, right + 20.0f))
-        {
-            g.setFont (data);
-            g.setColour (tone::grey (tone::live));
-            g.drawText (name, juce::Rectangle<float> (x + 6.0f, R.fly.getY() + 1.0f, nameWidth + 4.0f, 14.0f), juce::Justification::centredLeft);
-            nameLimit = x;
-        }
-        // what it did to the tape, under its name
-        if (stepWidth > 0.0f && x + 6.0f + stepWidth < std::min (stepLimit - 8.0f, right + 20.0f))
-        {
-            g.setFont (small);
-            g.setColour (tone::grey (tone::bright));
-            g.drawText (steps, juce::Rectangle<float> (x + 6.0f, R.fly.getY() + 15.0f, stepWidth + 4.0f, 13.0f), juce::Justification::centredLeft);
-            stepLimit = x;
-        }
+        // the labels sit right of the line and never cross the next reflex's line or now; one too
+        // close to now goes left of its line instead
+        // the name and its tape speeds each go right of the line if they fit before the next
+        // reflex (or now); the newest, when too close to now, goes left of its line instead
+        const bool left = limit >= right && x + 6.0f + nameWidth >= limit - 4.0f;
+        float used = x;
+        auto put = [&] (const juce::String& text, float w, float y, float h, const juce::Font& font, float level) {
+            float at = -1.0f;
+            if (! left && x + 6.0f + w < limit - 4.0f)
+                at = x + 6.0f;
+            else if (left && x - 6.0f - w > R.plot.getX())
+                at = x - 6.0f - w;
+            if (at < 0.0f)
+                return;
+            g.setFont (font);
+            g.setColour (tone::grey (level));
+            g.drawText (text, juce::Rectangle<float> (at, y, w + 2.0f, h), left ? juce::Justification::centredRight : juce::Justification::centredLeft);
+            used = std::min (used, at);
+        };
+        put (name, nameWidth, R.fly.getY() + 1.0f, 14.0f, data, tone::live);
+        if (stepWidth > 0.0f)
+            put (steps, stepWidth, R.fly.getY() + 15.0f, 13.0f, small, tone::bright);
+        limit = used;
+        nameLimit = limit;
     }
 
     // the newest groom gets its band written beside it

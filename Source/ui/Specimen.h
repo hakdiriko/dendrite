@@ -50,6 +50,7 @@ public:
     // 3.4, one story: light the path that made a reflex (cause as Timeline::Reflex::cause) for two
     // seconds; a new reflex lights its own path by itself
     void lightPath (int cause, int move);
+    void hideElectrodeForTools() noexcept { noElectrode = true; }        // for mockups of other controls
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -57,11 +58,12 @@ public:
     void mouseUp (const juce::MouseEvent&) override;
     void mouseDoubleClick (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    void mouseMagnify (const juce::MouseEvent&, float scaleFactor) override;
 
 private:
     void renderPoints (float px);
     void renderMethod (int method, float px);
-    void renderUptake (juce::Image& into, const float* uptake, float most, bool frontal, float umPerPixel);
+    void renderUptake (juce::Image& into, const float* uptake, float most, bool frontal, float umPerPixel, juce::Point<float> originMicrons = {});
     void paintTracts (juce::Graphics&, const Hairline&);
     void paintRail (juce::Graphics&, const Hairline&);
     void project();
@@ -79,7 +81,28 @@ private:
     void paintHover (juce::Graphics&, const Hairline&);
     juce::Point<float> neuronPoint (int n) const noexcept { return proj[(size_t) n]; }
     juce::Point<float> tipPoint() const noexcept;
-    float tipRadius() const noexcept { return tipMicrons * brain.getWidth() / widthMicrons; }
+    float tipRadius() const noexcept { return tipMicrons * pixelsPerMicron(); }
+    float pixelsPerMicron() const noexcept { return brain.getWidth() / widthMicrons * zoomNow; }
+    // a place in the plate's microns (after the goniometer's turn) to the screen, through the objective
+    juce::Point<float> toScreen (float ux, float uy) const noexcept
+    {
+        const float s = pixelsPerMicron();
+        return { brain.getCentreX() + (ux - zoomCx) * s, brain.getCentreY() + (uy - zoomCy) * s };
+    }
+    juce::Point<float> toMicrons (juce::Point<float> p) const noexcept
+    {
+        const float s = pixelsPerMicron();
+        return { zoomCx + (p.x - brain.getCentreX()) / s, zoomCy + (p.y - brain.getCentreY()) / s };
+    }
+    void setZoom (float z, juce::Point<float> keepAt); // keepAt: a screen point that stays over the same place
+    void zoomTo (float z);                             // the objective swings in, centred on the electrode
+    void clampField();
+    void storeField();
+    void adoptField();                                 // the saved view, when the host loads a session
+    void followTip();                                  // the stage keeps the electrode in the field
+    void turnBy (float dYaw, float dPitch);
+    int objectiveAt (juce::Point<float>) const noexcept;
+    void paintDial (juce::Graphics&, const Hairline&);
     bool nearTip (juce::Point<float> p) const noexcept { return p.getDistanceFrom (tipPoint()) < tipRadius() + 8.0f; }
     void setThrow (bool on);
 
@@ -95,6 +118,23 @@ private:
     std::vector<Place> place;
     std::vector<juce::Point<float>> proj;
     std::vector<float> projUm; // x then y of each, in the plate's microns, for the electrode
+    std::vector<float> projDepth; // 0 nearest the viewer, 1 furthest (only while turned)
+    float zoomNow = 1.0f, zoomCx = 0.5f * widthMicrons, zoomCy = 0.5f * heightMicrons;
+    float zoomGoal = 1.0f, goalCx = 0.0f, goalCy = 0.0f, seenZoom = -1.0f, seenX = -1.0f, seenY = -1.0f;
+    bool easing = false;
+    juce::Rectangle<float> objectiveRow;
+    static constexpr int objectiveCount = 5;
+    static constexpr float objectives[objectiveCount] = { 0.5f, 1.0f, 2.0f, 4.0f, 10.0f };
+    juce::Image dialImage;
+    float placeRadius = 1.0f; // the brain's reach from its centre, for the dial's small brain
+    bool panning = false;
+    juce::Point<float> panFrom, panCentreFrom;
+    // turning: by the dial or by grabbing the brain (right button, or ctrl/cmd); a flick keeps it turning
+    bool turningPlate = false;
+    juce::Point<float> lastTurnAt;
+    double lastTurnTime = 0.0, lastTick = -1.0;
+    float spinYaw = 0.0f, spinPitch = 0.0f;     // degrees a second
+    float turnedYaw = 0.0f, turnedPitch = 0.0f; // turned since the last speed was taken
     float yawNow = 0.0f, pitchNow = 0.0f;
     // each neuron's strongest outputs, for the tracts: up to three targets and their synapse counts
     static constexpr int tractsPerNeuron = 3;
@@ -106,8 +146,6 @@ private:
     juce::Rectangle<float> rail, methodList, insetArea, goniometer;
     static constexpr float railRow = 16.0f;
     bool turning = false;
-    juce::Point<float> turnFrom;
-    float yawFrom = 0.0f, pitchFrom = 0.0f;
     double lapseStarted = -1.0; // when the 2-DG time-lapse began playing (the window's clock)
     static constexpr double lapsePlaySeconds = 8.0;
     Recorded tip;
@@ -119,6 +157,7 @@ private:
     juce::ParameterAttachment feedLink, spaceLink, throwLink;
 
     // the hand
+    bool noElectrode = false;
     bool hoverTip = false, hoverPlate = false, dragging = false, pending = false, touching = false, fine = false;
     juce::Point<float> grabMouse, grabUnit, pressAt, hoverAt { -1.0f, -1.0f };
     double clockNow = 0.0, pressStarted = 0.0, touchStarted = 0.0;
