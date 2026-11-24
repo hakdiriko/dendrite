@@ -13,6 +13,10 @@
 //   DENDRITE_HOVER=x,y                 the hand rests over the specimen there (window pixels)
 //   DENDRITE_IMAGING=two-photon        the imaging method (trace, two-photon, voltage, photons, tracts, 2-dg)
 //   DENDRITE_YAW=30 DENDRITE_PITCH=-10 the goniometer's angles, in degrees
+//   DENDRITE_ZOOM=4,0.3,0.6            the objective, and the field's centre as fractions of the box
+//   DENDRITE_DRAG=x0,y0,x1,y1          before playing, the hand drags across the specimen (window pixels)
+//   DENDRITE_SCRIPT=file               with DENDRITE_FRAMES: the hand, one event a line, "t kind x y [more]" in window pixels:
+//                                      down/drag/up (more: left, right, alt, shift), wheel (more: notches); played at t seconds
 //   DENDRITE_TURN=deg                  with DENDRITE_FRAMES: the yaw turns this many degrees a second
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
@@ -72,12 +76,49 @@ int main (int argc, char** argv)
                 processor.recording.method = k;
     processor.recording.yaw = env ("DENDRITE_YAW").getFloatValue();
     processor.recording.pitch = env ("DENDRITE_PITCH").getFloatValue();
+    if (const auto z = env ("DENDRITE_ZOOM"); z.isNotEmpty())
+    {
+        juce::StringArray v;
+        v.addTokens (z, ",", "");
+        processor.recording.zoom = v[0].getFloatValue();
+        processor.recording.zoomX = v.size() > 1 ? v[1].getFloatValue() : 0.5f;
+        processor.recording.zoomY = v.size() > 2 ? v[2].getFloatValue() : 0.5f;
+    }
     const float turn = env ("DENDRITE_TURN").getFloatValue();
     std::unique_ptr<juce::AudioProcessorEditor> base (processor.createEditor());
     auto* editor = dynamic_cast<DendriteEditor*> (base.get());
     editor->setSize ((int) (DendriteEditor::designWidth * scale), (int) (DendriteEditor::designHeight * scale));
     if (const auto size = env ("DENDRITE_SIZE"); size.isNotEmpty()) // w,h in pixels: any window shape
         editor->setSize (size.upToFirstOccurrenceOf (",", false, false).getIntValue(), size.fromFirstOccurrenceOf (",", false, false).getIntValue());
+    if (const auto drag = env ("DENDRITE_DRAG"); drag.isNotEmpty())
+    {
+        juce::StringArray v;
+        v.addTokens (drag, ",", "");
+        for (auto* c : editor->getChildren())
+            if (dynamic_cast<dendrite::ui::Specimen*> (c) != nullptr)
+            {
+                auto& src = *juce::Desktop::getInstance().getMouseSource (0);
+                const auto a = c->getLocalPoint (editor, juce::Point<float> (v[0].getFloatValue(), v[1].getFloatValue()));
+                const auto b = c->getLocalPoint (editor, juce::Point<float> (v[2].getFloatValue(), v[3].getFloatValue()));
+                auto ev = [&] (juce::Point<float> p, bool dragged) {
+                    return juce::MouseEvent (src, p, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier), 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                             c, c, juce::Time::getCurrentTime(), a, juce::Time::getCurrentTime(), 1, dragged);
+                };
+                c->mouseDown (ev (a, false));
+                for (int k = 1; k <= 10; ++k)
+                    c->mouseDrag (ev (a + (b - a) * ((float) k / 10.0f), true));
+                c->mouseUp (ev (b, true));
+            }
+    }
+    if (env ("DENDRITE_NO_ELECTRODE").isNotEmpty() || env ("DENDRITE_GEOMETRY").isNotEmpty())
+        for (auto* c : editor->getChildren())
+            if (auto* s = dynamic_cast<dendrite::ui::Specimen*> (c))
+            {
+                if (env ("DENDRITE_NO_ELECTRODE").isNotEmpty())
+                    s->hideElectrodeForTools();
+                const auto b = s->brainArea() + s->getPosition().toFloat(); // the plate at the first objective, in window pixels
+                std::printf ("brain %.2f %.2f %.2f %.2f\n", b.getX(), b.getY(), b.getWidth(), b.getHeight());
+            }
     if (const auto hover = env ("DENDRITE_HOVER"); hover.isNotEmpty())
         for (auto* c : editor->getChildren())
             if (auto* s = dynamic_cast<dendrite::ui::Specimen*> (c))
@@ -97,6 +138,54 @@ int main (int argc, char** argv)
     }
     if (framesDir != juce::File())
         framesDir.createDirectory();
+
+    // the scripted hand: real mouse events through the specimen's own handlers
+    struct Act { double t; juce::String kind; juce::Point<float> at; juce::String more; };
+    std::vector<Act> script;
+    juce::Component* specimen = nullptr;
+    for (auto* c : editor->getChildren())
+        if (dynamic_cast<dendrite::ui::Specimen*> (c) != nullptr)
+            specimen = c;
+    if (const auto file = env ("DENDRITE_SCRIPT"); file.isNotEmpty())
+    {
+        juce::StringArray lines;
+        juce::File (file).readLines (lines);
+        for (auto l : lines)
+        {
+            juce::StringArray v;
+            v.addTokens (l.trim(), " ", "");
+            v.removeEmptyStrings();
+            if (v.size() >= 4)
+                script.push_back ({ v[0].getDoubleValue(), v[1], { v[2].getFloatValue(), v[3].getFloatValue() }, v.size() > 4 ? v[4] : juce::String() });
+        }
+    }
+    size_t nextAct = 0;
+    juce::Point<float> downAt;
+    juce::ModifierKeys held;
+    auto play = [&] (const Act& a) {
+        auto& src = *juce::Desktop::getInstance().getMouseSource (0);
+        const auto p = specimen->getLocalPoint (editor, a.at);
+        if (a.kind == "down")
+        {
+            int flags = a.more.contains ("right") ? juce::ModifierKeys::rightButtonModifier : juce::ModifierKeys::leftButtonModifier;
+            if (a.more.contains ("alt")) flags |= juce::ModifierKeys::altModifier;
+            if (a.more.contains ("shift")) flags |= juce::ModifierKeys::shiftModifier;
+            held = juce::ModifierKeys (flags);
+            downAt = p;
+        }
+        const auto ev = juce::MouseEvent (src, p, held, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, specimen, specimen, juce::Time::getCurrentTime(), downAt,
+                                          juce::Time::getCurrentTime(), 1, a.kind != "down");
+        if (a.kind == "down") specimen->mouseDown (ev);
+        else if (a.kind == "drag") specimen->mouseDrag (ev);
+        else if (a.kind == "up") { specimen->mouseUp (ev); held = {}; }
+        else if (a.kind == "move") specimen->mouseMove (ev);
+        else if (a.kind == "wheel")
+        {
+            juce::MouseWheelDetails w {};
+            w.deltaY = a.more.getFloatValue() * 0.25f;
+            specimen->mouseWheelMove (ev, w);
+        }
+    };
 
     juce::AudioBuffer<float> buffer (2, 512);
     juce::MidiBuffer midi;
@@ -122,6 +211,8 @@ int main (int argc, char** argv)
                 float yaw = env ("DENDRITE_YAW").getFloatValue() + turn * (float) (now - framesFrom);
                 processor.recording.yaw = yaw - 360.0f * std::round (yaw / 360.0f);
             }
+            while (specimen != nullptr && nextAct < script.size() && script[nextAct].t <= now)
+                play (script[nextAct++]);
             editor->animateTo (now);
         }
         if (framesDir != juce::File() && now >= nextFrame)
