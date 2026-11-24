@@ -8,7 +8,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(dendrite VERSION 3.1.0 LANGUAGES C CXX)
+project(dendrite VERSION 3.1.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,7 +29,7 @@ endif()
 # the state type "viber" (in the processor): none of them ever change, so saved Live
 # sets keep the device.
 juce_add_plugin(dendrite
-    COMPANY_NAME "hakdiriko"
+    COMPANY_NAME "afferent"
     BUNDLE_ID "com.hakdiriko.viber"
     PLUGIN_MANUFACTURER_CODE Hakd
     PLUGIN_CODE Vibr
