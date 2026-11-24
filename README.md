@@ -39,7 +39,7 @@ Every push also builds the plug-in automatically. You never need to compile anyt
 4. Start Live and open **Options → Settings → Plug-Ins**.
 5. Turn on **Use VST3 Plug-In System Folders** (once only).
 6. Click **Rescan**. If dendrite doesn't appear, hold **Alt** while clicking Rescan to force a full rescan.
-7. In the browser, open **Plug-Ins → VST3 → hakdiriko → dendrite** and drag it onto a track.
+7. In the browser, open **Plug-Ins → VST3 → afferent → dendrite** and drag it onto a track.
 
 ## Install in Ableton Live on macOS
 
@@ -58,7 +58,7 @@ Design decisions are in [DECISIONS.md](DECISIONS.md); changes per version in [CH
 
 ## Rights
 
-© 2026 hakdiriko. All rights reserved. The source is public so it can be read and built, but no licence is granted to copy, modify or redistribute it.
+© 2026 afferent. All rights reserved. The source is public so it can be read and built, but no licence is granted to copy, modify or redistribute it.
 
 The font in `Resources/fonts/` (Fragment Mono) is under the SIL Open Font License; JUCE is used under its own licence.
 

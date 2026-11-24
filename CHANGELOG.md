@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.1 (afferent)
+
+- **dendrite is now listed under afferent**, not hakdiriko: in Live's browser (Plug-Ins, VST3, afferent), in Windows' installed apps, in the AU's name on the Mac, in the credits and the README. Nothing else changed: the plug-in's codes, bundle id and saved state are the same, so saved sets open as before. In Live, rescan once so the browser moves it.
+
 ## 3.1.0 (the male fly)
 
 FlyWire's data are CC BY-NC (no selling without Princeton's permission). Janelia's male fly brain (male CNS v1.0, Berg et al. 2026) is CC BY: free to sell with credit. On 2026-11-21 he was built as an A/B next to the FlyWire fly; on 2026-11-23 Hakan chose him. He is now the fly inside dendrite.

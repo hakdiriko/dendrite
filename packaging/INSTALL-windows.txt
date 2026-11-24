@@ -11,6 +11,6 @@ By hand (the zip):
 3. Ableton Live: Options > Settings > Plug-Ins, turn on
    "Use VST3 Plug-In System Folders", click Rescan
    (hold Alt while clicking for a full rescan).
-4. Plug-Ins > VST3 > hakdiriko > dendrite, drag it onto a track.
+4. Plug-Ins > VST3 > afferent > dendrite, drag it onto a track.
 
 The manual is dendrite-manual.pdf. Credits and licences: CREDITS.txt.
