@@ -38,6 +38,7 @@ void Engine::prepare (float sampleRate)
     mind.rest();
     hand.prepare (sampleRate);
     fly.prepare (sampleRate);
+    kick.prepare (sampleRate);
 
     attackFilter.highpass (150.0f, 0.7071f, sr);
     fastUp = coefFor (0.0003f, sr);
@@ -60,6 +61,9 @@ void Engine::reset()
     mind.rest(); // the creature keeps its life
     hand.rest();
     fly.rest();
+    kick.reset();
+    fly.hearKick (0.0f);
+    kickHeard = false;
     stepOnset = 0.0f;
     throwStarted = false;
     attackFilter.clear();
@@ -213,9 +217,31 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
 
     fly.setAwake (flyItch ? awakeFor (itchChoice) : 0.0f);
     fly.setEmptyHz (emptyBandHz());
+    state.beatAtStart = beat;
+    state.barBeats = (float) barBeats;
+    float inPeak = 0.0f, wetPeak = 0.0f;
+    // the sidechain: when it goes away, so does what it was doing to the fly and the echo
+    const float* scL = sideLeft;
+    const float* scR = sideRight;
+    sideLeft = sideRight = nullptr;
+    const bool sidechain = scL != nullptr;
+    if (! sidechain && kickHeard)
+    {
+        kick.reset();
+        fly.hearKick (0.0f);
+        kickHeard = false;
+    }
+    const int hitsBefore = kick.hitCount();
+    float kickMax = 0.0f, startleMax = 0.0f, duckMin = 1.0f;
+    if (sidechain)
+    {
+        kickHeard = true;
+        kick.setMood (state.fly.fear, state.fly.arousal);
+    }
     for (int i = 0; i < numSamples; ++i)
     {
         const float l = left[i], r = right[i];
+        inPeak = std::max (inPeak, std::max (std::abs (l), std::abs (r)));
         const float mid = 0.5f * (l + r), side = 0.5f * (l - r);
 
         listener.push (mid);
@@ -234,6 +260,18 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
         heads.process (hm, hs, tm, ts, turn);
         if (std::abs (turn) > 0.0f)
             echo.turnSpace (turn);
+
+        if (sidechain)
+        {
+            const int before = kick.hitCount();
+            kick.hear (0.5f * (scL[i] + scR[i]), beat, stepsPerBar);
+            fly.hearKick (kick.loom());
+            if (kick.hitCount() != before)
+            {
+                kickMax = std::max (kickMax, kick.strength());
+                startleMax = std::max (startleMax, kick.startle());
+            }
+        }
 
         if (outsideOn)
             echo.setTouch (outside);
@@ -257,6 +295,14 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
             tapRight[i] = wetNow * (hm - hs);
         }
         float wetL = em + es, wetR = em - es;
+        if (sidechain)
+        {
+            // the kick ducks the echo (never the dry), before the safety limiter
+            const float g = kick.duck();
+            duckMin = std::min (duckMin, g);
+            wetL *= g;
+            wetR *= g;
+        }
 
         // Safety limiter on the echo only: the dry passes untouched, always. When the dry and
         // the echo together would pass -0.3 dBFS, the echo dips under the hit (instant, then
@@ -269,6 +315,7 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
         limiterEnv = room < limiterEnv ? room : room + limiterRelease * (limiterEnv - room);
         wetL *= limiterEnv;
         wetR *= limiterEnv;
+        wetPeak = std::max (wetPeak, std::max (std::abs (wetL), std::abs (wetR)));
         const float outL = dl + wetL;
         const float outR = dr + wetR;
         left[i] = outL;
@@ -284,6 +331,13 @@ void Engine::process (float* left, float* right, int numSamples, const HostTime&
     const float denom = std::sqrt (corrLL * corrRR);
     state.echo = echo.view();
     state.correlation = denom > 1e-9f ? corrLR / denom : 1.0f;
+    state.inPeak = inPeak;
+    state.wetPeak = wetPeak;
+    state.kickOn = sidechain;
+    state.kickHits = kick.hitCount() - hitsBefore;
+    state.kick = kickMax;
+    state.kickStartle = startleMax;
+    state.kickDuck = duckMin;
     state.inLevel = std::sqrt (std::max (0.0f, inPower));
     state.outLevel = std::sqrt (std::max (0.0f, outPower));
     state.hit = echo.takeHit();

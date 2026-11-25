@@ -56,7 +56,8 @@ juce::String DendriteProcessor::spaceName (float v)
 
 DendriteProcessor::DendriteProcessor()
     : AudioProcessor (BusesProperties().withInput ("Input", juce::AudioChannelSet::stereo(), true)
-                                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+                                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                                       .withInput ("Sidechain", juce::AudioChannelSet::stereo(), false)),
       params (*this, nullptr, "viber", makeLayout())
 {
     feedParam = params.getRawParameterValue ("feed");
@@ -95,6 +96,14 @@ void DendriteProcessor::rigTick (double nowSeconds)
     recording.setStepping (itchChoice > 0); // off: the fly rests, its brain does not step
     recording.step (nowSeconds);
     recording.noteState ({ d.flyArousal.load (relaxed), d.flyFatigue.load (relaxed), d.flyFear.load (relaxed), d.flyMemory.load (relaxed) });
+    timeline.setSampleRate (d.sampleRate.load (relaxed));
+    {
+        const auto scope = d.traceFifo.read (d.traceFifo.getNumReady());
+        for (int i = 0; i < scope.blockSize1; ++i)
+            timeline.add (d.traceFrames[(size_t) (scope.startIndex1 + i)]);
+        for (int i = 0; i < scope.blockSize2; ++i)
+            timeline.add (d.traceFrames[(size_t) (scope.startIndex2 + i)]);
+    }
     watchRig();
 }
 
@@ -246,9 +255,12 @@ juce::AudioProcessorParameter* DendriteProcessor::getBypassParameter() const { r
 bool DendriteProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     // The space lives between two ears, so the output is always stereo.
+    // The sidechain (3.4) is optional: off, mono or stereo; only its hits are used.
     const auto in = layouts.getMainInputChannelSet(), out = layouts.getMainOutputChannelSet();
+    const auto side = layouts.inputBuses.size() > 1 ? layouts.getChannelSet (true, 1) : juce::AudioChannelSet::disabled();
     return out == juce::AudioChannelSet::stereo()
-        && (in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono());
+        && (in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono())
+        && (side.isDisabled() || side == juce::AudioChannelSet::stereo() || side == juce::AudioChannelSet::mono());
 }
 
 void DendriteProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -260,6 +272,11 @@ void DendriteProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     engine.setStyle ((int) timeParam->load(), dryParam->load() > 0.5f);
     engine.prepare ((float) sampleRate);
     keep.prepare (sampleRate, std::max (samplesPerBlock, 512));
+    if (sideLeft.size() < (size_t) keep.tapSize())
+    {
+        sideLeft.assign ((size_t) keep.tapSize(), 0.0f);
+        sideRight.assign ((size_t) keep.tapSize(), 0.0f);
+    }
 }
 
 void DendriteProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) { run (buffer, false); }
@@ -298,7 +315,13 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
         buffer.clear (c, 0, n);
     if (buffer.getNumChannels() < 2 || n == 0)
         return;
-    if (inChannels < 2)
+    // the main input (mono or stereo) and the sidechain, where the host put them in the buffer
+    const bool monoIn = getMainBusNumInputChannels() < 2;
+    const int sideChannels = getBusCount (true) > 1 && getBus (true, 1)->isEnabled() ? getChannelCountOfBus (true, 1) : 0;
+    const int sideFirst = sideChannels > 0 ? getChannelIndexInProcessBlockBuffer (true, 1, 0) : -1;
+    const int sideSecond = sideChannels > 1 ? getChannelIndexInProcessBlockBuffer (true, 1, 1) : sideFirst;
+    const bool sidechain = sideFirst >= 0 && sideSecond < buffer.getNumChannels() && ! sideLeft.empty();
+    if (monoIn && ! sidechain)
         buffer.copyFrom (1, 0, buffer, 0, 0, n);
 
     // The clock: Live's tempo and position while it plays.
@@ -332,8 +355,19 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
         for (int done = 0; done < n;)
         {
             const int m = std::min (n - done, keep.tapSize());
+            if (sidechain)
+            {
+                // copy the sidechain out first: with a mono input its first channel is the output's right
+                const int s = std::min (m, (int) sideLeft.size());
+                std::copy_n (buffer.getReadPointer (sideFirst) + done, s, sideLeft.data());
+                std::copy_n (buffer.getReadPointer (sideSecond) + done, s, sideRight.data());
+                if (monoIn)
+                    std::copy_n (left + done, m, right + done);
+                engine.setSidechain (sideLeft.data(), sideRight.data());
+            }
             engine.process (left + done, right + done, m, piece);
             keep.capture (left + done, right + done, m, engine.view(), piece, frameChoice);
+            pushTrace (m, piece);
             piece.ppq += m * piece.bpm / 60.0 / getSampleRate();
             done += m;
         }
@@ -354,6 +388,37 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
     publish();
     keepLife();
     keepFly (n);
+}
+
+void DendriteProcessor::pushTrace (int samples, const dendrite::HostTime& time) noexcept
+{
+    // one frame of the timeline: no allocation, no lock; when the FIFO is full the frame is dropped
+    const auto& v = engine.view();
+    auto& d = display;
+    const auto scope = d.traceFifo.write (1);
+    if (scope.blockSize1 + scope.blockSize2 < 1)
+    {
+        d.traceDropped.fetch_add (1, std::memory_order_relaxed);
+        return;
+    }
+    auto& f = d.traceFrames[(size_t) (scope.blockSize1 > 0 ? scope.startIndex1 : scope.startIndex2)];
+    f.samples = samples;
+    f.in = v.inPeak;
+    f.wet = v.wetPeak;
+    f.semitones = v.fly.semitones;
+    f.jump = v.fly.jump;
+    f.scratch = v.fly.scratch;
+    f.scratchHz = v.fly.scratchHz;
+    f.turn = v.fly.turn;
+    f.bpm = (float) v.bpm;
+    f.barBeats = v.barBeats;
+    f.beat = v.beatAtStart;
+    f.move = v.fly.move;
+    f.thrown = throwParam->load() > 0.5f;
+    f.playing = time.playing;
+    f.kick = v.kickHits > 0 ? std::max (v.kick, 0.01f) : 0.0f;
+    f.kickStartle = v.kickHits > 0 ? v.kickStartle : 0.0f;
+    f.kickOn = v.kickOn;
 }
 
 void DendriteProcessor::keepFly (int samples) noexcept

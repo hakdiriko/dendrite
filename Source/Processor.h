@@ -4,6 +4,7 @@
 #include "dsp/Engine.h"
 #include "keep/Keep.h"
 #include "rig/Recording.h"
+#include "rig/Timeline.h"
 
 class DendriteProcessor : public juce::AudioProcessor
 {
@@ -75,6 +76,13 @@ public:
         struct Onset { float level = 0.0f; bool thrown = false; };
         juce::AbstractFifo fifo { 64 };
         std::array<Onset, 64> onsets {};
+
+        // the timeline (3.3): one frame per engine call, audio thread to message thread, lock-free.
+        // A full FIFO drops frames (the window was away for over 20 s); they are counted.
+        static constexpr int traceCapacity = 4096;
+        juce::AbstractFifo traceFifo { traceCapacity };
+        std::array<dendrite::rig::Timeline::Frame, traceCapacity> traceFrames {};
+        std::atomic<int> traceDropped { 0 };
     } display;
 
     // The fly's neurons, for the window: how often each fired since the window last asked.
@@ -88,6 +96,8 @@ public:
     // The rig's recorders (3.0), message thread only: ticked 30 times a second whether or not the
     // window is open (the snapshot tool, which has no message loop, calls rigTick itself).
     dendrite::rig::Recording recording;
+    // what the fly did to your sound (3.3), fed from the display's trace FIFO by rigTick
+    dendrite::rig::Timeline timeline;
     void rigTick (double nowSeconds);
 
 private:
@@ -104,6 +114,9 @@ private:
 
     dendrite::Engine engine;
     dendrite::HostTime hostTime;
+    // the sidechain's piece, copied out before the output is written over it (a mono input puts the
+    // sidechain's first channel where the output's right is); sized in prepareToPlay as keep's tap
+    std::vector<float> sideLeft, sideRight;
 
     // The creature's life crosses threads here. The audio thread seals a copy into the vault
     // once per bar and after every itch (a seqlock: a reader that raced a write tries again);
@@ -125,6 +138,7 @@ private:
     // seconds (and at once after it adopts or forgets), read by the message thread to save it.
     using FlyMemory = dendrite::Fly::Memory;
     void keepFly (int samples) noexcept;  // audio thread
+    void pushTrace (int samples, const dendrite::HostTime& time) noexcept; // audio thread: one timeline frame
     void readFly (FlyMemory&) const;      // message thread
     struct FlyVault
     {
