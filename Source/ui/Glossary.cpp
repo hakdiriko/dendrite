@@ -128,15 +128,16 @@ namespace
         t.push_back (make ("memory", "memory", "a reading", "Its 28,761 learning synapses (Kenyon cell to MBON) against their strength at birth.", "Saved with your set: the same fly remembers your session next time.", { "kc", "mbon", "learn", "forget" }));
         t.push_back (make ("escape", "escape", "a reflex", "The giant fiber fired: the tape lurches.", "Shown with its move and the tape's speed in semitones.", { "dnp01", "lurch" }, { "reflex" }));
         t.push_back (make ("groom", "groom", "a reflex", "Grooming: the band it scratches.", "Logged with the band's frequency and how long.", { "dng11", "scratch" }, { "groom" }));
-        t.push_back (make ("steer", "steer", "a reading", "How far the fly leans the echo's space now, and which way.", "The steering neurons' imbalance times the atlas's lean.", { "steering", "lean" }));
+        t.push_back (make ("steer", "steer", "a reading", "How far the fly turns now, and which way.", "The steering neurons' imbalance times the atlas's lean. It leans the echo's space and, since 3.6, steers the echo toward that side (up to about 9 dB between the sides).", { "steering", "lean" }));
         t.push_back (make ("eyes", "eyes", "a reading, % fresh", "How rested the fly's looming eyes are.", "Every hit tires them; they recover over seconds. A blind fly ignores the groove.", { "lplc2", "eyes tire", "eyes back" }));
+        t.push_back (make ("held back", "held back", "a log line", "A move the fly had decided and not yet made, stopped by a hand.", "Click the armed move in the trace (the dashed zone ahead of now) to hold it back; its rest starts again.", { "reflex", "trace" }, { "held back" }));
         t.push_back (make ("reflex", "reflex", "a log line", "A move the fly made: hop, leap, duck, dive, rush, hold or sink.", "Click it in the log or the trace to light the path that made it.", { "dnp01", "escape" }, { "reflex" }));
 
         // the atlas
         t.push_back (make ("jumpy", "jumpy", "the atlas: giant fiber", "How easily the giant fiber fires.", "Divides its threshold: at 0.2 it almost never jumps, at 2.5 it jumps half again as often.", { "dnp01", "lurch" }));
-        t.push_back (make ("lurch", "lurch", "the atlas: giant fiber", "How big a jump becomes.", "Octaves of tape at a full jump; above about 0.3 most jumps are big and wait for a bar line.", { "dnp01", "jumpy" }));
+        t.push_back (make ("lurch", "lurch", "the atlas: giant fiber", "How far a jump bends the tape.", "0: never, a jump only throws. Low: small moves bend by a fourth or a fifth. 0.4: an octave, and the bigger jumps wait for a bar line. Higher: more jumps are big, and they hold and throw longer.", { "dnp01", "jumpy" }));
         t.push_back (make ("scratch", "scratch", "the atlas: grooming", "How hard the fly scratches.", "0: it never grooms. 2: it grooms most of the time.", { "dng11" }));
-        t.push_back (make ("lean", "lean", "the atlas: steering", "How far the fly's steering leans the space.", "0: it never leans.", { "steering", "space" }));
+        t.push_back (make ("lean", "lean", "the atlas: steering", "How far the fly's steering leans the space and steers the echo.", "0: it never leans or steers.", { "steering", "space" }));
         t.push_back (make ("eyes tire", "eyes tire", "the atlas: eyes", "How fast the looming eyes tire of hits.", "High: after a few bars of groove the fly goes blind to it and quiet.", { "lplc2", "eyes back" }));
         t.push_back (make ("eyes back", "eyes back", "the atlas: eyes", "How many seconds the eyes need to recover.", "Short: it wakes to every change. Long: one busy passage leaves it blind for bars.", { "lplc2", "eyes tire" }));
         t.push_back (make ("learn", "learn", "the atlas: mushroom body", "How fast its synapses learn when hurt.", "", { "kc", "memory", "forget" }));

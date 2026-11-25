@@ -90,6 +90,8 @@ public:
     uint16_t takeFlySpikes (int neuron) noexcept { return engine.itchFly().takeSpikes (neuron); }
     // A new fly: it forgets what it learned and its moods (from the window; done at the next block).
     void forgetFly() noexcept { flyForget.store (true, std::memory_order_release); }
+    // 3.6: the move it has decided and not yet made, held back by a hand on the trace (next block)
+    void holdBackFly() noexcept { flyHoldBack.store (true, std::memory_order_release); }
     // The light (3.3): which neurons the spot covers (from the window). Taken at the next block;
     // false while the last one has not been taken yet (the window tries again next frame).
     bool postLit (const uint16_t* lit, int count) noexcept
@@ -170,7 +172,7 @@ private:
     std::unique_ptr<FlyVault> flyVault = std::make_unique<FlyVault>();
     std::unique_ptr<FlyMemory> flyArriving = std::make_unique<FlyMemory>();
     std::atomic<int> flyArrivingState { 0 }; // 0 nothing, 1 being written, 2 ready, 3 being adopted
-    std::atomic<bool> flyForget { false };
+    std::atomic<bool> flyForget { false }, flyHoldBack { false };
     int flyUntilSeal = 0;
 
     struct RigTimer : juce::Timer

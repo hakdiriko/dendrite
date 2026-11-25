@@ -94,6 +94,15 @@ public:
     // The light (3.3): the brain carries CsChrimson, so a flash of 590 nm light makes the lit neurons
     // fire. The window says which neurons the spot covers; while it flashes they fire at hz, Poisson,
     // as the senses fire theirs. No flash, no effect (and no random numbers drawn).
+    // 3.6: let go of the move it has decided and waits to make (a hand held it back); its rest starts again
+    void holdBack() noexcept
+    {
+        if (armed)
+        {
+            armed = false;
+            sinceMove16 = 0.0f;
+        }
+    }
     void setLit (const uint16_t* lit, int count) noexcept
     {
         litCount = std::clamp (count, 0, neurons);
@@ -296,6 +305,7 @@ private:
 
     // its body in time (2.4)
     void startMove (float size, float f) noexcept;
+    static float steerOf (float lean) noexcept;
     bool musical = true;
     double beatNow = 0.0, bpmNow = 120.0, barNow = 4.0;
     long long lastTick = -1;

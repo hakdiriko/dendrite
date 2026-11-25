@@ -328,6 +328,8 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
         flyArrivingState.store (0, std::memory_order_release);
         flyUntilSeal = 0;
     }
+    if (flyHoldBack.exchange (false, std::memory_order_acq_rel))
+        engine.itchFly().holdBack();
     if (flyForget.exchange (false, std::memory_order_acq_rel))
     {
         engine.itchFly().forget();

@@ -406,6 +406,14 @@ void Trace::paintFocus (juce::Graphics& g, const Hairline& line, const Rows& R, 
 
 void Trace::mouseDown (const juce::MouseEvent& e)
 {
+    if (armedArea.contains (e.position) && processor.timeline.armed())
+    {
+        processor.holdBackFly();
+        processor.recording.log ("held back" + juce::String (utf8 (" \xc2\xb7 ")) + "the move for bar " + juce::String (armedBar));
+        armedArea = {};
+        repaint();
+        return;
+    }
     if (focus == nullptr)
         return;
     const int k = reflexAt (e.position);
@@ -440,6 +448,8 @@ void Trace::paintFuture (juce::Graphics& g, const Hairline& line, const Rows& R,
             line.v (x, y, std::min (y1, y + 3.0f));
     };
     const auto small = fonts->at (type::small), data = fonts->at (type::data);
+    armedArea = {};
+    armedBar = 0;
 
     // the grid ahead: beats faint, the next bar line named
     for (int b = (int) std::floor (beatNow) + 1; b <= (int) std::floor (beatNow + barBeats); ++b)
@@ -488,6 +498,12 @@ void Trace::paintFuture (juce::Graphics& g, const Hairline& line, const Rows& R,
     g.drawText (second, juce::Rectangle<float> (tx, R.fly.getY() + 15.0f, tw, 13.0f), juce::Justification::centredLeft);
     g.setColour (tone::grey (tone::mid));
     g.drawText ("size " + juce::String (tl.armedSize(), 2), juce::Rectangle<float> (tx, R.echo.getY() + 2.0f, tw, 13.0f), juce::Justification::centredLeft);
+    // 3.6: a hand can hold it back (a click on the zone); it says so where the hand is
+    armedArea = juce::Rectangle<float> (nowX, R.fly.getY(), width, R.pitch.getBottom() - R.fly.getY());
+    armedBar = bar;
+    g.setColour (tone::grey (armedArea.contains (hoverAt) ? tone::live : tone::dim));
+    g.drawText (armedArea.contains (hoverAt) ? "click: hold it back" : "click to hold back",
+                juce::Rectangle<float> (tx, R.echo.getY() + 16.0f, tw, 13.0f), juce::Justification::centredLeft);
 }
 
 int Trace::reflexAt (juce::Point<float> p) const
@@ -517,7 +533,7 @@ void Trace::mouseMove (const juce::MouseEvent& e)
     const int k = reflexAt (e.position);
     if (k >= 0 && onReflexHover)
         onReflexHover (processor.timeline.reflex (k).cause, processor.timeline.reflex (k).move);
-    setMouseCursor (k >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+    setMouseCursor (k >= 0 || armedArea.contains (e.position) ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
 }
 
 juce::String Trace::getTooltip()

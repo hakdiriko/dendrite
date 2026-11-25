@@ -30,6 +30,7 @@ struct Touch
     float freeze = 0.0f;    // 0..1: the send closes and the loop holds what it has
     bool throwing = false;  // it throws the moment into the echo by itself
     float lift = 1.0f;      // the echo's return ridden up while it writes (gain)
+    float turn = 0.0f;      // 3.6: where the echo comes from, -1 (right) .. +1 (left): the fly steering
 };
 
 class Hand

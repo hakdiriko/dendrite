@@ -45,5 +45,7 @@ private:
     DendriteProcessor& processor;
     juce::SharedResourcePointer<Fonts> fonts;
     juce::Point<float> hoverAt { -1.0f, -1.0f };
+    juce::Rectangle<float> armedArea; // 3.6: the armed move's zone, where a click holds it back
+    int armedBar = 0;
 };
 } // namespace dendrite::ui
