@@ -78,7 +78,8 @@ set(DENDRITE_UI_SOURCES
     Source/rig/Recording.cpp
     Source/rig/Timeline.cpp
     Source/flies/${DENDRITE_FLY}/Identities.cpp
-    Source/flies/${DENDRITE_FLY}/Depth.cpp)
+    Source/flies/${DENDRITE_FLY}/Depth.cpp
+    Source/flies/${DENDRITE_FLY}/Reference.cpp)
 
 set(DENDRITE_DSP_SOURCES
     Source/dsp/Echo.cpp

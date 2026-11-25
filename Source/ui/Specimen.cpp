@@ -20,6 +20,12 @@ namespace
         return best;
     }
 
+    // two-photon read as dF/F (3.6): the floor at its own baseline (or below), white at +100%
+    float deltaLevel (float dff) noexcept
+    {
+        return tone::floor + (tone::live - tone::floor) * std::sqrt (juce::jlimit (0.0f, 1.0f, dff));
+    }
+
     juce::String microns (float um) { return juce::String (juce::roundToInt (um)) + juce::String (juce::CharPointer_UTF8 (" \xc2\xb5m")); }
 
     // "0.5x", "4x", "3.2x"
@@ -84,34 +90,32 @@ Specimen::Specimen (DendriteProcessor& p)
         placeRadius = std::max (1.0f, reach[(size_t) (neurons * 98 / 100)]);
     }
 
-    // the tracts: each neuron's three strongest outputs, by synapse count (inhibitory ones too)
-    tractTo.assign ((size_t) neurons * tractsPerNeuron, 0);
-    tractWeight.assign ((size_t) neurons * tractsPerNeuron, 0);
-    for (int n = 0; n < neurons; ++n)
+    // the tracts: the cut's strongest connections by synapse count (inhibitory ones too), at most 24
+    // from any one neuron so a few hubs don't take them all
     {
-        int best[tractsPerNeuron] = {}, bestAbs[tractsPerNeuron] = {};
-        for (uint32_t k = flydata::rowStart[n]; k < flydata::rowStart[n + 1]; ++k)
+        std::vector<std::pair<int, uint32_t>> all;
+        all.reserve (flydata::rowStart[neurons]);
+        for (int n = 0; n < neurons; ++n)
+            for (uint32_t k = flydata::rowStart[n]; k < flydata::rowStart[n + 1]; ++k)
+                if (flydata::target[k] != n)
+                    all.push_back ({ std::abs ((int) flydata::weight[k]), k });
+        std::sort (all.begin(), all.end(), [] (const auto& a, const auto& b) { return a.first > b.first; });
+        std::vector<uint8_t> taken ((size_t) neurons, 0);
+        std::vector<int> fromOf (all.empty() ? 0 : (size_t) flydata::rowStart[neurons]);
+        for (int n = 0; n < neurons; ++n)
+            for (uint32_t k = flydata::rowStart[n]; k < flydata::rowStart[n + 1]; ++k)
+                fromOf[k] = n;
+        const float strongest = all.empty() ? 1.0f : (float) std::log1p ((double) all.front().first);
+        for (const auto& [w, k] : all)
         {
-            const int w = std::abs ((int) flydata::weight[k]);
-            for (int j = 0; j < tractsPerNeuron; ++j)
-                if (w > bestAbs[j])
-                {
-                    for (int i = tractsPerNeuron - 1; i > j; --i)
-                    {
-                        best[i] = best[i - 1];
-                        bestAbs[i] = bestAbs[i - 1];
-                    }
-                    best[j] = (int) k;
-                    bestAbs[j] = w;
-                    break;
-                }
+            if ((int) tracts.size() >= tractCount)
+                break;
+            const int from = fromOf[k];
+            if (taken[(size_t) from] >= 24)
+                continue;
+            ++taken[(size_t) from];
+            tracts.push_back ({ (uint16_t) from, (uint16_t) flydata::target[k], (float) std::log1p ((double) w) / strongest });
         }
-        for (int j = 0; j < tractsPerNeuron; ++j)
-            if (bestAbs[j] > 0)
-            {
-                tractTo[(size_t) (n * tractsPerNeuron + j)] = flydata::target[best[j]];
-                tractWeight[(size_t) (n * tractsPerNeuron + j)] = flydata::weight[best[j]];
-            }
     }
 
     // the atlas's sites: the fly's own populations, each with the numbers it runs
@@ -295,20 +299,25 @@ void Specimen::renderMethod (int method, float px)
     const auto& rec = processor.recording;
     using M = rig::Recording::Method;
 
-    if (method == M::deoxyglucose)
-    {
-        double at = 0.0;
-        float most = 1.0f;
-        const float* frame = lapsePicture (at, most);
-        renderUptake (points, frame, most, false, 1.0f / (pixelsPerMicron() * px), toMicrons (brain.getTopLeft()));
-        return;
-    }
-
-    const float most = (float) std::log1p ((double) std::max<uint32_t> (1u, rec.mostExposed()));
     // one logical pixel at the default window (816 um across ~790 px: about 1 um a pixel), growing
     // with the window so a large picture keeps its density; always whole physical pixels
     // magnified a neuron grows with the square root of the magnification (a soma is a few um across)
     const int dot = std::max (1, juce::roundToInt (px * std::max (1.0f, brain.getWidth() / 790.0f) * std::sqrt (std::max (1.0f, zoomNow))));
+
+    if (method == M::deoxyglucose)
+    {
+        double at = 0.0, lived = 0.0;
+        const float* frame = lapsePicture (at, lived);
+        renderUptake (points, frame, lived, false, 1.0f / (pixelsPerMicron() * px), toMicrons (brain.getTopLeft()), dot);
+        if (! noElectrode)
+        {
+            juce::Image::BitmapData bits (points, juce::Image::BitmapData::readWrite);
+            lightTissue (bits, w, h, px, dot);
+        }
+        return;
+    }
+
+    const float most = (float) std::log1p ((double) std::max<uint32_t> (1u, rec.mostExposed()));
 
     juce::Image::BitmapData bits (points, juce::Image::BitmapData::readWrite);
     for (int y = 0; y < h; ++y)
@@ -332,8 +341,6 @@ void Specimen::renderMethod (int method, float px)
     auto grey = [] (float level) { return (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * level)); };
     // turned, the far side dims toward the floor (depth cueing): the nearer neuron wins a shared pixel
     auto cue = [&] (int n, float level) { return tone::floor + (level - tone::floor) * (1.0f - 0.6f * projDepth[(size_t) n]); };
-    const float fullCalcium = rig::Recording::calciumAt (50.0f);
-
     for (int n = 0; n < neurons; ++n)
     {
         int x0, y0;
@@ -345,9 +352,9 @@ void Specimen::renderMethod (int method, float px)
         {
             case M::twoPhoton:
             {
-                // GCaMP6s: a calcium kernel on the spikes; grey from the indicator's floor to white at 50 Hz held
-                const float c = rec.calcium (n);
-                put (x0, y0, grey (cue (n, tone::floor + (tone::live - tone::floor) * juce::jlimit (0.0f, 1.0f, std::sqrt (c / fullCalcium)))), dot, false);
+                // GCaMP6s read as dF/F (3.6): each neuron against its own last 20 s, so what fires
+                // steadily sinks to the floor and only a change lights; white at +100%
+                put (x0, y0, grey (cue (n, deltaLevel (rec.deltaF (n)))), dot, false);
                 break;
             }
             case M::voltage:
@@ -375,8 +382,8 @@ void Specimen::renderMethod (int method, float px)
                 break;
             }
             case M::tracts:
-                // the neurons only as a faint ground; the lines are drawn over them (paintTracts)
-                put (x0, y0, grey (cue (n, tone::floor + exposed * 0.5f)), dot, false);
+                // the neurons only as a faint ground; the tracts are laid over them (renderTracts)
+                put (x0, y0, grey (cue (n, tone::floor * 0.8f + exposed * 0.3f)), dot, false);
                 break;
             default:
             {
@@ -390,6 +397,12 @@ void Specimen::renderMethod (int method, float px)
             }
         }
     }
+
+    if (method == M::tracts)
+        renderTracts (bits, w, h, px);
+    // the light on the tissue (not on voltage: there a neuron darkens when it fires)
+    if (! noElectrode && method != M::voltage)
+        lightTissue (bits, w, h, px, dot);
 
     // scars, burned in over the neurons: a cross at each, never removed (on the trace and the tracts)
     if (method != M::traceMethod && method != M::tracts)
@@ -411,12 +424,20 @@ void Specimen::renderMethod (int method, float px)
     }
 }
 
-void Specimen::renderUptake (juce::Image& into, const float* uptake, float most, bool front, float umPerPixel, juce::Point<float> origin)
+void Specimen::renderUptake (juce::Image& into, const float* uptake, double lived, bool front, float umPerPixel, juce::Point<float> origin, int dotPx)
 {
-    // the film: each neuron's uptake laid down where it is, blurred to tritium's few microns, the
-    // densest neuron of the session white, on a log scale
+    // the film (3.6): crisp, each neuron where it lies. Any uptake greys it (on a log scale against
+    // the session's most); uptake beyond what ordinary music costs that neuron in the same time
+    // lights it, so the bright part is what this session did that other music would not
+    const auto& rec = processor.recording;
     const int w = into.getWidth(), h = into.getHeight();
-    scratch.assign ((size_t) (w * h), 0.0f);
+    float mostAbove = 1.0f;
+    for (int n = 0; n < neurons; ++n)
+        mostAbove = std::max (mostAbove, rec.uptakeAbove (n));
+    const float logMost = (float) std::log1p (std::max (1.0f, rec.mostUptake())), logAbove = (float) std::log1p (mostAbove);
+    juce::Image::BitmapData bits (into, juce::Image::BitmapData::readWrite);
+    for (int y = 0; y < h; ++y)
+        std::memset (bits.getLinePointer (y), 0, (size_t) (bits.pixelStride * w));
     for (int n = 0; n < neurons; ++n)
     {
         const float u = uptake != nullptr ? uptake[n] : 0.0f;
@@ -427,58 +448,54 @@ void Specimen::renderUptake (juce::Image& into, const float* uptake, float most,
         const int x = (int) std::floor ((ux - origin.x) / umPerPixel), y = (int) std::floor ((uy - origin.y) / umPerPixel);
         if (x < 0 || y < 0 || x >= w || y >= h)
             continue;
-        scratch[(size_t) (y * w + x)] += (float) std::log1p (u);
-    }
-    const int r = std::max (1, juce::roundToInt (4.0f / umPerPixel));
-    std::vector<float> row ((size_t) std::max (w, h));
-    for (int pass = 0; pass < 2; ++pass)
-    {
-        for (int y = 0; y < h; ++y)
+        const float above = rec.aboveOf (u, n, lived);
+        float level = tone::floor * 0.7f + (tone::dim - tone::floor * 0.7f) * (float) std::log1p (u) / logMost;
+        if (above > 0.0f)
         {
-            float* line = scratch.data() + y * w;
-            std::copy (line, line + w, row.begin());
-            float sum = 0.0f;
-            for (int x = -r; x < w + r; ++x)
+            // how many times what ordinary music costs it: mid grey at twice, white at 64 times
+            const float times = u / std::max (1.0e-3f, rec.expectedOf (n, lived));
+            level = std::max (level, tone::mid + (tone::live - tone::mid) * std::pow (juce::jlimit (0.0f, 1.0f, std::log2 (times / 2.0f) / 5.0f), 0.7f));
+        }
+        const auto v = (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * level));
+        // the brighter wins where two share a pixel; the brightest grow by one pixel, as dense film spreads
+        const int size = dotPx + (above > 0.25f * mostAbove && dotPx > 1 ? 1 : 0);
+        for (int yy = y; yy < std::min (h, y + size); ++yy)
+            for (int xx = x; xx < std::min (w, x + size); ++xx)
             {
-                if (x + r < w) sum += row[(size_t) (x + r)];
-                if (x - r - 1 >= 0) sum -= row[(size_t) (x - r - 1)];
-                if (x >= 0 && x < w) line[x] = sum / (float) (2 * r + 1);
+                auto* p = bits.getPixelPointer (xx, yy);
+                if (p[0] < v)
+                    p[0] = p[1] = p[2] = v;
             }
-        }
-        for (int x = 0; x < w; ++x)
-        {
-            for (int y = 0; y < h; ++y) row[(size_t) y] = scratch[(size_t) (y * w + x)];
-            float sum = 0.0f;
-            for (int y = -r; y < h + r; ++y)
-            {
-                if (y + r < h) sum += row[(size_t) (y + r)];
-                if (y - r - 1 >= 0) sum -= row[(size_t) (y - r - 1)];
-                if (y >= 0 && y < h) scratch[(size_t) (y * w + x)] = sum / (float) (2 * r + 1);
-            }
-        }
     }
-    float peak = 1.0e-6f;
-    for (float v : scratch) peak = std::max (peak, v);
-    // the same white for the same uptake through the whole time-lapse: scaled to the session's most
-    const float ref = std::max (peak, (float) std::log1p (most) / (float) ((2 * r + 1) * (2 * r + 1)) * 4.0f);
-    juce::Image::BitmapData bits (into, juce::Image::BitmapData::writeOnly);
-    for (int y = 0; y < h; ++y)
-        for (int x = 0; x < w; ++x)
-        {
-            const float v = scratch[(size_t) (y * w + x)] / ref;
-            const auto g = (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * std::pow (juce::jlimit (0.0f, 1.0f, v), 0.6f)));
-            auto* p = bits.getPixelPointer (x, y);
-            p[0] = p[1] = p[2] = g;
-        }
 }
 
-const float* Specimen::lapsePicture (double& atSeconds, float& most)
+juce::String Specimen::topTypes (const float* uptake, double lived, int count) const
+{
+    // the cell types this session drove beyond ordinary music, most first (each type's total excess)
+    namespace id = rig::identities;
+    std::unordered_map<int, float> byType;
+    for (int n = 0; n < neurons; ++n)
+        if (uptake != nullptr && uptake[n] > 0.0f)
+            if (const float a = processor.recording.aboveOf (uptake[n], n, lived); a > 0.0f)
+                byType[(int) id::type[n]] += a;
+    std::vector<std::pair<float, int>> ranked;
+    for (const auto& [t, a] : byType)
+        if (juce::String (id::typeName[t]).isNotEmpty())
+            ranked.push_back ({ a, t });
+    std::sort (ranked.begin(), ranked.end(), [] (const auto& a, const auto& b) { return a.first > b.first; });
+    juce::StringArray names;
+    for (int k = 0; k < std::min (count, (int) ranked.size()); ++k)
+        names.add (id::typeName[ranked[(size_t) k].second]);
+    return names.joinIntoString (", ");
+}
+
+const float* Specimen::lapsePicture (double& atSeconds, double& lived)
 {
     // the time-lapse plays the session's keyframes over lapsePlaySeconds, then holds on now
     const auto& rec = processor.recording;
-    most = std::max (1.0f, rec.mostUptake());
     const int frames = rec.lapseFrames();
     atSeconds = rec.sessionSeconds();
+    lived = rec.steppedSeconds();
     if (frames == 0 || lapseStarted < 0.0 || clockNow - lapseStarted >= lapsePlaySeconds)
     {
         static thread_local std::vector<float> live;
@@ -492,7 +509,137 @@ const float* Specimen::lapsePicture (double& atSeconds, float& most)
     while (k + 1 < frames && rec.lapseTime (k + 1) <= t)
         ++k;
     atSeconds = t;
+    lived = rec.lapseStepped (k);
     return rec.lapseFrame (k);
+}
+
+namespace
+{
+    // the value below which a fraction q of the nonzero pixels lie (a film's exposure, set by its densest part)
+    float percentile (const std::vector<float>& v, float q)
+    {
+        std::vector<float> lit;
+        lit.reserve (v.size() / 4);
+        for (float x : v)
+            if (x > 0.0f)
+                lit.push_back (x);
+        if (lit.empty())
+            return 1.0f;
+        auto at = lit.begin() + (long) ((float) (lit.size() - 1) * q);
+        std::nth_element (lit.begin(), at, lit.end());
+        return std::max (1.0e-6f, *at);
+    }
+} // namespace
+
+void Specimen::renderTracts (juce::Image::BitmapData& bits, int w, int h, float px)
+{
+    // each tract a gentle curve from its neuron to its target, bowed toward the brain's middle (the
+    // curves are drawn; the links are real). The skeleton: every tract faintly, by its synapses,
+    // drawn again only when the view changes. The light: each tract its sender's spikes over the
+    // last second. Both add up where tracts cross, as fibre bundles do, and are toned like film.
+    const size_t size = (size_t) (w * h);
+    const std::array<float, 7> view { yawNow, pitchNow, zoomNow, zoomCx, zoomCy, (float) w, (float) h };
+    const auto& rec = processor.recording;
+    const float ox = brain.getX(), oy = brain.getY();
+    const auto mid = toScreen (0.5f * widthMicrons, 0.5f * heightMicrons);
+    auto splat = [&] (std::vector<float>& into, const Tract& t, float amount) {
+        const auto a = proj[t.from], b = proj[t.to];
+        const float ax = (a.x - ox) * px, ay = (a.y - oy) * px, bx = (b.x - ox) * px, by = (b.y - oy) * px;
+        const float mx = 0.5f * (ax + bx), my = 0.5f * (ay + by);
+        const float cx = mx + ((mid.x - ox) * px - mx) * 0.12f, cy = my + ((mid.y - oy) * px - my) * 0.12f;
+        const float len = std::abs (bx - ax) + std::abs (by - ay);
+        const int steps = juce::jlimit (4, 600, (int) len);
+        for (int i = 0; i <= steps; ++i)
+        {
+            const float u = (float) i / (float) steps, v = 1.0f - u;
+            const float x = v * v * ax + 2.0f * u * v * cx + u * u * bx, y = v * v * ay + 2.0f * u * v * cy + u * u * by;
+            const int x0 = (int) std::floor (x), y0 = (int) std::floor (y);
+            if (x0 < 0 || y0 < 0 || x0 >= w - 1 || y0 >= h - 1)
+                continue;
+            const float fx = x - (float) x0, fy = y - (float) y0;
+            float* p = into.data() + (size_t) (y0 * w + x0);
+            p[0] += amount * (1.0f - fx) * (1.0f - fy);
+            p[1] += amount * fx * (1.0f - fy);
+            p[w] += amount * (1.0f - fx) * fy;
+            p[w + 1] += amount * fx * fy;
+        }
+    };
+    if (view != skeletonFor || skeleton.size() != size)
+    {
+        skeletonFor = view;
+        skeleton.assign (size, 0.0f);
+        for (const auto& t : tracts)
+            splat (skeleton, t, (0.2f + 0.8f * t.strength * t.strength) / px);
+        skeletonScale = percentile (skeleton, 0.995f);
+    }
+    // the light, as the demo drew it: the busiest connections now (synapses x the sender's spikes
+    // in the last second) out of all 1.76 million, picked again five times a second
+    if (clockNow - busyAt > 0.2 || clockNow < busyAt)
+    {
+        busyAt = clockNow;
+        busy.clear();
+        for (int n = 0; n < neurons; ++n)
+            if (const int k = rec.photons (n); k > 0)
+                for (uint32_t e = flydata::rowStart[n]; e < flydata::rowStart[n + 1]; ++e)
+                    if (flydata::target[e] != n)
+                        busy.push_back ({ (uint16_t) n, flydata::target[e], (float) std::abs ((int) flydata::weight[e]) * (float) k });
+        if (busy.size() > (size_t) busyCount)
+        {
+            std::nth_element (busy.begin(), busy.begin() + busyCount, busy.end(), [] (const Tract& a, const Tract& b) { return a.strength > b.strength; });
+            busy.resize ((size_t) busyCount);
+        }
+    }
+    tractLight.assign (size, 0.0f);
+    float most = 1.0f;
+    for (const auto& t : busy)
+        most = std::max (most, t.strength);
+    for (const auto& t : busy)
+        splat (tractLight, t, std::sqrt (t.strength / most) / px);
+    // each layer against its own densest pixels, so the film shows structure, never one white sheet
+    const float lightScale = busy.empty() ? 1.0f : percentile (tractLight, 0.995f);
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x)
+        {
+            const size_t i = (size_t) (y * w + x);
+            // film: the skeleton never past the mid grey, the light up to white
+            const float level = tone::floor * 1.4f * std::sqrt (std::min (1.0f, skeleton[i] / skeletonScale))
+                              + tone::live * std::pow (std::min (1.0f, tractLight[i] / lightScale), 0.7f);
+            const auto v = (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * std::min (1.0f, level)));
+            auto* p = bits.getPixelPointer (x, y);
+            if (p[0] < v)
+                p[0] = p[1] = p[2] = v;
+        }
+}
+
+void Specimen::lightTissue (juce::Image::BitmapData& bits, int w, int h, float px, int dot)
+{
+    // the 590 nm spot as it falls on the tissue: the neurons under it brighten with the beam's
+    // gaussian profile (half its radius wide), by its power; a flash bleaches them white. This is
+    // the light, not their firing: what they fire shows in the picture itself.
+    const auto& rec = processor.recording;
+    const float lx = rec.lightX.load() * widthMicrons, ly = rec.lightY.load() * heightMicrons;
+    const float r = spotMicrons (space), sigma = 0.5f * r;
+    const bool flash = throwOn || touching;
+    const float power = flash ? 1.0f : 0.18f + 0.42f * feed;
+    for (int n = 0; n < neurons; ++n)
+    {
+        const float dx = projUm[(size_t) (2 * n)] - lx, dy = projUm[(size_t) (2 * n + 1)] - ly;
+        const float d2 = dx * dx + dy * dy;
+        if (d2 > 4.0f * r * r)
+            continue;
+        const float beam = power * std::exp (-d2 / (2.0f * sigma * sigma));
+        const auto v = (juce::uint8) juce::jlimit (0, 255, juce::roundToInt (255.0f * (tone::floor + (tone::live - tone::floor) * beam)));
+        const int x0 = (int) std::floor ((proj[(size_t) n].x - brain.getX()) * px), y0 = (int) std::floor ((proj[(size_t) n].y - brain.getY()) * px);
+        for (int y = y0; y < y0 + dot; ++y)
+            for (int x = x0; x < x0 + dot; ++x)
+            {
+                if (x < 0 || y < 0 || x >= w || y >= h)
+                    continue;
+                auto* p = bits.getPixelPointer (x, y);
+                if (p[0] < v)
+                    p[0] = p[1] = p[2] = v;
+            }
+    }
 }
 
 void Specimen::paint (juce::Graphics& g)
@@ -504,8 +651,6 @@ void Specimen::paint (juce::Graphics& g)
     g.setImageResamplingQuality (juce::Graphics::lowResamplingQuality);
     g.drawImageTransformed (points, juce::AffineTransform::scale (1.0f / line.px)
                                         .translated (line.snap (brain.getX()) - 0.5f / line.px, line.snap (brain.getY()) - 0.5f / line.px));
-    if (processor.recording.method.load() == rig::Recording::tracts)
-        paintTracts (g, line);
     hovered = findHover();
     paintScale (g, line);
     if (frontal() && std::abs (zoomNow - 1.0f) < 0.01f)
@@ -621,15 +766,13 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
     const int method = processor.recording.method.load();
     struct Swatch { float level; juce::String label; };
     std::vector<Swatch> levels;
-    const float fullCalcium = rig::Recording::calciumAt (50.0f);
-    auto calciumLevel = [&] (float hz) { return tone::floor + (tone::live - tone::floor) * std::sqrt (rig::Recording::calciumAt (hz) / fullCalcium); };
     switch (method)
     {
-        case M::twoPhoton: levels = { { tone::floor, "no calcium" }, { calciumLevel (2.0f), "2 Hz held" }, { calciumLevel (10.0f), "10 Hz" }, { tone::live, utf8 ("\xe2\x89\xa5 50 Hz") } }; break;
+        case M::twoPhoton: levels = { { tone::floor, "at its own baseline" }, { deltaLevel (0.25f), "+25%" }, { deltaLevel (0.75f), "+75%" }, { tone::live, utf8 ("\xe2\x89\xa5 +100% \xce\x94""F/F") } }; break;
         case M::voltage: levels = { { tone::mid, "at rest" }, { tone::floor, "spiked this frame" }, { 0.04f, utf8 ("\xe2\x89\xa5 2 spikes") } }; break;
         case M::photonCounting: levels = { { 150.0f / 255.0f, "1 photon = 1 spike, last 1 s" } }; break;
-        case M::tracts: levels = { { tone::bright, "excitatory" }, { tone::mid, "inhibitory" } }; break;
-        case M::deoxyglucose: levels = { { tone::dim, "little uptake" }, { tone::live, "most this session" } }; break;
+        case M::tracts: levels = { { tone::floor * 1.4f, "the strongest wiring" }, { tone::live, "synapses x spikes, last 1 s" } }; break;
+        case M::deoxyglucose: levels = { { tone::dim, "took up" }, { tone::mid, utf8 ("2\xc3\x97 other music") }, { tone::live, utf8 ("\xe2\x89\xa5 64\xc3\x97") } }; break;
         default: levels = { { tone::floor, "silent" }, { tone::dim, "fired this session" }, { tone::rate (10.0f), "10 Hz" }, { tone::live, utf8 ("\xe2\x89\xa5 100 Hz") } }; break;
     }
     const bool showScars = method == M::traceMethod || method == M::tracts;
@@ -683,18 +826,19 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
     juce::String how;
     switch (method)
     {
-        case M::twoPhoton: how = "two-photon" + dot + "gcamp6s: rises 0.1 s, decays 0.8 s"; break;
+        case M::twoPhoton: how = "two-photon" + dot + utf8 ("gcamp6s \xce\x94""F/F: each neuron against its own last 20 s"); break;
         case M::voltage: how = "voltage" + dot + utf8 ("asap2f: 2.5 ms, so a frame holds only its own spikes"); break;
         case M::photonCounting: how = "photon counting" + dot + utf8 ("gfp-aequorin: grains within 3 \xc2\xb5m"); break;
-        case M::tracts: how = "tractography" + dot + "the 3 strongest outputs of each neuron firing now"; break;
+        case M::tracts: how = "tractography" + dot + "the " + grouped ((juce::int64) busyCount) + " busiest connections, last second" + dot + "curves drawn, links real"; break;
         case M::deoxyglucose:
         {
-            double at = 0.0;
-            float most = 0.0f;
-            lapsePicture (at, most);
+            double at = 0.0, lived = 0.0;
+            const float* frame = lapsePicture (at, lived);
             how = utf8 ("\xc2\xb3h-2-deoxyglucose") + dot + "this session only" + dot + clock (at).fromFirstOccurrenceOf ("+", false, false);
             if (lapseStarted >= 0.0 && clockNow - lapseStarted < lapsePlaySeconds)
                 how << " of " << clock (processor.recording.sessionSeconds()).fromFirstOccurrenceOf ("+", false, false);
+            if (const auto most = topTypes (frame, lived, 3); most.isNotEmpty())
+                how << dot << "most: " << most;
             break;
         }
         default: how = "trace" + dot + "300 ms"; break;
@@ -895,38 +1039,6 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
 //==============================================================================
 // the tracts and the rail
 
-void Specimen::paintTracts (juce::Graphics& g, const Hairline& line)
-{
-    // every neuron firing at 5 Hz or more, busiest first (at most 600), drawn along its three
-    // strongest outputs; a line is as bright as its neuron fires
-    const auto& rec = processor.recording;
-    std::vector<std::pair<float, int>> firing;
-    for (int n = 0; n < neurons; ++n)
-    {
-        const float hz = rec.trace (n) / (float) rig::Recording::traceSeconds;
-        if (hz >= 5.0f)
-            firing.push_back ({ hz, n });
-    }
-    const size_t most = std::min<size_t> (firing.size(), 600);
-    std::partial_sort (firing.begin(), firing.begin() + (long) most, firing.end(), [] (auto a, auto b) { return a.first > b.first; });
-    juce::Graphics::ScopedSaveState keep (g);
-    g.reduceClipRegion (brain.toNearestInt());
-    for (size_t k = most; k-- > 0;) // the busiest last, on top
-    {
-        const auto [hz, n] = firing[k];
-        const float strength = juce::jlimit (0.0f, 1.0f, std::log10 (hz / 5.0f) / std::log10 (40.0f));
-        for (int j = 0; j < tractsPerNeuron; ++j)
-        {
-            const int w = tractWeight[(size_t) (n * tractsPerNeuron + j)];
-            if (w == 0)
-                continue;
-            const float base = w > 0 ? tone::bright : tone::mid;
-            g.setColour (tone::grey (base).withAlpha (0.12f + 0.55f * strength));
-            g.drawLine (juce::Line<float> (proj[(size_t) n], proj[(size_t) tractTo[(size_t) (n * tractsPerNeuron + j)]]), line.width());
-        }
-    }
-}
-
 int Specimen::methodAt (juce::Point<float> p) const noexcept
 {
     if (! methodList.contains (p))
@@ -970,7 +1082,7 @@ void Specimen::paintRail (juce::Graphics& g, const Hairline& line)
         std::vector<float> now ((size_t) neurons);
         for (int n = 0; n < neurons; ++n)
             now[(size_t) n] = rec.uptake (n);
-        renderUptake (inset, now.data(), std::max (1.0f, rec.mostUptake()), true, widthMicrons / (float) w);
+        renderUptake (inset, now.data(), rec.steppedSeconds(), true, widthMicrons / (float) w, {}, std::max (1, juce::roundToInt (line.px)));
         g.drawImageTransformed (inset, juce::AffineTransform::scale (1.0f / line.px).translated (line.snap (insetArea.getX()) - 0.5f / line.px, line.snap (insetArea.getY()) - 0.5f / line.px));
         g.setColour (tone::grey (method == rig::Recording::deoxyglucose || insetArea.contains (hoverAt) ? tone::bright : tone::floor));
         g.drawRect (insetArea.expanded (2.0f), line.width());
@@ -984,14 +1096,19 @@ void Specimen::paintRail (juce::Graphics& g, const Hairline& line)
         g.drawText (elapsed, under, juce::Justification::centredLeft);
         g.drawText ((spikes >= 1000000 ? juce::String ((double) spikes / 1.0e6, 1) + " M" : spikes >= 100000 ? juce::String (juce::roundToInt ((double) spikes / 1.0e3)) + " k" : grouped (spikes)) + " spikes",
                     under, juce::Justification::centredRight);
+        // 3.6: where this session went that other music would not, by cell type
+        const auto most = topTypes (now.data(), rec.steppedSeconds(), 3);
+        g.setColour (tone::grey (most.isEmpty() ? tone::floor : tone::mid));
+        g.drawFittedText (most.isEmpty() ? juce::String ("nothing beyond other music yet") : "most: " + most, under.translated (0.0f, 14.0f).toNearestInt(),
+                          juce::Justification::centredLeft, 1, 0.75f);
     }
 
     // the view: how the brain is turned and magnified, and how to change it (no dial: the brain is the handle)
     // in a short window the legend row under the map runs under the rail: stop above it
     const float floor = std::min (rail.getBottom(), brain.getBottom() + 44.0f);
-    if (insetArea.getBottom() + 34.0f + 22.0f + railRow <= floor)
+    if (insetArea.getBottom() + 48.0f + 22.0f + railRow <= floor)
     {
-        const float y = insetArea.getBottom() + 34.0f;
+        const float y = insetArea.getBottom() + 48.0f;
         title (y, "view");
         auto angle = [] (float v) { const int d = juce::roundToInt (v); return (d > 0 ? "+" : "") + juce::String (d) + utf8 ("\xc2\xb0"); };
         g.setFont (fonts->at (type::data));
@@ -1111,14 +1228,22 @@ void Specimen::paintLight (juce::Graphics& g, const Hairline& line)
     }
 
     {
+        // the light itself (3.6): no disc, a beam. Its gaussian profile in the air of the plate,
+        // brighter with power; a flash blooms past its edge. The tissue under it lights in the
+        // picture (lightTissue).
         juce::Graphics::ScopedSaveState keep (g);
         g.reduceClipRegion (brain.toNearestInt());
-        // the light itself: a soft disc, brighter while it flashes
-        juce::ColourGradient glow (juce::Colours::white.withAlpha (flash ? 0.30f : 0.09f), at.x, at.y,
-                                   juce::Colours::white.withAlpha (0.0f), at.x + r * 1.08f, at.y, true);
-        glow.addColour (0.75, juce::Colours::white.withAlpha (flash ? 0.18f : 0.05f));
-        g.setGradientFill (glow);
-        g.fillEllipse (juce::Rectangle<float> (2.16f * r, 2.16f * r).withCentre (at));
+        const float peak = flash ? 0.34f : 0.05f + 0.11f * feed;
+        auto beam = [&] (float radius, float top) {
+            juce::ColourGradient glow (juce::Colours::white.withAlpha (top), at.x, at.y, juce::Colours::white.withAlpha (0.0f), at.x + radius, at.y, true);
+            for (float q : { 0.2f, 0.4f, 0.6f, 0.8f }) // exp(-2 q^2): the beam's own falloff
+                glow.addColour (q, juce::Colours::white.withAlpha (top * std::exp (-4.5f * q * q)));
+            g.setGradientFill (glow);
+            g.fillEllipse (juce::Rectangle<float> (2.0f * radius, 2.0f * radius).withCentre (at));
+        };
+        beam (1.5f * r, peak);
+        if (flash)
+            beam (2.6f * r, 0.12f); // the bloom
     }
 
     // the stimulus: a hairline from where the hand presses to the spot, and the press site
@@ -1130,8 +1255,21 @@ void Specimen::paintLight (juce::Graphics& g, const Hairline& line)
         g.drawRect (juce::Rectangle<float> (7.0f, 7.0f).withCentre ({ line.snap (pressAt.x), line.snap (pressAt.y) }), line.width());
     }
 
-    // its edge (the size: space), the power around it (feed), from 7:30 round to 4:30
+    // its handles only while the hand is near it or holds it: the edge (size: space), the power
+    // around it (feed), from 7:30 round to 4:30, the centre; then the numbers beside it
+    const bool near = dragPart == Part::ring || dragPart == Part::inside || dragPart == Part::centre
+                   || (hoverAt.x >= 0.0f && hoverAt.getDistanceFrom (at) < r + 28.0f && ! rail.contains (hoverAt));
     const auto centre = juce::Point<float> (line.snap (at.x), line.snap (at.y));
+    if (! near)
+    {
+        // resting: only a faint edge and its centre, so the hand can find it
+        g.setColour (tone::grey (tone::floor));
+        g.drawEllipse (juce::Rectangle<float> (2.0f * r, 2.0f * r).withCentre (centre), line.width());
+        g.setColour (tone::grey (tone::dim));
+        g.fillRect (juce::Rectangle<float> (2.0f, 2.0f).withCentre (centre));
+    }
+    else
+    {
     g.setColour (tone::grey (flash || hot || dragPart == Part::ring ? tone::live : tone::bright));
     g.drawEllipse (juce::Rectangle<float> (2.0f * r, 2.0f * r).withCentre (centre), line.width());
     const float a0 = juce::MathConstants<float>::pi * 0.75f, sweep = juce::MathConstants<float>::pi * 1.5f;
@@ -1146,7 +1284,6 @@ void Specimen::paintLight (juce::Graphics& g, const Hairline& line)
     power.addCentredArc (centre.x, centre.y, r + 5.0f, r + 5.0f, 0.0f, a0 + juce::MathConstants<float>::halfPi, a0 + juce::MathConstants<float>::halfPi + sweep * feed, true);
     g.setColour (tone::grey (dragPart == Part::inside || flash ? tone::live : tone::bright));
     g.strokePath (power, juce::PathStrokeType (2.0f * line.width()));
-    // the centre, to move it
     g.setColour (tone::grey (dragPart == Part::centre || hoverPart == Part::centre ? tone::live : tone::bright));
     g.drawRect (juce::Rectangle<float> (6.0f, 6.0f).withCentre (centre), line.width());
 
@@ -1166,6 +1303,7 @@ void Specimen::paintLight (juce::Graphics& g, const Hairline& line)
     g.drawText (l1, juce::Rectangle<float> (x, y, w, 14.0f), juce::Justification::centredLeft);
     g.setColour (tone::grey (tone::dim));
     g.drawText (l2, juce::Rectangle<float> (x, y + 14.0f, w, 14.0f), juce::Justification::centredLeft);
+    }
 
     // where it sits, marked on the calibration axes
     const float left = brain.getX() - 10.0f, bottom = brain.getBottom() + 10.0f;
@@ -1326,7 +1464,7 @@ juce::String Specimen::getTooltip()
     if (methodAt (hoverAt) >= 0)
         return "imaging: what the plate shows of the same spikes";
     if (insetArea.expanded (2.0f).contains (hoverAt))
-        return "2-dg: every spike of this session only, never saved" + dot + "press: play how it built up";
+        return "2-dg: this session only, never saved; bright where it worked a neuron more than twice what other music does" + dot + "press: play how it built up";
     if (rail.contains (hoverAt))
         return {};
     switch (hoverPart)

@@ -1,4 +1,5 @@
 #include "Recording.h"
+#include "Reference.h"
 #include <numeric>
 
 namespace dendrite::rig
@@ -16,7 +17,7 @@ const char* Recording::methodName (int m) noexcept
 }
 
 Recording::Recording()
-    : caFast ((size_t) neurons, 0.0f), caSlow ((size_t) neurons, 0.0f), uptakes ((size_t) neurons, 0.0f),
+    : caFast ((size_t) neurons, 0.0f), caSlow ((size_t) neurons, 0.0f), caBase ((size_t) neurons, 0.0f), uptakes ((size_t) neurons, 0.0f),
       photonRing ((size_t) neurons * 128, 0), photonSum ((size_t) neurons, 0),
       scarCount ((size_t) neurons, 0), scarLast ((size_t) neurons, 0.0), order ((size_t) neurons, 0),
       incoming ((size_t) neurons, 0), lastTick ((size_t) neurons, 0), traces ((size_t) neurons, 0.0f), exposed ((size_t) neurons, 0u)
@@ -99,6 +100,11 @@ void Recording::noteState (const std::array<float, quantities>& state)
     historyCount = std::min (historyCount + 1, historySeconds);
 }
 
+float Recording::referenceHz (int n) noexcept
+{
+    return (float) flydata::referenceCentiHz[n] * 0.01f;
+}
+
 void Recording::step (double nowSeconds)
 {
     if (started < 0.0)
@@ -108,6 +114,9 @@ void Recording::step (double nowSeconds)
     last = nowSeconds;
     const auto keep = (float) std::exp (-dt / traceSeconds);
     const auto keepRise = (float) std::exp (-dt / calciumRise), keepDecay = (float) std::exp (-dt / calciumDecay);
+    const auto follow = (float) (1.0 - std::exp (-dt / baselineSeconds));
+    if (stepping)
+        stepped += dt;
     frameDt = dt;
     // photon counting: the oldest ticks leave the one-second window, this one enters it
     while (photonTail != photonHead && photonAt[(size_t) photonTail] < nowSeconds - photonSeconds)
@@ -139,6 +148,7 @@ void Recording::step (double nowSeconds)
             traces[n] = traces[n] * keep + (float) c;
             caFast[n] = caFast[n] * keepRise + (float) c;
             caSlow[n] = caSlow[n] * keepDecay + (float) c;
+            caBase[n] += follow * (caSlow[n] - caFast[n] - caBase[n]);
             slot[n] = c;
             photonSum[n] = (uint16_t) std::min (65535, photonSum[n] + c);
             if (c != 0)
@@ -163,14 +173,17 @@ void Recording::step (double nowSeconds)
             {
                 lapse[k] = std::move (lapse[2 * k]);
                 lapseAt[k] = lapseAt[2 * k];
+                lapseLived[k] = lapseLived[2 * k];
             }
             const size_t kept = lapseAt.size() / 2 + (lapseAt.size() & 1);
             lapse.resize (kept);
             lapseAt.resize (kept);
+            lapseLived.resize (kept);
             lapseEvery *= 2.0;
         }
         lapse.push_back (uptakes);
         lapseAt.push_back (sessionSeconds());
+        lapseLived.push_back (stepped);
     }
 
     // the raster: each population's rate this tick (none while the specimen's time stands still)

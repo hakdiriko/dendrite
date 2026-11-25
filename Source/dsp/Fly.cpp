@@ -936,6 +936,8 @@ void Fly::reflexes() noexcept
         now.scratch = band;
         now.scratchHz = heldBandHz;
         now.turn = heldLean / std::max (0.05f, taste.lean);
+        now.lean = heldLean;
+        now.eyes = eyeFreshness();
         now.arousal = arousal;
         now.fatigue = fatigue;
         now.memory = memory;
@@ -1018,6 +1020,8 @@ void Fly::reflexes() noexcept
     now.scratch = band;
     now.scratchHz = target.bandHz;
     now.turn = leanNow;
+    now.lean = taste.lean * leanNow;
+    now.eyes = eyeFreshness();
     now.arousal = arousal;
     now.fatigue = fatigue;
     now.memory = memory;

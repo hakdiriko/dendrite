@@ -150,6 +150,10 @@ public:
         float armedSize = 0.0f;
         double armedLand16 = 0.0;
         int cause = 0;                             // 0 unknown, 1 left eye, 2 right eye, 3 its ears
+        // 3.6, for the window only: how fresh its eyes are (0 blind with tiredness .. 1 rested, the
+        // mean of its six eye senses), and how far it leans the space now (-1..1, the lean taste included)
+        float eyes = 1.0f;
+        float lean = 0.0f;
     };
     const Doing& doing() const noexcept { return now; }
     uint16_t takeSpikes (int neuron) noexcept { return spikes[(size_t) neuron].exchange (0, std::memory_order_relaxed); }
@@ -184,6 +188,13 @@ public:
 
 private:
     void step() noexcept; // 0.5 ms of brain
+    float eyeFreshness() const noexcept // the window's reading (3.6): the six eye senses' mean freshness
+    {
+        float sum = 0.0f;
+        for (int k = 6; k < 12; ++k)
+            sum += fresh[(size_t) k];
+        return sum / 6.0f;
+    }
     void reflexes() noexcept;
     void smell() noexcept; // every 5 ms
     void live() noexcept;  // every 10 ms: traces, moods, learning
