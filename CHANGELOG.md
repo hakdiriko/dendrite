@@ -37,6 +37,16 @@ Hakan picked from the research page "dendrite, imaged" (kept in `docs/research/i
 - Fixed: two rail tooltips showed a broken dot ("Â·").
 - **The sound is bit-identical.** `tools/nulltest` on 3.0.0 and on this branch (FlyWire build), loop and drums, 48 kHz/512 and 44.1 kHz/333: 4 of 4 identical to the bit. Nothing new runs on the audio thread.
 - The manual's map section names the rail.
+## 3.1.2 (the black installer)
+
+- **The Windows installer is black**, in the rig's look: dark pages, title bar and buttons, Fragment Mono (registered for the setup only, nothing is installed into Windows' fonts), lower-case words like the window. The welcome and finish pages show the male fly's 13,065 neurons at their real atlas places with a 200 µm scale bar; the small picture and the setup icon are the whole brain, frontal. Drawn by `tools/installer/make_art.py` from `Source/flies/malecns`. Needs Inno Setup 6.7 (CI installs it); an older Inno still builds the plain one.
+- CI photographs the installer's pages on the throwaway Windows runner (artifact **installer-preview**), so the look can be checked without installing.
+- **Region names stay inside the window.** At narrow sizes the top-left name ("LPLC2 left, looming") ran off the left edge. The names now slide to fit between the margins, and when the full names can't sit side by side the short ones are used ("LPLC2 left", "KC left", "JO"); hover still gives each neuron's full identity.
+- No sound change.
+
+## 3.1.1 (afferent)
+
+- **dendrite is now listed under afferent**, not hakdiriko: in Live's browser (Plug-Ins, VST3, afferent), in Windows' installed apps, in the AU's name on the Mac, in the credits and the README. Nothing else changed: the plug-in's codes, bundle id and saved state are the same, so saved sets open as before. In Live, rescan once so the browser moves it.
 
 ## 3.1.0 (the male fly)
 
