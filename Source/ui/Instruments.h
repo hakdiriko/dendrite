@@ -25,7 +25,7 @@ public:
     void mouseMove (const juce::MouseEvent& e) override { hoverY = e.position.y; }
     void mouseExit (const juce::MouseEvent&) override { hoverY = -1.0f; }
 
-    static constexpr int width = 252, height = 486; // the log takes the rest of the column
+    static constexpr int width = 252, height = 501; // the log takes the rest of the column
 private:
     struct Row
     {

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../Processor.h"
+#include "Focus.h"
 #include "Rig.h"
 
 namespace dendrite::ui
@@ -18,6 +19,8 @@ public:
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    // 3.6: with a focus the log keeps only its lines; a click on a line makes it the focus
+    void setFocus (Focus* f) noexcept { focus = f; }
 
 private:
     struct Line
@@ -25,7 +28,10 @@ private:
         float y;
         uint32_t mark;
         juce::String text;
+        double at = 0.0;
     };
+    Focus* focus = nullptr;
+    bool keeps (const juce::String& text) const;
     const Line* lineAt (juce::Point<float>) const;
     bool held (uint32_t mark) const; // keep still has it on tape
 

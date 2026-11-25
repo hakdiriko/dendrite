@@ -23,6 +23,16 @@ Log::Log (DendriteProcessor& p) : processor (p)
     setOpaque (true);
 }
 
+bool Log::keeps (const juce::String& text) const
+{
+    if (focus == nullptr || ! focus->active() || focus->kind == Focus::Kind::event || focus->logWords.isEmpty())
+        return true;
+    for (const auto& w : focus->logWords)
+        if (text.containsIgnoreCase (w))
+            return true;
+    return false;
+}
+
 bool Log::held (uint32_t mark) const
 {
     return mark != 0 && processor.keep.find (mark) != nullptr;
@@ -43,7 +53,10 @@ void Log::paint (juce::Graphics& g)
     // the heading, as the instruments' are
     g.setColour (tone::grey (tone::mid));
     const auto& events = processor.recording.events();
-    const auto title = "log" + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + juce::String (events.empty() ? 0 : (int) events.back().id) + " entries";
+    const bool filtered = focus != nullptr && focus->active() && focus->kind != Focus::Kind::event && ! focus->logWords.isEmpty();
+    auto title = "log" + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + juce::String (events.empty() ? 0 : (int) events.back().id) + " entries";
+    if (filtered)
+        title = "log" + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + "only " + focus->title;
     g.drawText (title, juce::Rectangle<float> (x0, 6.0f, width (title) + 2.0f, 14.0f), juce::Justification::centredLeft);
     g.setColour (tone::grey (tone::dim));
     line.h (x0 + width (title) + 8.0f, x1, 13.0f);
@@ -54,10 +67,13 @@ void Log::paint (juce::Graphics& g)
     float y = (float) getHeight() - 6.0f - pitch;
     int age = 0;
     const auto hover = lineAt (mouseAt);
-    for (auto it = events.rbegin(); it != events.rend() && y >= top; ++it, ++age, y -= pitch)
+    for (auto it = events.rbegin(); it != events.rend() && y >= top; ++it)
     {
+        if (! keeps (it->text))
+            continue;
         const bool handle = held (it->mark);
-        const bool lit = hover != nullptr && std::abs (hover->y - y) < 0.5f && handle;
+        const bool picked = focus != nullptr && focus->kind == Focus::Kind::event && std::abs (focus->eventAt - it->at) < 1.0e-6;
+        const bool lit = (hover != nullptr && std::abs (hover->y - y) < 0.5f) || picked;
         const float level = lit ? tone::live : std::max (tone::mid, tone::live - 0.04f * (float) age);
         const auto when = stamp (it->at);
         const float ww = width (when);
@@ -71,7 +87,11 @@ void Log::paint (juce::Graphics& g)
         g.drawText (it->text, juce::Rectangle<float> (x0, y, x1 - x0 - ww - 8.0f, pitch), juce::Justification::centredLeft, true);
         g.setColour (tone::grey (std::min (level, tone::mid)));
         g.drawText (when, juce::Rectangle<float> (x1 - ww - 1.0f, y, ww + 2.0f, pitch), juce::Justification::centredRight);
-        lines.push_back ({ y, it->mark, it->text });
+        lines.push_back ({ y, it->mark, it->text, it->at });
+        if (picked)
+            g.fillRect (juce::Rectangle<float> (2.0f, pitch - 4.0f).withCentre ({ 4.0f, y + 0.5f * pitch }));
+        ++age;
+        y -= pitch;
     }
 }
 
@@ -100,7 +120,9 @@ void Log::mouseMove (const juce::MouseEvent& e)
 {
     mouseAt = e.position;
     const auto* l = lineAt (mouseAt);
-    setMouseCursor (l != nullptr && held (l->mark) ? juce::MouseCursor::DraggingHandCursor : juce::MouseCursor::NormalCursor);
+    setMouseCursor (l != nullptr && held (l->mark) ? juce::MouseCursor::DraggingHandCursor
+                    : l != nullptr                ? juce::MouseCursor::PointingHandCursor
+                                                  : juce::MouseCursor::NormalCursor);
     repaint();
 }
 
@@ -140,8 +162,42 @@ void Log::mouseDrag (const juce::MouseEvent& e)
     juce::DragAndDropContainer::performExternalDragDropOfFiles ({ file.getFullPathName() }, false, this, [] {});
 }
 
-void Log::mouseUp (const juce::MouseEvent&)
+void Log::mouseUp (const juce::MouseEvent& e)
 {
+    // a click, not a drag: the line becomes the focus (a reflex lights its path; a groom, its neurons)
+    if (! dragged && focus != nullptr && e.getDistanceFromDragStart() < 6)
+        if (const auto* l = lineAt (e.position))
+        {
+            const auto text = l->text;
+            std::vector<uint16_t> who;
+            juce::String key = text.startsWith ("reflex") || text.startsWith ("throw") ? "reflex" : text.startsWith ("groom") ? "groom" : "";
+            int cause = 0, move = 0;
+            if (key == "reflex")
+            {
+                who = processor.recording.population (rig::Recording::giantFiber);
+                // the newest reflex at least as old as the line: its path
+                const auto& tl = processor.timeline;
+                const double ago = processor.recording.sessionSeconds() - l->at;
+                for (int k = 0; k < tl.reflexes(); ++k)
+                    if (tl.now() - tl.reflex (k).at >= ago - 0.5)
+                    {
+                        cause = tl.reflex (k).cause;
+                        move = tl.reflex (k).move;
+                        break;
+                    }
+            }
+            else if (key == "groom")
+                who = processor.recording.population (rig::Recording::groom);
+            focus->kind = Focus::Kind::event;
+            focus->key = key;
+            focus->title = text;
+            focus->neurons = std::move (who);
+            focus->logWords.clear();
+            focus->eventAt = l->at;
+            focus->cause = cause;
+            focus->move = move;
+            focus->changed();
+        }
     pressed = dragged = false;
 }
 } // namespace dendrite::ui

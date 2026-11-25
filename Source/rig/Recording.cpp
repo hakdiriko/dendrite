@@ -197,6 +197,15 @@ void Recording::step (double nowSeconds)
                 sum += lastTick[n];
             row[p] = (float) ((double) sum / (dt * (double) std::max<size_t> (1, members[(size_t) p].size())));
         }
+        if (! watched.empty())
+        {
+            int sum = 0;
+            for (auto n : watched)
+                sum += lastTick[n];
+            watchData[(size_t) rasterHead] = (float) ((double) sum / (dt * (double) watched.size()));
+        }
+        else
+            watchData[(size_t) rasterHead] = -1.0f;
         rasterAt[(size_t) rasterHead] = sessionSeconds();
         rasterHead = (rasterHead + 1) % rasterTicks;
         rasterCount = std::min (rasterCount + 1, rasterTicks);

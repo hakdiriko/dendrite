@@ -7,6 +7,8 @@ namespace dendrite::ui
 Fonts::Fonts()
 {
     mono = juce::Typeface::createSystemTypefaceFor (BinaryData::FragmentMonoRegular_ttf, BinaryData::FragmentMonoRegular_ttfSize);
+    serif = juce::Typeface::createSystemTypefaceFor (BinaryData::SourceSerif4SmTextRegular_ttf, BinaryData::SourceSerif4SmTextRegular_ttfSize);
+    serifItalic = juce::Typeface::createSystemTypefaceFor (BinaryData::SourceSerif4SmTextIt_ttf, BinaryData::SourceSerif4SmTextIt_ttfSize);
 }
 
 juce::String grouped (juce::int64 n)
@@ -59,9 +61,12 @@ LookAndFeel::LookAndFeel()
     setColour (juce::PopupMenu::highlightedTextColourId, tone::grey (tone::live));
 }
 
-juce::Typeface::Ptr LookAndFeel::getTypefaceForFont (const juce::Font&)
+juce::Typeface::Ptr LookAndFeel::getTypefaceForFont (const juce::Font& f)
 {
-    return fonts->mono; // one face, everywhere
+    // one face everywhere, but the reference's serif (3.6) where a font asks for it by name
+    if (fonts->serif != nullptr && f.getTypefaceName() == fonts->serif->getName())
+        return f.getTypefaceStyle().containsIgnoreCase ("italic") ? fonts->serifItalic : fonts->serif;
+    return fonts->mono;
 }
 
 void LookAndFeel::drawCornerResizer (juce::Graphics& g, int w, int h, bool isMouseOver, bool isMouseDragging)

@@ -42,14 +42,15 @@ namespace
         const char* name;
         const char* shortName; // when the full names don't fit the window's width
         bool above;
+        const char* term;      // its entry in the reference (3.6)
     };
     const Region regions[] = {
-        { "eyeLeft", "LPLC2 left, looming", "LPLC2 left", true },
-        { "mushroomBody", "KC, mushroom body left", "KC left", true },
-        { "eyeRight", "LPLC2 right, looming", "LPLC2 right", true },
-        { "ears", "JO, johnston's organ", "JO", false },
-        { "giantFiber", "DNp01, giant fiber", "DNp01", false },
-        { "grooming", "DNg11, grooming", "DNg11", false },
+        { "eyeLeft", "LPLC2 left, looming", "LPLC2 left", true, "lplc2" },
+        { "mushroomBody", "KC, mushroom body left", "KC left", true, "kc" },
+        { "eyeRight", "LPLC2 right, looming", "LPLC2 right", true, "lplc2" },
+        { "ears", "JO, johnston's organ", "JO", false, "jo" },
+        { "giantFiber", "DNp01, giant fiber", "DNp01", false, "dnp01" },
+        { "grooming", "DNg11, grooming", "DNg11", false, "dng11" },
     };
 
 } // namespace
@@ -151,11 +152,19 @@ void Specimen::resized()
 {
     // room for the region names above and below, the ticks and scale on the left and bottom
     auto r = getLocalBounds().toFloat();
-    r.removeFromLeft (52.0f);
+    // with the reference open (3.6) the brain moves right of it; in a small window the rail steps
+    // aside while the entry reads, so the brain keeps a useful size (closing the entry brings it back)
+    r.removeFromLeft (referenceWidth > 0 ? 16.0f + (float) referenceWidth : 52.0f);
     r.removeFromRight (24.0f);
+    railShown = referenceWidth == 0 || r.getWidth() - 174.0f >= 380.0f;
     // the rail: the imaging method, the 2-DG brain, the view
-    rail = r.removeFromRight (150.0f).withTrimmedTop (44.0f).withTrimmedBottom (10.0f); // under the caption; the legend stops short of it
-    r.removeFromRight (24.0f);
+    if (railShown)
+    {
+        rail = r.removeFromRight (150.0f).withTrimmedTop (44.0f).withTrimmedBottom (10.0f); // under the caption; the legend stops short of it
+        r.removeFromRight (24.0f);
+    }
+    else
+        rail = juce::Rectangle<float> (r.getRight() + 24.0f, 44.0f, 0.0f, 0.0f); // nothing to hit; its left edge still bounds the labels
     {
         auto c = rail;
         c.removeFromTop (20.0f); // its title
@@ -653,6 +662,7 @@ void Specimen::paint (juce::Graphics& g)
                                         .translated (line.snap (brain.getX()) - 0.5f / line.px, line.snap (brain.getY()) - 0.5f / line.px));
     hovered = findHover();
     paintScale (g, line);
+    labels.clear();
     if (frontal() && std::abs (zoomNow - 1.0f) < 0.01f)
     {
         paintRegions (g, line);
@@ -660,14 +670,83 @@ void Specimen::paint (juce::Graphics& g)
     }
     measureLight();
     paintSites (g, line);
+    paintFocus (g, line);
     if (! noElectrode)
         paintLight (g, line);
     paintHover (g, line);
-    paintRail (g, line);
+    if (railShown)
+        paintRail (g, line);
+}
+
+void Specimen::setReferenceWidth (int w)
+{
+    if (w == referenceWidth)
+        return;
+    referenceWidth = w;
+    resized();
+    repaint();
+}
+
+void Specimen::paintFocus (juce::Graphics& g, const Hairline& line)
+{
+    // 3.6: the focus's neurons ringed (or, when many, marked) and named; the rest steps back
+    if (focus == nullptr || ! focus->active() || focus->neurons.empty())
+        return;
+    const auto& rec = processor.recording;
+    {
+        juce::Graphics::ScopedSaveState keep (g);
+        g.reduceClipRegion (brain.expanded (6.0f).toNearestInt());
+        g.setColour (juce::Colours::black.withAlpha (0.45f));
+        g.fillRect (brain.expanded (6.0f));
+        const bool many = focus->neurons.size() > 120;
+        juce::Point<float> c;
+        int inside = 0;
+        for (auto n : focus->neurons)
+        {
+            const auto at = proj[(size_t) n];
+            const float hz = rec.trace (n) / (float) rig::Recording::traceSeconds;
+            g.setColour (tone::grey (std::max (tone::mid, tone::rate (hz))));
+            if (many)
+                g.fillRect (juce::Rectangle<float> (2.0f, 2.0f).withCentre (at));
+            else
+                g.drawEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre (at), line.width());
+            if (brain.contains (at))
+            {
+                c += at;
+                ++inside;
+            }
+        }
+        if (inside == 0)
+            return;
+        c /= (float) inside;
+        float hz = 0.0f;
+        for (auto n : focus->neurons)
+            hz += rec.trace (n) / (float) rig::Recording::traceSeconds;
+        hz /= (float) focus->neurons.size();
+        const auto text = focus->title + utf8 ("  \xc2\xb7  ") + juce::String ((int) focus->neurons.size()) + utf8 ("  \xc2\xb7  ") + juce::String (hz, 1) + " Hz";
+        const auto small = fonts->at (type::small);
+        const float w = juce::GlyphArrangement::getStringWidth (small, text) + 10.0f;
+        auto box = juce::Rectangle<float> (c.x + 14.0f, c.y - 26.0f, w, 15.0f);
+        if (box.getRight() > brain.getRight())
+            box.setX (c.x - 14.0f - w);
+        box.setX (std::max (brain.getX() - 4.0f, std::min (box.getX(), brain.getRight() + 4.0f - w)));
+        box.setY (juce::jlimit (brain.getY(), brain.getBottom() - 15.0f, box.getY()));
+        g.restoreState(); // the name may sit past the brain's edge: never cut it
+        g.saveState();
+        g.setColour (juce::Colours::black.withAlpha (0.9f));
+        g.fillRect (box);
+        g.setColour (tone::grey (tone::bright));
+        g.drawRect (box, line.width());
+        g.setFont (small);
+        g.setColour (tone::grey (tone::live));
+        g.drawText (text, box.reduced (5.0f, 0.0f), juce::Justification::centredLeft);
+    }
 }
 
 int Specimen::findHover() const
 {
+    if (tagNeuron >= 0 && tagArea.contains (hoverAt))
+        return tagNeuron;
     if (dragPart != Part::none || touching || turning || hoverPart != Part::none || ! brain.expanded (6.0f).contains (hoverAt))
         return -1;
     int nearest = -1;
@@ -689,7 +768,11 @@ void Specimen::paintHover (juce::Graphics& g, const Hairline& line)
     // the neuron under the hand: who it is in its atlas, and its rate now
     const int nearest = hovered;
     if (nearest < 0)
+    {
+        tagArea = {};
+        tagNeuron = -1;
         return;
+    }
     // how crowded it is there: the neurons within 5 um of it
     const auto at = neuronPoint (nearest);
     const float r5 = 5.0f * pixelsPerMicron();
@@ -719,7 +802,31 @@ void Specimen::paintHover (juce::Graphics& g, const Hairline& line)
     // written in the caption's second line, in place of what the picture is
     g.setColour (tone::grey (tone::bright));
     g.setFont (fonts->at (type::small));
-    g.drawText (text, juce::Rectangle<float> (14.0f, 24.0f, (float) getWidth() - 28.0f, 16.0f), juce::Justification::centredLeft, true);
+    g.drawText (text, juce::Rectangle<float> (14.0f + (float) referenceWidth, 24.0f, (float) getWidth() - 28.0f - (float) referenceWidth, 16.0f), juce::Justification::centredLeft, true);
+
+    // 3.6: its tag beside it, a link to its type's entry in the reference
+    if (type.isNotEmpty())
+    {
+        const auto tag = type + utf8 (" \xe2\x80\xba");
+        const float w = juce::GlyphArrangement::getStringWidth (fonts->at (type::small), tag) + 10.0f;
+        auto box = juce::Rectangle<float> (at.x + 9.0f, at.y - 21.0f, w, 15.0f);
+        if (box.getRight() > rail.getX() - 8.0f)
+            box.setX (at.x - 9.0f - w);
+        const bool over = box.contains (hoverAt);
+        g.setColour (juce::Colours::black.withAlpha (0.9f));
+        g.fillRect (box);
+        g.setColour (tone::grey (over ? tone::live : tone::dim));
+        g.drawRect (box, line.width());
+        g.setColour (tone::grey (over ? tone::live : tone::bright));
+        g.drawText (tag, box.reduced (5.0f, 0.0f), juce::Justification::centredLeft);
+        tagArea = box;
+        tagNeuron = nearest;
+    }
+    else
+    {
+        tagArea = {};
+        tagNeuron = -1;
+    }
 }
 
 void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
@@ -785,7 +892,7 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
         float width = len + 90.0f + (showScars ? 11.0f + juce::GlyphArrangement::getStringWidth (small, scars) : 0.0f);
         for (const auto& sw : levels)
             width += 10.0f + juce::GlyphArrangement::getStringWidth (small, sw.label) + 14.0f;
-        x0 = std::max (14.0f, std::min (left, rail.getX() - 24.0f - width));
+        x0 = std::max (14.0f + (float) referenceWidth, std::min (left, rail.getX() - 24.0f - width)); // never under the reference
     }
     g.setColour (tone::grey (tone::bright));
     line.h (x0, x0 + len, y);
@@ -796,25 +903,30 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
 
     {
         g.setFont (fonts->at (type::small));
-        float x = x0 + len + 90.0f;
+        float x = x0 + len + 90.0f, ly = bottom + 58.0f;
+        const float edge = (float) getWidth() - 12.0f; // a narrow plate (the reference open) wraps the legend
         for (const auto& sw : levels)
         {
+            if (x + 10.0f + juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), sw.label) > edge && x > x0 + len + 90.0f)
+                x = x0 + len + 90.0f, ly += 16.0f;
             g.setColour (tone::grey (tone::floor));
-            g.drawRect (juce::Rectangle<float> (x - 1.0f, y - 4.0f, 8.0f, 8.0f), line.width()); // a frame, so a dark step still reads
+            g.drawRect (juce::Rectangle<float> (x - 1.0f, ly - 4.0f, 8.0f, 8.0f), line.width()); // a frame, so a dark step still reads
             g.setColour (tone::grey (sw.level));
-            g.fillRect (juce::Rectangle<float> (x, y - 3.0f, 6.0f, 6.0f));
+            g.fillRect (juce::Rectangle<float> (x, ly - 3.0f, 6.0f, 6.0f));
             g.setColour (tone::grey (tone::mid));
             const float w = juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), sw.label);
-            g.drawText (sw.label, juce::Rectangle<float> (x + 10.0f, y - 8.0f, w + 2.0f, 16.0f), juce::Justification::centredLeft);
+            g.drawText (sw.label, juce::Rectangle<float> (x + 10.0f, ly - 8.0f, w + 2.0f, 16.0f), juce::Justification::centredLeft);
             x += 10.0f + w + 14.0f;
         }
+        if (showScars && x + 101.0f > edge)
+            x = x0 + len + 90.0f, ly += 16.0f;
         if (showScars)
         {
             // a scar's mark, as the map draws it, settled
             g.setColour (tone::grey (tone::mid));
-            g.fillRect (juce::Rectangle<float> (x, y - 0.5f, 7.0f, 1.0f));
-            g.fillRect (juce::Rectangle<float> (x + 3.0f, y - 3.5f, 1.0f, 7.0f));
-            g.drawText (scars, juce::Rectangle<float> (x + 11.0f, y - 8.0f, 90.0f, 16.0f), juce::Justification::centredLeft);
+            g.fillRect (juce::Rectangle<float> (x, ly - 0.5f, 7.0f, 1.0f));
+            g.fillRect (juce::Rectangle<float> (x + 3.0f, ly - 3.5f, 1.0f, 7.0f));
+            g.drawText (scars, juce::Rectangle<float> (x + 11.0f, ly - 8.0f, 90.0f, 16.0f), juce::Justification::centredLeft);
         }
     }
 
@@ -850,9 +962,10 @@ void Specimen::paintScale (juce::Graphics& g, const Hairline& line)
                              : magnification (zoomNow) + dot + microns (widthMicrons / zoomNow) + utf8 (" \xc3\x97 ") + microns (heightMicrons / zoomNow);
     const auto what = (first ? how : how.upToFirstOccurrenceOf (dot, false, false)) + dot + view + dot + field;
     // top left, as on a slide's label
-    g.drawText (counts, juce::Rectangle<float> (14.0f, 8.0f, rail.getX() - 28.0f, 16.0f), juce::Justification::centredLeft);
+    const float cx = 14.0f + (float) referenceWidth;
+    g.drawText (counts, juce::Rectangle<float> (cx, 8.0f, rail.getX() - 14.0f - cx, 16.0f), juce::Justification::centredLeft, true);
     if (hovered < 0)
-        g.drawText (what, juce::Rectangle<float> (14.0f, 24.0f, rail.getX() - 28.0f, 16.0f), juce::Justification::centredLeft, true);
+        g.drawText (what, juce::Rectangle<float> (cx, 24.0f, rail.getX() - 14.0f - cx, 16.0f), juce::Justification::centredLeft, true);
 }
 
 void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
@@ -864,10 +977,11 @@ void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
         juce::Point<float> at;
         float x, w;
         juce::String text;
+        const char* term;
     };
     // the names stay inside the window: the row is spread so no two touch, then slid to fit
     // between the margins; if the full names can't fit side by side, the short ones are used
-    const float leftLimit = 14.0f, rightLimit = rail.getX() - 12.0f; // never into the rail (3.2)
+    const float leftLimit = 14.0f + (float) referenceWidth, rightLimit = rail.getX() - 12.0f; // never into the rail (3.2), nor under the reference (3.6)
     for (const bool above : { true, false })
     {
         std::vector<Placed> row;
@@ -885,7 +999,7 @@ void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
                                                       brain.getY() + brain.getHeight() * flydata::anchors[k].y };
                         const juce::String text (shortNames ? r.shortName : r.name);
                         const float w = juce::GlyphArrangement::getStringWidth (font, text);
-                        row.push_back ({ at, at.x - 0.5f * w, w, text });
+                        row.push_back ({ at, at.x - 0.5f * w, w, text, r.term });
                     }
             }
             std::sort (row.begin(), row.end(), [] (const Placed& a, const Placed& b) { return a.at.x < b.at.x; });
@@ -941,8 +1055,15 @@ void Specimen::paintRegions (juce::Graphics& g, const Hairline& line)
                 line.v (p.at.x, p.at.y + 3.0f, bus);
             line.h (std::min (p.at.x, tx), std::max (p.at.x, tx) + line.width(), bus);
             line.v (tx, std::min (bus, stub), std::max (bus, stub));
-            g.setColour (tone::grey (tone::mid));
-            g.drawText (p.text, juce::Rectangle<float> (p.x, textY - 7.0f, p.w + 2.0f, 14.0f), juce::Justification::centredLeft);
+            // a link (3.6): brighter under the hand, underlined when it is the focus
+            const auto area = juce::Rectangle<float> (p.x, textY - 7.0f, p.w + 2.0f, 14.0f);
+            const bool over = area.expanded (2.0f).contains (hoverAt);
+            const bool picked = focus != nullptr && focus->active() && focus->key == juce::String (p.term);
+            g.setColour (tone::grey (over || picked ? tone::live : tone::mid));
+            g.drawText (p.text, area, juce::Justification::centredLeft);
+            if (over || picked)
+                line.h (p.x, p.x + p.w, textY + 7.0f);
+            labels.push_back ({ area.expanded (2.0f), p.term });
         }
     }
 }
@@ -1502,6 +1623,14 @@ void Specimen::mouseMove (const juce::MouseEvent& e)
     }
     hoverPart = partAt (e.position);
     hoverPlate = hoverPart == Part::none;
+    bool link = tagNeuron >= 0 && tagArea.contains (e.position);
+    for (const auto& l : labels)
+        link = link || l.area.contains (e.position);
+    if (link && hoverPart == Part::none)
+    {
+        setMouseCursor (juce::MouseCursor::PointingHandCursor);
+        return;
+    }
     setMouseCursor (hoverPart == Part::centre ? juce::MouseCursor::DraggingHandCursor
                     : hoverPart == Part::ring ? juce::MouseCursor::LeftRightResizeCursor
                     : hoverPart == Part::inside || hoverPart == Part::dial ? juce::MouseCursor::UpDownResizeCursor
@@ -1534,6 +1663,20 @@ void Specimen::mouseDown (const juce::MouseEvent& e)
     }
     if (rail.contains (e.position))
         return;
+    // 3.6: a neuron's tag opens its type; a region's name, its entry
+    if (tagNeuron >= 0 && tagArea.contains (e.position))
+    {
+        if (onPickType)
+            onPickType ((int) rig::identities::type[tagNeuron]);
+        return;
+    }
+    for (const auto& l : labels)
+        if (l.area.contains (e.position))
+        {
+            if (onPickTerm)
+                onPickTerm (l.term);
+            return;
+        }
     if (e.mods.isPopupMenu() || e.mods.isCommandDown() || e.mods.isCtrlDown())
     {
         turning = true;

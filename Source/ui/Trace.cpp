@@ -333,6 +333,94 @@ void Trace::paint (juce::Graphics& g)
     g.drawText (shown + utf8 ("  \xc2\xb7  white: bent by the fly") + (kickOn ? utf8 ("  \xc2\xb7  ticks: your kick") : juce::String())
                     + utf8 ("  \xc2\xb7  full row = 0 dBFS")
                 , juce::Rectangle<float> (left, R.pitch.getBottom() + 4.0f, width, 13.0f), juce::Justification::centredLeft);
+    paintFocus (g, line, R, left, right);
+}
+
+void Trace::paintFocus (juce::Graphics& g, const Hairline& line, const Rows& R, float left, float right)
+{
+    // 3.6: the focus's neurons, their mean rate over the same time, drawn over the fly's row on a
+    // log scale (1 Hz at the row's foot, 100 Hz at its head), from the moment they were picked
+    if (focus == nullptr || ! focus->active())
+        return;
+    const auto& rec = processor.recording;
+    const auto small = fonts->at (type::small);
+    if (! focus->neurons.empty() && rec.watching())
+    {
+        const double sp = span(), now = rec.sessionSeconds();
+        const auto row = R.fly.reduced (0.0f, 2.0f);
+        // newest first from the raster, then smoothed forward in time (about 150 ms): one spike more
+        // or less in a 10 ms bin is noise, not the type's rate
+        std::vector<std::pair<double, float>> pts;
+        for (int back = 0; back < rec.rasterLength(); ++back)
+        {
+            const double t = rec.rasterTime (back);
+            if (t < now - sp)
+                break;
+            const float hz = rec.watchRate (back);
+            if (hz < 0.0f)
+                break;
+            pts.emplace_back (t, hz);
+        }
+        juce::Path p;
+        float last = 0.0f;
+        double before = 0.0;
+        for (size_t k = pts.size(); k-- > 0;)
+        {
+            const auto [t, hz] = pts[k];
+            if (k + 1 == pts.size())
+                last = hz;
+            else
+                last += (hz - last) * (float) (1.0 - std::exp (-(t - before) / 0.15));
+            before = t;
+            const float x = right - (float) ((now - t) / sp) * (right - left);
+            const float y = row.getBottom() - row.getHeight() * juce::jlimit (0.0f, 1.0f, std::log10 (std::max (1.0f, last)) / 2.0f);
+            if (k + 1 == pts.size())
+                p.startNewSubPath (x, y);
+            else
+                p.lineTo (x, y);
+        }
+        g.setColour (tone::grey (tone::live));
+        g.strokePath (p, juce::PathStrokeType (1.5f * line.width()));
+        const auto text = focus->title + utf8 ("  \xc2\xb7  ") + juce::String (last, 1) + " Hz";
+        const float w = juce::GlyphArrangement::getStringWidth (small, text) + 8.0f;
+        const auto box = juce::Rectangle<float> (left + 4.0f, R.fly.getY() - 1.0f, w, 13.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.85f));
+        g.fillRect (box);
+        g.setFont (small);
+        g.setColour (tone::grey (tone::live));
+        g.drawText (text, box.reduced (4.0f, 0.0f), juce::Justification::centredLeft);
+    }
+    // a pinned log line: a white rule at its moment
+    if (focus->kind == Focus::Kind::event && focus->eventAt >= 0.0)
+    {
+        const double sp = span(), now = rec.sessionSeconds();
+        if (focus->eventAt >= now - sp)
+        {
+            const float x = right - (float) ((now - focus->eventAt) / sp) * (right - left);
+            g.setColour (tone::grey (tone::live));
+            line.v (x, R.plot.getY(), R.pitch.getBottom());
+            g.fillRect (juce::Rectangle<float> (5.0f, 5.0f).withCentre ({ x, R.plot.getY() }));
+        }
+    }
+}
+
+void Trace::mouseDown (const juce::MouseEvent& e)
+{
+    if (focus == nullptr)
+        return;
+    const int k = reflexAt (e.position);
+    if (k < 0)
+        return;
+    const auto& r = processor.timeline.reflex (k);
+    focus->kind = Focus::Kind::event;
+    focus->key = "reflex";
+    focus->title = "reflex " + juce::String (utf8 ("\xc2\xb7 ")) + rig::Timeline::moveName (r.move);
+    focus->neurons = processor.recording.population (rig::Recording::giantFiber);
+    focus->logWords.clear();
+    focus->eventAt = processor.recording.sessionSeconds() - (processor.timeline.now() - r.at);
+    focus->cause = r.cause;
+    focus->move = r.move;
+    focus->changed();
 }
 
 float Trace::futureWidth() const noexcept
@@ -429,6 +517,7 @@ void Trace::mouseMove (const juce::MouseEvent& e)
     const int k = reflexAt (e.position);
     if (k >= 0 && onReflexHover)
         onReflexHover (processor.timeline.reflex (k).cause, processor.timeline.reflex (k).move);
+    setMouseCursor (k >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
 }
 
 juce::String Trace::getTooltip()

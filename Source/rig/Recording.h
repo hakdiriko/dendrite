@@ -105,6 +105,10 @@ public:
     // ticksAgo 0 = the newest: when it was (session seconds) and each population's rate (Hz per neuron)
     double rasterTime (int ticksAgo) const noexcept { return rasterAt[(size_t) rasterIndex (ticksAgo)]; }
     float rasterRate (int population, int ticksAgo) const noexcept { return rasterData[(size_t) (rasterIndex (ticksAgo) * populations + population)]; }
+    // 3.6: the focus's neurons, watched: their mean rate at every raster tick (from now on)
+    void watch (const std::vector<uint16_t>& who) { watched = who; std::fill (watchData.begin(), watchData.end(), -1.0f); }
+    bool watching() const noexcept { return ! watched.empty(); }
+    float watchRate (int ticksAgo) const noexcept { return watchData[(size_t) rasterIndex (ticksAgo)]; } // -1: not yet watched then
     // false while no time passes for the specimen (the itch selector off: its brain does not step)
     void setStepping (bool on) noexcept { stepping = on; }
 
@@ -153,6 +157,8 @@ private:
     std::vector<float> rasterData = std::vector<float> ((size_t) (rasterTicks * populations), 0.0f);
     std::vector<double> rasterAt = std::vector<double> ((size_t) rasterTicks, 0.0);
     int rasterHead = 0, rasterCount = 0;
+    std::vector<uint16_t> watched;
+    std::vector<float> watchData = std::vector<float> ((size_t) rasterTicks, -1.0f);
     bool stepping = true;
     std::vector<uint16_t> scarCount;
     std::vector<double> scarLast;

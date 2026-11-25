@@ -49,7 +49,9 @@ juce_add_binary_data(dendrite_fonts
     HEADER_NAME BinaryData.h
     NAMESPACE BinaryData
     SOURCES
-        Resources/fonts/FragmentMono-Regular.ttf)
+        Resources/fonts/FragmentMono-Regular.ttf
+        Resources/fonts/SourceSerif4SmText-Regular.ttf
+        Resources/fonts/SourceSerif4SmText-It.ttf)
 
 # the window (3.0, the rig) and the recorders it reads
 # Which fly lives inside (Source/flies/): malecns (Janelia's male CNS, CC BY 4.0; the default since 3.1)
@@ -75,6 +77,8 @@ set(DENDRITE_UI_SOURCES
     Source/ui/Trace.cpp
     Source/ui/Log.cpp
     Source/ui/HostFocus.cpp
+    Source/ui/Glossary.cpp
+    Source/ui/Reference.cpp
     Source/rig/Recording.cpp
     Source/rig/Timeline.cpp
     Source/flies/${DENDRITE_FLY}/Identities.cpp

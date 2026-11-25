@@ -6,7 +6,30 @@ namespace dendrite::ui
 Header::Header (DendriteProcessor& p) : processor (p)
 {
     setOpaque (true);
-    setInterceptsMouseClicks (false, false);
+    setInterceptsMouseClicks (true, false);
+}
+
+void Header::mouseMove (const juce::MouseEvent& e)
+{
+    const bool over = searchArea.contains (e.position);
+    if (over != overSearch)
+    {
+        overSearch = over;
+        setMouseCursor (over ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+        repaint();
+    }
+}
+
+void Header::mouseExit (const juce::MouseEvent&)
+{
+    overSearch = false;
+    repaint();
+}
+
+void Header::mouseDown (const juce::MouseEvent& e)
+{
+    if (searchArea.contains (e.position) && onSearch)
+        onSearch();
 }
 
 void Header::paint (juce::Graphics& g)
@@ -50,6 +73,18 @@ void Header::paint (juce::Graphics& g)
     g.setColour (tone::grey (bypassed || resting || silent ? tone::bright : tone::mid));
     g.drawText (state, juce::Rectangle<float> (right - stw, y, stw + 2.0f, h), juce::Justification::centredLeft);
     right -= stw + 24.0f;
+
+    // the search (3.6): a field's outline with its key
+    {
+        const juce::String text = "search  /";
+        const float tw = width (text) + 16.0f;
+        searchArea = juce::Rectangle<float> (right - tw, 5.0f, tw, h - 10.0f);
+        g.setColour (tone::grey (overSearch ? tone::bright : tone::dim));
+        g.drawRect (searchArea, line.width());
+        g.setColour (tone::grey (overSearch ? tone::live : tone::mid));
+        g.drawText (text, searchArea, juce::Justification::centred);
+        right -= tw + 24.0f;
+    }
 
     // left: the name, then the specimen, as much of it as fits (least needed last)
     float x = 14.0f;
