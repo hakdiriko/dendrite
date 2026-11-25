@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.3.1 (the kick: a sidechain the fly hears)
+
+From the design review: give the fly the song's kick, as a real fly's eyes see a looming shape. Only the hits count; the sidechain is never heard and never enters the echo. Without a sidechain, or with a silent one, the sound is bit-identical (null test below).
+
+- **A sidechain input** (VST3 and AU, off until the host routes something to it, mono or stereo). In Live: on the kick's track, nothing; on dendrite's, the sidechain arrow, "Audio From" the kick.
+- **Onsets only** (`dsp/Kick.h`): an envelope follower with a 1 ms attack finds each hit (the boom, 30 Hz to 5 kHz, or the beater's click above 800 Hz, so a ghost note under the last kick's boom still counts); its strength is its peak over 10 ms against the recent loudest hit.
+- **It gets used to your kick.** A grid of expectations, one per 16th of the bar, remembers where hits come. A hit where hits always come barely startles; a hit where none came (a fill, a ghost note) or after the kick was gone (the breakdown's end) startles hard. A 16th that passes without its hit expects less; everything is forgotten over about 16 bars. Steady four on the floor goes from a full startle to about a quarter within 2 bars.
+- **The startle reaches the giant fiber**: it looms in both low eyes (LPLC2, the giant fiber's input) at up to the strongest a looming in the music gets, and tires them as any looming does. A startle above three quarters is a loom the fly escapes from at once, past its rest and its budget, on the next line instead of the next bar. A kick hit also counts as a hit of the groove, so on bare keys with a kick it feels inside a groove and can dance.
+- **The echo ducks under each hit** (never the dry; before the safety limiter): down in 1 ms, held 15 ms, back over 80 ms (wound up) to 500 ms (calm, the fly's arousal). Depth: 2 dB plus up to 6 dB from the fly's fear plus up to 6 dB from how unexpected the hit was (12 dB at most), times the hit's strength. Itch off, the fly is at rest and the duck is gentle (about 3 dB, 0.5 s).
+- In renders (16 bars: four on the floor, a fill at the end of bar 4, ghost notes in bars 5-8, a 2-bar breakdown, the kick back for 6 bars), the fly jumps at the first kicks, at the fill and when the kick returns, and leaves the steady kick alone (keys 8 reflexes with the kick against 3 without, voice 6 against 3, pad 2 against 2).
+- For the window: each engine call reports its kick hits (strength, startle, the echo's lowest gain); the timeline's frames and bins carry `kick`, `kickStartle` and `kickOn` for a kick row in the trace (not drawn yet).
+- Tools: `build/render ... --kick kick.wav [--kick-log kick.csv]`; `tools/render/sidechain.py` makes the kick and the three beds; `DENDRITE_SIDECHAIN=kick.wav|silent dendrite_nulltest ...` runs the processor with the sidechain bus on.
+- **Bit-identical without a kick.** `tools/nulltest` on f137e12 against this branch with the sidechain bus off and on but silent: loop 48 kHz/512, keys 44.1 kHz/256 with a throw, voice 48 kHz/1024 with an itch change, drums 96 kHz/333 with both: 8 of 8 identical to the bit.
+- The manual's notes name the sidechain.
+
 ## 3.3.0 (the trace: what the fly does to your sound)
 
 Hakan, on 3.0: the window "feels like it doesn't have a purpose". Asked what he wants from it while making music, he picked "see what it does to my sound". The control (the electrode, X-Y) is replaced in the imaging work, not here. The sound does not change (null test below).

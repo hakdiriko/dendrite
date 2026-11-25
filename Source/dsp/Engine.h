@@ -7,6 +7,7 @@
 #include "Creature.h"
 #include "Hand.h"
 #include "Fly.h"
+#include "Kick.h"
 
 namespace dendrite
 {
@@ -44,6 +45,14 @@ public:
     // What the itch throws: 0 rides the echo (2.5), 1 the afterglow, 2 the afterglow that spirals.
     void setTail (int t) noexcept { echo.setTail (t); }
 
+    // The sidechain (3.4) for the next process() call: as many samples as it, right may equal left.
+    // nullptr: none (then nothing of it runs, and the sound is dendrite's without it).
+    void setSidechain (const float* left, const float* right) noexcept
+    {
+        sideLeft = left;
+        sideRight = right != nullptr ? right : left;
+    }
+
     // In place, stereo. left/right may be the same signal for a mono input.
     void process (float* left, float* right, int numSamples, const HostTime& time) noexcept;
 
@@ -58,6 +67,12 @@ public:
         // loudest echo sample (after the safety limiter, without the dry), and where the clock was
         // when it began (the host's song position while it plays, dendrite's own clock otherwise)
         float inPeak = 0.0f, wetPeak = 0.0f, barBeats = 4.0f;
+        // the sidechain's kick (3.4): hits this call, the strongest of them (0..1 of its recent
+        // loudest), how much it startled the fly (0..1), the echo's lowest gain under it; kickOn:
+        // a sidechain came with the call
+        int kickHits = 0;
+        float kick = 0.0f, kickStartle = 0.0f, kickDuck = 1.0f;
+        bool kickOn = false;
         double beatAtStart = 0.0;
         // for the window, 0..1 against the track's own recent peaks: the strongest hit this
         // block, how loud the input is held, how loud the echo is
@@ -130,6 +145,10 @@ private:
     Hand hand;
     bool flyItch = true;
     Fly fly;
+    Kick kick;
+    const float* sideLeft = nullptr;
+    const float* sideRight = nullptr;
+    bool kickHeard = false;
     bool outsideOn = false;
     Touch outside;
     uint64_t handGenome = 0;

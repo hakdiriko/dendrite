@@ -40,6 +40,29 @@ int main (int argc, char** argv)
 
     DendriteProcessor processor;
     processor.setPlayConfigDetails (2, 2, sr, block);
+    // DENDRITE_SIDECHAIN=kick.wav (or "silent"): the sidechain bus on, stereo, fed from that file
+    // (cut or padded with silence to the input's length); off by default
+    const char* sideArg = std::getenv ("DENDRITE_SIDECHAIN");
+    juce::AudioBuffer<float> side (2, in.getNumSamples());
+    side.clear();
+    if (sideArg != nullptr)
+    {
+        auto layout = processor.getBusesLayout();
+        if (layout.inputBuses.size() < 2)
+            return 6;
+        layout.inputBuses.getReference (1) = juce::AudioChannelSet::stereo();
+        if (! processor.setBusesLayout (layout))
+            return 6;
+        processor.setRateAndBufferSizeDetails (sr, block);
+        if (juce::String (sideArg) != "silent")
+        {
+            std::unique_ptr<juce::AudioFormatReader> sr2 (formats.createReaderFor (juce::File (juce::String (sideArg))));
+            if (sr2 == nullptr)
+                return 2;
+            sr2->read (&side, 0, std::min (side.getNumSamples(), (int) sr2->lengthInSamples), 0, true, true);
+        }
+        std::printf ("sidechain: %s, %d buffer channels\n", sideArg, processor.getTotalNumInputChannels());
+    }
     auto set = [&] (const char* id, float plain) {
         auto* p = processor.params.getParameter (id);
         p->setValueNotifyingHost (p->convertTo0to1 (plain));
@@ -66,7 +89,8 @@ int main (int argc, char** argv)
     juce::FileOutputStream out { juce::File (juce::String (argv[2])) };
     out.setPosition (0);
     out.truncate();
-    juce::AudioBuffer<float> buffer (2, block);
+    const int channels = std::max (2, processor.getTotalNumInputChannels());
+    juce::AudioBuffer<float> buffer (channels, block);
     juce::MidiBuffer midi;
     for (int at = 0; at < in.getNumSamples(); at += block)
     {
@@ -75,9 +99,11 @@ int main (int argc, char** argv)
         set ("throw", throwAt >= 0.0 && t >= throwAt && t < throwAt + throwLen ? 1.0f : 0.0f);
         if (itchAt >= 0.0 && t >= itchAt)
             set ("frames", (float) itch2);
-        buffer.setSize (2, n, false, false, true);
+        buffer.setSize (channels, n, false, false, true);
         for (int c = 0; c < 2; ++c)
             buffer.copyFrom (c, 0, in, c, at, n);
+        for (int c = 2; c < channels; ++c)
+            buffer.copyFrom (c, 0, side, c - 2, at, n);
         processor.processBlock (buffer, midi);
 #if HAS_RIG
         if (roundTrip)

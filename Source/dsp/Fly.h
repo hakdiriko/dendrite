@@ -111,6 +111,8 @@ public:
     // awake 0..1 (0 = asleep, the fly does nothing). emptyHz: where the music leaves room for the band.
     void setAwake (float awake) noexcept { awakeNow = clamp01 (awake); }
     void setEmptyHz (float hz) noexcept { emptyHz = hz; }
+    // the sidechain's kick (3.4), as it reaches its low looming eyes (0..1.2, from Kick::loom); 0: none
+    void hearKick (float loom) noexcept { kickNow = loom; }
 
     // Per sample, the input as it comes in. Returns the touch for this sample.
     const Touch& process (float left, float right) noexcept;
@@ -178,7 +180,7 @@ private:
     static constexpr float dtSec = 0.5e-3f;
     static constexpr int delaySlots = 5; // 2.5 ms from spike to the next neuron
 
-    float sr = 48000.0f, stepEvery = 24.0f, untilStep = 0.0f, awakeNow = 0.0f, emptyHz = 1000.0f;
+    float sr = 48000.0f, stepEvery = 24.0f, untilStep = 0.0f, awakeNow = 0.0f, emptyHz = 1000.0f, kickNow = 0.0f, startledFor = 0.0f;
 
     // the brain (w: every connection's strength in mV; the KC -> MBON ones change as it learns)
     std::vector<float> w;
@@ -265,7 +267,7 @@ private:
     bool musical = true;
     double beatNow = 0.0, bpmNow = 120.0, barNow = 4.0;
     long long lastTick = -1;
-    bool armed = false;
+    bool armed = false, armedStartled = false; // armedStartled: by the kick, so it goes on the next line
     float armedSize = 0.0f, armedFear = 0.0f;
     struct Leg { float slope = 0.0f, left = 0.0f, end = 1.0f; }; // per 16th: how the heads' distance changes, for how long, where it ends
     std::array<Leg, 3> legs {};
