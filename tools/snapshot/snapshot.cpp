@@ -12,8 +12,8 @@
 //   DENDRITE_TIME=1                    how long one frame of the window takes to paint
 //   DENDRITE_HOVER=x,y                 the hand rests over the specimen there (window pixels)
 //   DENDRITE_IMAGING=two-photon        the imaging method (trace, two-photon, voltage, photons, tracts, 2-dg)
-//   DENDRITE_YAW=30 DENDRITE_PITCH=-10 the goniometer's angles, in degrees
-//   DENDRITE_ZOOM=4,0.3,0.6            the objective, and the field's centre as fractions of the box
+//   DENDRITE_YAW=30 DENDRITE_PITCH=-10 the brain's turn, in degrees
+//   DENDRITE_ZOOM=4,0.3,0.6            the magnification, and the field's centre as fractions of the box
 //   DENDRITE_DRAG=x0,y0,x1,y1          before playing, the hand drags across the specimen (window pixels)
 //   DENDRITE_SCRIPT=file               with DENDRITE_FRAMES: the hand, one event a line, "t kind x y [more]" in window pixels:
 //                                      down/drag/up (more: left, right, alt, shift; up: click = not a drag), move, wheel (more: notches);
@@ -156,7 +156,7 @@ int main (int argc, char** argv)
             {
                 if (env ("DENDRITE_NO_ELECTRODE").isNotEmpty())
                     s->hideElectrodeForTools();
-                const auto b = s->brainArea() + s->getPosition().toFloat(); // the plate at the first objective, in window pixels
+                const auto b = s->brainArea() + s->getPosition().toFloat(); // the plate at 1x, in window pixels
                 std::printf ("brain %.2f %.2f %.2f %.2f\n", b.getX(), b.getY(), b.getWidth(), b.getHeight());
             }
     if (const auto hover = env ("DENDRITE_HOVER"); hover.isNotEmpty())

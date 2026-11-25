@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.5.0 (the light: the hand reaches into the brain)
+
+Hakan, 2026-11-24: no X-Y controller, no goniometer of any kind; turn and zoom on the brain itself; "don't make anything cheap". From the picks page he and the team chose **A, the light** and **B, the atlas**. The sound with the hands off is unchanged (null test below). This build also carries 3.4.0 (one story) and 3.3.1 (the kick) below, merged into one release.
+
+- **No goniometer.** The trackball and the objective turret from 3.2 are gone. The brain is the handle: **drag it to turn** (half a turn across the plate; a flick keeps it turning and slows), **wheel or pinch to magnify** about the hand (0.5x to 16x), alt-drag or the middle button moves the stage, **double-click the plate: home** (frontal, whole, eased). The rail keeps a plain readout: yaw, pitch, magnified.
+- **The light (A)** replaces the electrode. The brain carries CsChrimson; a spot of 590 nm sits on it. **Its size is space** (drag its edge: 8 um, one neuron, to 150 um across, log scale), **its power is feed** (drag inside it up or down, or the wheel on it; shift: fine), its centre moves it over other neurons (saved with the set). The same two parameters, ids and automation as before.
+- **A press anywhere else on the plate is a flash**: the throw, as before, and now the neurons under the light fire for as long as it lasts (Poisson, 20 Hz at no power to 100 Hz at full, on the audio thread with the fly's own generator). Which neurons you light changes what the fly does next: light the giant fiber and it leaps, the grooming neurons and it grooms. With no flash nothing extra runs, so hands off is bit-identical.
+- **The atlas (B)**: magnified 2.5x or more, the regions open their own controls on small cards beside them: the fly's own numbers, as 8 new automatable parameters (state version 10, centred on the fly's defaults): **mushroom body** learn, forget; **giant fiber** jumpy, lurch; **grooming** scratch; **steering** lean; **eyes** tire, recover. Sets that never move them sound exactly as before.
+- The instruments column reads the light: spot (x, y), lit (n in r um), their mean rate, the busiest of them.
+- The manual's first section is the light; the map section says how to turn and magnify.
+- **The sound with hands off is bit-identical.** `tools/nulltest` on 3.2 and on this branch, groove and drums, 48 kHz/512 and 44.1 kHz/333, and a held throw with no window: 5 of 5 identical to the bit.
+
 ## 3.4.0 (one story: the window joins cause to effect)
 
 From the design review of 24 Nov (Hakan: "brilliant, we should add these"). The sound does not change (null test below).

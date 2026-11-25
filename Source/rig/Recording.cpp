@@ -235,6 +235,8 @@ juce::ValueTree Recording::save() const
     rig.setProperty ("zoom", zoom.load(), nullptr);
     rig.setProperty ("zoomX", zoomX.load(), nullptr);
     rig.setProperty ("zoomY", zoomY.load(), nullptr);
+    rig.setProperty ("lightX", lightX.load(), nullptr);
+    rig.setProperty ("lightY", lightY.load(), nullptr);
     return rig;
 }
 
@@ -254,6 +256,8 @@ void Recording::load (const juce::ValueTree& rig)
         zoom = juce::jlimit (minZoom, maxZoom, (float) rig.getProperty ("zoom", 1.0f));
         zoomX = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("zoomX", 0.5f));
         zoomY = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("zoomY", 0.5f));
+        lightX = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("lightX", 0.5f));
+        lightY = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("lightY", 0.5f));
     }
     juce::MemoryOutputStream packed;
     if (! juce::Base64::convertFromBase64 (packed, rig.getProperty ("exposure").toString()))

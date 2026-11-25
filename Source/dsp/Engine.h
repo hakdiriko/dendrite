@@ -102,6 +102,8 @@ public:
     // The fly is the itch (default). Off: the creature fires the heads, as in 2.0a.
     void useFly (bool on) noexcept { flyItch = on; }
     Fly& itchFly() noexcept { return fly; }
+    // The light (3.3): how fast a flash makes the lit neurons fire, set by its power (feed)
+    static float flashHz (float feed) noexcept { return 20.0f + 80.0f * clamp01 (feed); }
     // How awake the fly is for an itch choice: off sleeps, 1/4 bar is wide awake, 4 bars half.
     static float awakeFor (int choice) noexcept
     {

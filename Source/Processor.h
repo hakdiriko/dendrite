@@ -89,6 +89,23 @@ public:
     uint16_t takeFlySpikes (int neuron) noexcept { return engine.itchFly().takeSpikes (neuron); }
     // A new fly: it forgets what it learned and its moods (from the window; done at the next block).
     void forgetFly() noexcept { flyForget.store (true, std::memory_order_release); }
+    // The light (3.3): which neurons the spot covers (from the window). Taken at the next block;
+    // false while the last one has not been taken yet (the window tries again next frame).
+    bool postLit (const uint16_t* lit, int count) noexcept
+    {
+        if (litReady.load (std::memory_order_acquire) != 0)
+            return false;
+        litCount = std::clamp (count, 0, (int) litPending.size());
+        std::copy (lit, lit + litCount, litPending.begin());
+        litReady.store (1, std::memory_order_release);
+        return true;
+    }
+    int litInFly() const noexcept { return litTaken.load (std::memory_order_relaxed); }
+
+    // The fly's own numbers (3.3, the atlas): each region's, as automatable parameters. The defaults
+    // are the fly's own, so a set that never moves them sounds as before.
+    struct TasteParam { const char* id; const char* name; const char* unit; float lo, hi, Fly_Taste_default; bool log; };
+    static const std::array<TasteParam, 8> tasteParams;
 
     // keep: the last minute, on tape, and a diary of what happened (read by the window)
     dendrite::keep::Keep keep;
@@ -111,6 +128,10 @@ private:
     std::atomic<float>* bypassParam = nullptr;
     std::atomic<float>* timeParam = nullptr;
     std::atomic<float>* dryParam = nullptr;
+    std::array<std::atomic<float>*, 8> tasteParam {};
+    std::array<uint16_t, dendrite::Fly::neurons> litPending {};
+    int litCount = 0;
+    std::atomic<int> litReady { 0 }, litTaken { 0 };
 
     dendrite::Engine engine;
     dendrite::HostTime hostTime;
