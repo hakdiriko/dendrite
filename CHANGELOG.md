@@ -22,6 +22,7 @@ Hakan's review of 3.5.0 (25 Nov): trace and two-photon look the same; the tracts
 - **Lurch is a dial**, not a switch: 0 never bends the tape (a jump is only its throw), low values bend the small moves by a fourth or a fifth, 0.4 is as before (the octave, big moves on the bar line), higher values hold and throw longer. At the default the moves are identical to 3.5.
 - **Steering you can hear.** The fly's turn (its steering neurons DNa01/DNa02, left against right) now also steers the echo toward that side, up to about 9 dB between the sides, through the M/S matrix after the echo's ceiling. On material panned to one side it turns a third of the time; on centred material it drifts gently. With the itch off nothing changes.
 - **Hold it back**: a click on the armed move (the dashed bar ahead of now in the trace) stops it before it plays; the log says "held back · the move for bar N".
+- **Null test** (`tools/nulltest`, main 000e000 against this branch): itch off, loop 48 kHz/512, drums 44.1 kHz/333 with a throw and an itch change, chords 48 kHz/128: 3 of 3 identical to the bit. Itch on, the output differs by the steering alone (-26 and -31 dB): the fly's moves, throws and moods are identical (its log compared column by column).
 
 ## 3.5.0 (the light: the hand reaches into the brain)
 
