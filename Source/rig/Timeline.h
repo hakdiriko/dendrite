@@ -34,13 +34,18 @@ public:
         float armedSize = 0.0f;
         double armedLand16 = 0.0;
         int cause = 0;
+        // the sidechain (3.4): the strongest kick hit in this frame (0: none; 0..1 of its recent
+        // loudest), how much it startled the fly (0..1), and whether a sidechain came at all
+        float kick = 0.0f, kickStartle = 0.0f;
+        bool kickOn = false;
     };
 
     struct Bin
     {
         float in = 0.0f, wet = 0.0f, semitones = 0.0f, jump = 0.0f, scratch = 0.0f, turn = 0.0f;
+        float kick = 0.0f, kickStartle = 0.0f; // a kick hit in this bin (only in the first bin of its frame)
         double beat = 0.0;
-        bool thrown = false, playing = false;
+        bool thrown = false, playing = false, kickOn = false;
     };
 
     // a reflex: when it began (seconds of processed audio), its move, the tape speeds it went

@@ -95,6 +95,8 @@ void Trace::paint (juce::Graphics& g)
     const int columns = juce::jmax (1, (int) std::ceil (width));
     std::vector<float> in ((size_t) columns, 0.0f), wet ((size_t) columns, 0.0f), st ((size_t) columns, 0.0f), turn ((size_t) columns, 0.0f);
     std::vector<uint8_t> bent ((size_t) columns, 0), used ((size_t) columns, 0), groomed ((size_t) columns, 0);
+    std::vector<float> kick ((size_t) columns, 0.0f), startle ((size_t) columns, 0.0f); // the sidechain's hits (3.4)
+    bool kickOn = false;
     int lastBar = INT_MIN;
     float lastBarLabel = 1.0e9f;
     for (int back = 0; back < tl.bins(); ++back)
@@ -113,6 +115,9 @@ void Trace::paint (juce::Graphics& g)
         used[(size_t) c] = 1;
         bent[(size_t) c] |= b.jump > 0.01f ? 1 : 0;
         groomed[(size_t) c] |= b.scratch > 0.3f ? 1 : 0;
+        kick[(size_t) c] = std::max (kick[(size_t) c], b.kick);
+        startle[(size_t) c] = std::max (startle[(size_t) c], b.kickStartle);
+        kickOn = kickOn || b.kickOn;
 
         // a bar line where the host's bar changes (newest first, so the line sits at the bar's first bin)
         if (b.playing && tl.barBeats() > 0.0f)
@@ -189,6 +194,13 @@ void Trace::paint (juce::Graphics& g)
             g.setColour (tone::grey (bent[(size_t) c] ? tone::live : tone::dim));
             g.fillRect (juce::Rectangle<float> (x, echoMid - h, 1.0f, 2.0f * h));
         }
+        if (kick[(size_t) c] > 0.0f)
+        {
+            // a kick on the sidechain: a tick down from the top of your sound, as long as the hit is
+            // strong; white when it startled the fly enough to jump past its rest
+            g.setColour (tone::grey (startle[(size_t) c] > 0.75f ? tone::live : tone::mid));
+            g.fillRect (juce::Rectangle<float> (x, R.sound.getY() + 1.0f, 1.0f, 2.0f + 6.0f * std::min (1.0f, kick[(size_t) c])));
+        }
         if (groomed[(size_t) c])
         {
             g.setColour (tone::grey (tone::mid));
@@ -238,7 +250,7 @@ void Trace::paint (juce::Graphics& g)
 
     // the reflexes: one line from the fly down through your echo and the pitch, newest first so
     // the newest keeps its name when two would collide
-    float limit = right, nameLimit = right;
+    float limit = right;
     for (int k = 0; k < tl.reflexes(); ++k)
     {
         const auto& r = tl.reflex (k);
@@ -258,30 +270,27 @@ void Trace::paint (juce::Graphics& g)
             steps << " st";
         const float nameWidth = (float) juce::GlyphArrangement::getStringWidth (data, name);
         const float stepWidth = steps.isEmpty() ? 0.0f : (float) juce::GlyphArrangement::getStringWidth (small, steps);
-        // the labels sit right of the line and never cross the next reflex's line or now; one too
-        // close to now goes left of its line instead
         // the name and its tape speeds each go right of the line if they fit before the next
         // reflex (or now); the newest, when too close to now, goes left of its line instead
-        const bool left = limit >= right && x + 6.0f + nameWidth >= limit - 4.0f;
-        float used = x;
+        const bool onLeft = limit >= right && x + 6.0f + nameWidth >= limit - 4.0f;
+        float reach = x;
         auto put = [&] (const juce::String& text, float w, float y, float h, const juce::Font& font, float level) {
             float at = -1.0f;
-            if (! left && x + 6.0f + w < limit - 4.0f)
+            if (! onLeft && x + 6.0f + w < limit - 4.0f)
                 at = x + 6.0f;
-            else if (left && x - 6.0f - w > R.plot.getX())
+            else if (onLeft && x - 6.0f - w > R.plot.getX())
                 at = x - 6.0f - w;
             if (at < 0.0f)
                 return;
             g.setFont (font);
             g.setColour (tone::grey (level));
-            g.drawText (text, juce::Rectangle<float> (at, y, w + 2.0f, h), left ? juce::Justification::centredRight : juce::Justification::centredLeft);
-            used = std::min (used, at);
+            g.drawText (text, juce::Rectangle<float> (at, y, w + 2.0f, h), onLeft ? juce::Justification::centredRight : juce::Justification::centredLeft);
+            reach = std::min (reach, at);
         };
         put (name, nameWidth, R.fly.getY() + 1.0f, 14.0f, data, tone::live);
         if (stepWidth > 0.0f)
             put (steps, stepWidth, R.fly.getY() + 15.0f, 13.0f, small, tone::bright);
-        limit = used;
-        nameLimit = limit;
+        limit = reach;
     }
 
     // the newest groom gets its band written beside it
@@ -321,7 +330,8 @@ void Trace::paint (juce::Graphics& g)
     g.setFont (small);
     g.setColour (tone::grey (tone::dim));
     const juce::String shown = tl.playing() ? juce::String (barsShown) + utf8 (" bars  \xc2\xb7  dashed: decided, not yet heard") : utf8 ("16 s  \xc2\xb7  host stopped");
-    g.drawText (shown + utf8 ("  \xc2\xb7  white: bent by the fly  \xc2\xb7  full row = 0 dBFS")
+    g.drawText (shown + utf8 ("  \xc2\xb7  white: bent by the fly") + (kickOn ? utf8 ("  \xc2\xb7  ticks: your kick") : juce::String())
+                    + utf8 ("  \xc2\xb7  full row = 0 dBFS")
                 , juce::Rectangle<float> (left, R.pitch.getBottom() + 4.0f, width, 13.0f), juce::Justification::centredLeft);
 }
 

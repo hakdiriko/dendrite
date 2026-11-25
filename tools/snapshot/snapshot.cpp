@@ -20,6 +20,7 @@
 //                                      played at t seconds, on whichever part of the window is under the hand
 //   DENDRITE_TURN=deg                  with DENDRITE_FRAMES: the yaw turns this many degrees a second
 //   DENDRITE_PLAY=bpm                  a host transport playing from bar 1 at this tempo, in 4/4
+//   DENDRITE_SIDECHAIN=kick.wav        the sidechain bus on, fed from that file (looped)
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
 #include "Editor.h"
@@ -84,6 +85,19 @@ int main (int argc, char** argv)
 
     DendriteProcessor processor;
     processor.setPlayConfigDetails (2, 2, reader->sampleRate, 512);
+    // DENDRITE_SIDECHAIN=kick.wav: the sidechain bus on, stereo, fed from that file (looped)
+    std::unique_ptr<juce::AudioFormatReader> sideReader;
+    if (env ("DENDRITE_SIDECHAIN").isNotEmpty())
+    {
+        sideReader.reset (formats.createReaderFor (juce::File (env ("DENDRITE_SIDECHAIN"))));
+        auto layout = processor.getBusesLayout();
+        if (sideReader == nullptr || layout.inputBuses.size() < 2)
+            return 6;
+        layout.inputBuses.getReference (1) = juce::AudioChannelSet::stereo();
+        if (! processor.setBusesLayout (layout))
+            return 6;
+        processor.setRateAndBufferSizeDetails (reader->sampleRate, 512);
+    }
     processor.prepareToPlay (reader->sampleRate, 512);
     Transport transport;
     transport.sampleRate = reader->sampleRate;
@@ -222,7 +236,8 @@ int main (int argc, char** argv)
         }
     };
 
-    juce::AudioBuffer<float> buffer (2, 512);
+    juce::AudioBuffer<float> buffer (std::max (2, processor.getTotalNumInputChannels()), 512);
+    juce::AudioBuffer<float> side (2, 512);
     juce::MidiBuffer midi;
     const auto total = (juce::int64) (seconds * reader->sampleRate);
     double t = 0.0, nextFrame = framesFrom;
@@ -231,6 +246,13 @@ int main (int argc, char** argv)
     {
         buffer.clear();
         reader->read (&buffer, 0, 512, pos % std::max<juce::int64> (1, reader->lengthInSamples - 512), true, true);
+        if (sideReader != nullptr && buffer.getNumChannels() >= 4)
+        {
+            side.clear();
+            sideReader->read (&side, 0, 512, pos % std::max<juce::int64> (1, sideReader->lengthInSamples - 512), true, true);
+            buffer.copyFrom (2, 0, side, 0, 0, 512);
+            buffer.copyFrom (3, 0, side, 1, 0, 512);
+        }
         const double now = (double) pos / reader->sampleRate;
         const bool throwing = throwAt >= 0.0 && now >= throwAt && now < throwAt + throwLen;
         processor.params.getParameter ("throw")->setValueNotifyingHost (throwing ? 1.0f : 0.0f);

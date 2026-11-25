@@ -844,7 +844,14 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
     // the sound reaches its ears; the looming eye on that side (if one loomed); the giant fiber;
     // then down the neck to the tape, where the trace below shows the move
     std::vector<std::pair<juce::Point<float>, juce::String>> stops;
-    stops.push_back ({ anchor ("ears"), "JO" });
+    // a kick on the sidechain looms in both low eyes at once, so its path starts there, not at the ears
+    if (pathCause == 4)
+    {
+        stops.push_back ({ anchor ("eyeLeft"), "kick: LPLC2 left" });
+        stops.push_back ({ anchor ("eyeRight"), "LPLC2 right" });
+    }
+    else
+        stops.push_back ({ anchor ("ears"), "JO" });
     if (pathCause == 1)
         stops.push_back ({ anchor ("eyeLeft"), "LPLC2 left" });
     else if (pathCause == 2)
@@ -853,9 +860,20 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
     const auto neck = juce::Point<float> (stops.back().first.x, brain.getBottom());
 
     juce::Path p;
-    p.startNewSubPath (stops.front().first);
-    for (size_t k = 1; k < stops.size(); ++k)
-        p.lineTo (stops[k].first);
+    if (pathCause == 4)
+    {
+        // both eyes feed the giant fiber side by side
+        p.startNewSubPath (stops[0].first);
+        p.lineTo (stops[2].first);
+        p.startNewSubPath (stops[1].first);
+        p.lineTo (stops[2].first);
+    }
+    else
+    {
+        p.startNewSubPath (stops.front().first);
+        for (size_t k = 1; k < stops.size(); ++k)
+            p.lineTo (stops[k].first);
+    }
     p.lineTo (neck);
     g.setColour (tone::grey (tone::live).withAlpha (fade));
     g.strokePath (p, juce::PathStrokeType (1.5f * line.width()));

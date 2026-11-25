@@ -114,6 +114,9 @@ private:
 
     dendrite::Engine engine;
     dendrite::HostTime hostTime;
+    // the sidechain's piece, copied out before the output is written over it (a mono input puts the
+    // sidechain's first channel where the output's right is); sized in prepareToPlay as keep's tap
+    std::vector<float> sideLeft, sideRight;
 
     // The creature's life crosses threads here. The audio thread seals a copy into the vault
     // once per bar and after every itch (a seqlock: a reader that raced a write tries again);

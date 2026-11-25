@@ -155,6 +155,12 @@ void Timeline::add (const Frame& f) noexcept
             current.semitones = f.semitones;
         current.turn = f.turn;
         current.thrown = current.thrown || f.thrown;
+        current.kickOn = current.kickOn || f.kickOn;
+        if (done == 0)
+        {
+            current.kick = std::max (current.kick, f.kick);
+            current.kickStartle = std::max (current.kickStartle, f.kickStartle);
+        }
         const int take = std::min (left, binSamples - inBin);
         inBin += take;
         left -= take;

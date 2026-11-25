@@ -35,6 +35,8 @@
 //                                            fitted by tools/fly/probe/brain_share.py fit)
 //                [--denormals]  (let tiny numbers stay denormal, as renders did before 2026-11-16; the plug-in
 //                                flushes them to zero, and so does the renderer by default now)
+//                [--kick kick.wav]  (3.4: the sidechain; never heard, only its hits reach the fly and duck the echo)
+//                [--kick-log kick.csv]  (one row per hit: seconds, strength, startle, then the fly's fear and arousal)
 //                [--stats stats.json]  (the slowest audio block, against the block's own length)
 //                out.wav may be "-" to write nothing
 #include <sstream>
@@ -231,7 +233,7 @@ int main (int argc, char** argv)
     unsigned long long genome = 1;
     std::vector<std::pair<double, double>> throws;
     double barBeats = 4.0;
-    std::string dumpDir, surrogateFile, statsFile;
+    std::string dumpDir, surrogateFile, statsFile, kickFile, kickLog;
     long long scrambleSeed = -1, flySeed = -1;
     bool denormals = false;
     for (int i = 3; i < argc; ++i)
@@ -268,6 +270,8 @@ int main (int argc, char** argv)
         else if (k == "--seed") flySeed = std::stoll (next());
         else if (k == "--surrogate") surrogateFile = next();
         else if (k == "--stats") statsFile = next();
+        else if (k == "--kick") kickFile = next();
+        else if (k == "--kick-log") kickLog = next();
         else if (k == "--denormals") denormals = true;
         else if (k == "--throw")
         {
@@ -295,6 +299,12 @@ int main (int argc, char** argv)
         std::fprintf (stderr, "cannot read %s\n", argv[1]);
         return 1;
     }
+    Audio side;
+    if (! kickFile.empty() && ! readWav (kickFile.c_str(), side))
+    {
+        std::fprintf (stderr, "cannot read %s\n", kickFile.c_str());
+        return 1;
+    }
     onePass = in.left.size();
     if (repeat > 1)
     {
@@ -308,6 +318,12 @@ int main (int argc, char** argv)
     const size_t extra = (size_t) (tail * (float) in.sampleRate);
     in.left.resize (in.left.size() + extra, 0.0f);
     in.right.resize (in.right.size() + extra, 0.0f);
+    if (! kickFile.empty())
+    {
+        side.left.resize (in.left.size(), 0.0f); // as long as the input: cut or padded with silence
+        side.right.resize (in.left.size(), 0.0f);
+    }
+    std::FILE* klog = kickLog.empty() ? nullptr : std::fopen (kickLog.c_str(), "w");
 
     static dendrite::Engine engine; // large: keep it off the stack
     engine.creature().beBorn (genome);
@@ -457,7 +473,14 @@ int main (int argc, char** argv)
             engine.touchFromOutside (true, t);
         }
         const auto blockStart = std::chrono::steady_clock::now();
+        if (! kickFile.empty())
+            engine.setSidechain (side.left.data() + pos, side.right.data() + pos);
         engine.process (out.left.data() + pos, out.right.data() + pos, n, time);
+        if (klog != nullptr && engine.view().kickHits > 0)
+        {
+            const auto& v = engine.view();
+            std::fprintf (klog, "%.4f,%.3f,%.3f,%.3f,%.3f,%.3f\n", seconds, v.kick, v.kickStartle, v.kickDuck, v.fly.fear, v.fly.arousal);
+        }
         {
             const double took = std::chrono::duration<double> (std::chrono::steady_clock::now() - blockStart).count() / n;
             slowest = std::max (slowest, took);
@@ -575,6 +598,8 @@ int main (int argc, char** argv)
                   (double) total / in.sampleRate / elapsed);
     if (hlog)
         std::fclose (hlog);
+    if (klog)
+        std::fclose (klog);
     if (log)
         std::fclose (log);
     if (std::string (argv[2]) == "-")
