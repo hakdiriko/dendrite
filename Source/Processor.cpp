@@ -4,6 +4,18 @@
 const juce::StringArray DendriteProcessor::itchNames { "off",       "1/4 bar",   "1/2 bar", "3/4 bar", "1 bar",  "1.25 bars",
                                                        "1.5 bars",  "1.75 bars", "2 bars",  "3 bars",  "4 bars", "8 bars" };
 
+// the atlas (3.3): each region's own numbers, centred on the fly's defaults (Fly::Taste)
+const std::array<DendriteProcessor::TasteParam, 8> DendriteProcessor::tasteParams { {
+    { "learn", "mushroom body learn", "", 0.0f, 0.3f, dendrite::Fly::Taste {}.learn, false },
+    { "forget", "mushroom body forget", " s", 60.0f, 3600.0f, dendrite::Fly::Taste {}.forget, true },
+    { "jumpy", "giant fiber jumpy", "x", 0.2f, 2.5f, dendrite::Fly::Taste {}.jumpy, true },
+    { "lurch", "giant fiber lurch", " oct", 0.0f, 1.0f, dendrite::Fly::Taste {}.lurch, false },
+    { "scratch", "grooming scratch", "", 0.0f, 2.0f, dendrite::Fly::Taste {}.scratch, false },
+    { "lean", "steering lean", "", 0.0f, 1.0f, dendrite::Fly::Taste {}.lean, false },
+    { "eyesTire", "eyes tire", " /s", 0.5f, 16.0f, dendrite::Fly::Taste {}.eyesTire, true },
+    { "eyesBack", "eyes back", " s", 1.0f, 30.0f, dendrite::Fly::Taste {}.eyesBack, true },
+} };
+
 namespace
 {
     // IDs and the state type are what hosts store; they never change once shipped.
@@ -33,6 +45,17 @@ namespace
         layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "time", 9 }, "time",
                                                             StringArray { "dotted", "triplet", "half" }, 0));
         layout.add (std::make_unique<AudioParameterBool> (ParameterID { "dry", 9 }, "dry", true));
+        // 3.3: the atlas, the fly's own numbers by region; the middle of each is where the fly is born
+        for (const auto& t : DendriteProcessor::tasteParams)
+        {
+            NormalisableRange<float> range (t.lo, t.hi);
+            range.setSkewForCentre (t.Fly_Taste_default);
+            const String unit (t.unit);
+            layout.add (std::make_unique<AudioParameterFloat> (
+                ParameterID { t.id, 10 }, t.name, range, t.Fly_Taste_default,
+                AudioParameterFloatAttributes().withStringFromValueFunction ([unit] (float v, int) {
+                    return String (v, v < 1.0f ? 3 : v < 100.0f ? 2 : 0) + unit; })));
+        }
         return layout;
     }
 } // namespace
@@ -56,7 +79,8 @@ juce::String DendriteProcessor::spaceName (float v)
 
 DendriteProcessor::DendriteProcessor()
     : AudioProcessor (BusesProperties().withInput ("Input", juce::AudioChannelSet::stereo(), true)
-                                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+                                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                                       .withInput ("Sidechain", juce::AudioChannelSet::stereo(), false)),
       params (*this, nullptr, "viber", makeLayout())
 {
     feedParam = params.getRawParameterValue ("feed");
@@ -66,6 +90,8 @@ DendriteProcessor::DendriteProcessor()
     bypassParam = params.getRawParameterValue ("bypass");
     timeParam = params.getRawParameterValue ("time");
     dryParam = params.getRawParameterValue ("dry");
+    for (size_t k = 0; k < tasteParams.size(); ++k)
+        tasteParam[k] = params.getRawParameterValue (tasteParams[k].id);
 
     // Every dendrite is born a creature of its own: a genome from the system's randomness.
     auto genome = (uint64_t) juce::Random::getSystemRandom().nextInt64();
@@ -95,6 +121,14 @@ void DendriteProcessor::rigTick (double nowSeconds)
     recording.setStepping (itchChoice > 0); // off: the fly rests, its brain does not step
     recording.step (nowSeconds);
     recording.noteState ({ d.flyArousal.load (relaxed), d.flyFatigue.load (relaxed), d.flyFear.load (relaxed), d.flyMemory.load (relaxed) });
+    timeline.setSampleRate (d.sampleRate.load (relaxed));
+    {
+        const auto scope = d.traceFifo.read (d.traceFifo.getNumReady());
+        for (int i = 0; i < scope.blockSize1; ++i)
+            timeline.add (d.traceFrames[(size_t) (scope.startIndex1 + i)]);
+        for (int i = 0; i < scope.blockSize2; ++i)
+            timeline.add (d.traceFrames[(size_t) (scope.startIndex2 + i)]);
+    }
     watchRig();
 }
 
@@ -246,9 +280,12 @@ juce::AudioProcessorParameter* DendriteProcessor::getBypassParameter() const { r
 bool DendriteProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     // The space lives between two ears, so the output is always stereo.
+    // The sidechain (3.4) is optional: off, mono or stereo; only its hits are used.
     const auto in = layouts.getMainInputChannelSet(), out = layouts.getMainOutputChannelSet();
+    const auto side = layouts.inputBuses.size() > 1 ? layouts.getChannelSet (true, 1) : juce::AudioChannelSet::disabled();
     return out == juce::AudioChannelSet::stereo()
-        && (in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono());
+        && (in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono())
+        && (side.isDisabled() || side == juce::AudioChannelSet::stereo() || side == juce::AudioChannelSet::mono());
 }
 
 void DendriteProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -260,6 +297,11 @@ void DendriteProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     engine.setStyle ((int) timeParam->load(), dryParam->load() > 0.5f);
     engine.prepare ((float) sampleRate);
     keep.prepare (sampleRate, std::max (samplesPerBlock, 512));
+    if (sideLeft.size() < (size_t) keep.tapSize())
+    {
+        sideLeft.assign ((size_t) keep.tapSize(), 0.0f);
+        sideRight.assign ((size_t) keep.tapSize(), 0.0f);
+    }
 }
 
 void DendriteProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) { run (buffer, false); }
@@ -292,13 +334,45 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
         flyUntilSeal = 0;
     }
 
+    // the light's spot, when the window moved it
+    if (litReady.load (std::memory_order_acquire) == 1)
+    {
+        engine.itchFly().setLit (litPending.data(), litCount);
+        litTaken.store (litCount, std::memory_order_relaxed);
+        litReady.store (0, std::memory_order_release);
+    }
+    // the atlas: the fly's own numbers, only when one moved (a set that never moves them is untouched)
+    {
+        auto& fly = engine.itchFly();
+        auto t = fly.getTaste();
+        float* field[8] = { &t.learn, &t.forget, &t.jumpy, &t.lurch, &t.scratch, &t.lean, &t.eyesTire, &t.eyesBack };
+        bool moved = false;
+        for (size_t k = 0; k < tasteParams.size(); ++k)
+        {
+            const float v = tasteParam[k]->load();
+            if (std::abs (v - *field[k]) > 1.0e-4f * (tasteParams[k].hi - tasteParams[k].lo))
+            {
+                *field[k] = v;
+                moved = true;
+            }
+        }
+        if (moved)
+            fly.setTaste (t);
+    }
+
     const int n = buffer.getNumSamples();
     const int inChannels = getTotalNumInputChannels();
     for (int c = inChannels; c < buffer.getNumChannels(); ++c)
         buffer.clear (c, 0, n);
     if (buffer.getNumChannels() < 2 || n == 0)
         return;
-    if (inChannels < 2)
+    // the main input (mono or stereo) and the sidechain, where the host put them in the buffer
+    const bool monoIn = getMainBusNumInputChannels() < 2;
+    const int sideChannels = getBusCount (true) > 1 && getBus (true, 1)->isEnabled() ? getChannelCountOfBus (true, 1) : 0;
+    const int sideFirst = sideChannels > 0 ? getChannelIndexInProcessBlockBuffer (true, 1, 0) : -1;
+    const int sideSecond = sideChannels > 1 ? getChannelIndexInProcessBlockBuffer (true, 1, 1) : sideFirst;
+    const bool sidechain = sideFirst >= 0 && sideSecond < buffer.getNumChannels() && ! sideLeft.empty();
+    if (monoIn && ! sidechain)
         buffer.copyFrom (1, 0, buffer, 0, 0, n);
 
     // The clock: Live's tempo and position while it plays.
@@ -332,8 +406,19 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
         for (int done = 0; done < n;)
         {
             const int m = std::min (n - done, keep.tapSize());
+            if (sidechain)
+            {
+                // copy the sidechain out first: with a mono input its first channel is the output's right
+                const int s = std::min (m, (int) sideLeft.size());
+                std::copy_n (buffer.getReadPointer (sideFirst) + done, s, sideLeft.data());
+                std::copy_n (buffer.getReadPointer (sideSecond) + done, s, sideRight.data());
+                if (monoIn)
+                    std::copy_n (left + done, m, right + done);
+                engine.setSidechain (sideLeft.data(), sideRight.data());
+            }
             engine.process (left + done, right + done, m, piece);
             keep.capture (left + done, right + done, m, engine.view(), piece, frameChoice);
+            pushTrace (m, piece);
             piece.ppq += m * piece.bpm / 60.0 / getSampleRate();
             done += m;
         }
@@ -354,6 +439,41 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
     publish();
     keepLife();
     keepFly (n);
+}
+
+void DendriteProcessor::pushTrace (int samples, const dendrite::HostTime& time) noexcept
+{
+    // one frame of the timeline: no allocation, no lock; when the FIFO is full the frame is dropped
+    const auto& v = engine.view();
+    auto& d = display;
+    const auto scope = d.traceFifo.write (1);
+    if (scope.blockSize1 + scope.blockSize2 < 1)
+    {
+        d.traceDropped.fetch_add (1, std::memory_order_relaxed);
+        return;
+    }
+    auto& f = d.traceFrames[(size_t) (scope.blockSize1 > 0 ? scope.startIndex1 : scope.startIndex2)];
+    f.samples = samples;
+    f.in = v.inPeak;
+    f.wet = v.wetPeak;
+    f.semitones = v.fly.semitones;
+    f.jump = v.fly.jump;
+    f.scratch = v.fly.scratch;
+    f.scratchHz = v.fly.scratchHz;
+    f.turn = v.fly.turn;
+    f.bpm = (float) v.bpm;
+    f.barBeats = v.barBeats;
+    f.beat = v.beatAtStart;
+    f.move = v.fly.move;
+    f.armed = v.fly.armed;
+    f.armedSize = v.fly.armedSize;
+    f.armedLand16 = v.fly.armedLand16;
+    f.cause = v.fly.cause;
+    f.thrown = throwParam->load() > 0.5f;
+    f.playing = time.playing;
+    f.kick = v.kickHits > 0 ? std::max (v.kick, 0.01f) : 0.0f;
+    f.kickStartle = v.kickHits > 0 ? v.kickStartle : 0.0f;
+    f.kickOn = v.kickOn;
 }
 
 void DendriteProcessor::keepFly (int samples) noexcept

@@ -160,10 +160,49 @@ jobs:
           cp "$MANUAL" packaging/CREDITS.txt Resources/fonts/OFL-*.txt pkg/stage/
           cp packaging/INSTALL-windows.txt pkg/stage/INSTALL.txt
           (cd pkg/stage && 7z a -tzip "../../release/dendrite-$v-windows-vst3.zip" . > /dev/null)
+          # the black installer needs Inno Setup 6.7 or later (dark mode, a black page)
+          choco upgrade innosetup -y --no-progress || choco install innosetup -y --no-progress
           iscc="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          [ -x "$iscc" ] || choco install innosetup -y --no-progress
+          "$iscc" 2>&1 | head -n 1 || true
           "$iscc" -Q "-DAppVersion=$v" "-DSourceDir=$(cygpath -w "$PWD/pkg/stage")" \
             "-O$(cygpath -w "$PWD/release")" packaging/windows/dendrite.iss
+
+      # pictures of the installer's pages, to check the look without installing (the runner is thrown away)
+      - name: Installer preview (Windows)
+        if: runner.os == 'Windows' && !matrix.fly
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release -Filter *-setup.exe | Select-Object -First 1
+          New-Item -ItemType Directory -Force preview | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("preview/$name.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          }
+          $p = Start-Process $exe.FullName -PassThru
+          Start-Sleep 8
+          $ws = New-Object -ComObject WScript.Shell
+          $child = Get-Process | Where-Object { $_.MainWindowTitle -like "setup*dendrite*" } | Select-Object -First 1
+          if ($child) { [void]$ws.AppActivate($child.Id) }
+          Start-Sleep 1; Shot "1-welcome"
+          $ws.SendKeys("{ENTER}"); Start-Sleep 2; Shot "2-credits"
+          $ws.SendKeys("{ENTER}"); Start-Sleep 2; Shot "3-ready"
+          $ws.SendKeys("{ENTER}"); Start-Sleep 12; Shot "4-finished"
+          $ws.SendKeys("{ENTER}"); Start-Sleep 2
+          Get-Process | Where-Object { $_.MainWindowTitle -like "setup*dendrite*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+      - name: Keep the installer preview
+        if: runner.os == 'Windows' && !matrix.fly
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-preview
+          path: preview/
+          if-no-files-found: ignore
 
       - name: Package (Mac zip)
         if: runner.os == 'macOS'

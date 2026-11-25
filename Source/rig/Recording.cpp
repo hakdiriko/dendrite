@@ -9,8 +9,16 @@ const char* Recording::populationName (int p) noexcept
     return p >= 0 && p < populations ? names[p] : "";
 }
 
+const char* Recording::methodName (int m) noexcept
+{
+    static const char* names[] = { "trace", "two-photon", "voltage", "photons", "tracts", "2-dg" };
+    return m >= 0 && m < methods ? names[m] : "";
+}
+
 Recording::Recording()
-    : scarCount ((size_t) neurons, 0), scarLast ((size_t) neurons, 0.0), order ((size_t) neurons, 0),
+    : caFast ((size_t) neurons, 0.0f), caSlow ((size_t) neurons, 0.0f), uptakes ((size_t) neurons, 0.0f),
+      photonRing ((size_t) neurons * 128, 0), photonSum ((size_t) neurons, 0),
+      scarCount ((size_t) neurons, 0), scarLast ((size_t) neurons, 0.0), order ((size_t) neurons, 0),
       incoming ((size_t) neurons, 0), lastTick ((size_t) neurons, 0), traces ((size_t) neurons, 0.0f), exposed ((size_t) neurons, 0u)
 {
     using namespace flydata;
@@ -99,6 +107,26 @@ void Recording::step (double nowSeconds)
     const double dt = last < 0.0 ? 0.0 : std::max (0.0, nowSeconds - last);
     last = nowSeconds;
     const auto keep = (float) std::exp (-dt / traceSeconds);
+    const auto keepRise = (float) std::exp (-dt / calciumRise), keepDecay = (float) std::exp (-dt / calciumDecay);
+    frameDt = dt;
+    // photon counting: the oldest ticks leave the one-second window, this one enters it
+    while (photonTail != photonHead && photonAt[(size_t) photonTail] < nowSeconds - photonSeconds)
+    {
+        const uint16_t* old = photonRing.data() + (size_t) photonTail * (size_t) neurons;
+        for (size_t n = 0; n < (size_t) neurons; ++n)
+            photonSum[n] = (uint16_t) (photonSum[n] - old[n]);
+        photonTail = (photonTail + 1) % 128;
+    }
+    if ((photonHead + 1) % 128 == photonTail) // full (a timer far faster than 30 Hz): drop the oldest early
+    {
+        const uint16_t* old = photonRing.data() + (size_t) photonTail * (size_t) neurons;
+        for (size_t n = 0; n < (size_t) neurons; ++n)
+            photonSum[n] = (uint16_t) (photonSum[n] - old[n]);
+        photonTail = (photonTail + 1) % 128;
+    }
+    uint16_t* slot = photonRing.data() + (size_t) photonHead * (size_t) neurons;
+    photonAt[(size_t) photonHead] = nowSeconds;
+    photonHead = (photonHead + 1) % 128;
 
     juce::int64 total = 0;
     {
@@ -109,15 +137,41 @@ void Recording::step (double nowSeconds)
             incoming[n] = 0;
             lastTick[n] = c;
             traces[n] = traces[n] * keep + (float) c;
+            caFast[n] = caFast[n] * keepRise + (float) c;
+            caSlow[n] = caSlow[n] * keepDecay + (float) c;
+            slot[n] = c;
+            photonSum[n] = (uint16_t) std::min (65535, photonSum[n] + c);
             if (c != 0)
             {
                 exposed[n] += c;
                 exposedMax = std::max (exposedMax, exposed[n]);
+                uptakes[n] += (float) c;
+                uptakeMax = std::max (uptakeMax, uptakes[n]);
                 total += c;
             }
         }
     }
     sessionSpikes += total;
+
+    // the 2-DG time-lapse: a keyframe every lapseEvery seconds; when the reel is full, every other
+    // frame goes and the interval doubles, so the whole session always fits in lapseLength frames
+    if (lapseAt.empty() || sessionSeconds() - lapseAt.back() >= lapseEvery)
+    {
+        if ((int) lapseAt.size() >= lapseLength)
+        {
+            for (size_t k = 1; k < lapseAt.size() / 2 + (lapseAt.size() & 1); ++k)
+            {
+                lapse[k] = std::move (lapse[2 * k]);
+                lapseAt[k] = lapseAt[2 * k];
+            }
+            const size_t kept = lapseAt.size() / 2 + (lapseAt.size() & 1);
+            lapse.resize (kept);
+            lapseAt.resize (kept);
+            lapseEvery *= 2.0;
+        }
+        lapse.push_back (uptakes);
+        lapseAt.push_back (sessionSeconds());
+    }
 
     // the raster: each population's rate this tick (none while the specimen's time stands still)
     if (dt > 0.0 && stepping)
@@ -174,6 +228,15 @@ juce::ValueTree Recording::save() const
     rig.setProperty ("exposure", juce::Base64::toBase64 (packed.getData(), packed.getDataSize()), nullptr);
     // the history this set carries: what it came with plus this session
     rig.setProperty ("seconds", savedLived + std::max (0.0, now - started), nullptr);
+    // how it was being looked at (3.2)
+    rig.setProperty ("imaging", juce::String (methodName (method.load())), nullptr);
+    rig.setProperty ("yaw", yaw.load(), nullptr);
+    rig.setProperty ("pitch", pitch.load(), nullptr);
+    rig.setProperty ("zoom", zoom.load(), nullptr);
+    rig.setProperty ("zoomX", zoomX.load(), nullptr);
+    rig.setProperty ("zoomY", zoomY.load(), nullptr);
+    rig.setProperty ("lightX", lightX.load(), nullptr);
+    rig.setProperty ("lightY", lightY.load(), nullptr);
     return rig;
 }
 
@@ -182,6 +245,20 @@ void Recording::load (const juce::ValueTree& rig)
     // a later version adds fields; it never changes these, so anything from version 1 on loads
     if (! rig.hasType (tag) || (int) rig.getProperty ("version", 0) < 1 || (int) rig.getProperty ("neurons", 0) != neurons)
         return;
+    // how it was being looked at (absent before 3.2: the frontal trace)
+    {
+        const auto name = rig.getProperty ("imaging", "trace").toString();
+        for (int m = 0; m < methods; ++m)
+            if (name == methodName (m))
+                method = m;
+        yaw = juce::jlimit (-180.0f, 180.0f, (float) rig.getProperty ("yaw", 0.0f));
+        pitch = juce::jlimit (-90.0f, 90.0f, (float) rig.getProperty ("pitch", 0.0f));
+        zoom = juce::jlimit (minZoom, maxZoom, (float) rig.getProperty ("zoom", 1.0f));
+        zoomX = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("zoomX", 0.5f));
+        zoomY = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("zoomY", 0.5f));
+        lightX = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("lightX", 0.5f));
+        lightY = juce::jlimit (0.0f, 1.0f, (float) rig.getProperty ("lightY", 0.5f));
+    }
     juce::MemoryOutputStream packed;
     if (! juce::Base64::convertFromBase64 (packed, rig.getProperty ("exposure").toString()))
         return;

@@ -155,6 +155,7 @@ void Fly::rest() noexcept
 {
     v.fill (vRest);
     g.fill (0.0f);
+    startledFor = 0.0f;
     refractory.fill (0.0f);
     firedCount.fill (0);
     slot = 0;
@@ -444,7 +445,9 @@ void Fly::step() noexcept
         for (int side = 0; side < 2; ++side)
         {
             const int k = 2 * s + side;
-            const float d = std::min (1.2f, drive[(size_t) k] / std::max (sc, floor));
+            float d = std::min (1.2f, drive[(size_t) k] / std::max (sc, floor));
+            if (s == 3 && kickNow > 0.0f)
+                d = std::max (d, kickNow); // the kick looms in both low eyes, and tires them as any looming does
             float& f = fresh[(size_t) k];
             {
                 const bool eye = s >= 3;
@@ -556,6 +559,22 @@ void Fly::step() noexcept
             {
                 v[flydata::senseNeuron[s]] = vThreshold + 1.0f;
                 hot[flydata::senseNeuron[s] / 16] = 1;
+            }
+        }
+    }
+    // the light: while it flashes, every lit neuron fires with the flash's chance
+    if (flashHit > 0.0f && litCount > 0)
+    {
+        const uint32_t limit = (uint32_t) (flashHit * 4294967295.0f);
+        for (int k = 0; k < litCount; ++k)
+        {
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            if ((uint32_t) (rng >> 32) < limit)
+            {
+                v[litNeurons[(size_t) k]] = vThreshold + 1.0f;
+                hot[litNeurons[(size_t) k] / 16] = 1;
             }
         }
     }
@@ -823,16 +842,26 @@ void Fly::reflexes() noexcept
         // On bare material (chords with rests, no pulse to lean on) every move is naked, so it moves
         // far less and more gently; inside a groove it can dance. The pulse is how many 16ths of the
         // last two bars had a hit in the top of the spectrum (its high looming eyes).
-        slotHit = slotHit || std::max (drive[10], drive[11]) > 1.0f;
+        // The sidechain's kick (3.4) is a hit of the groove too, and one it did not expect (a fill,
+        // the kick coming back) is a looming it escapes from at once, past its rest and its budget.
+        slotHit = slotHit || std::max (drive[10], drive[11]) > 1.0f || kickNow > 0.1f;
+        if (kickNow > 0.9f)
+            startledFor = 0.3f; // the giant fiber answers a loom within a few hundred ms
+        startledFor = std::max (0.0f, startledFor - dt);
+        const bool startled = startledFor > 0.0f;
         const float exposed = 1.0f - clamp01 ((pulse - 0.2f) / 0.2f);
         const float rest16 = 4.0f * (6.0f - 5.0f * awakeNow) * (1.0f + 4.0f * exposed);
         const float budget = (0.08f + 0.24f * awakeNow) * (1.0f - 0.6f * exposed);
-        if (wantsJump && ! armed && ! moving && sinceMove16 >= rest16 && busyShare < budget)
+        if (wantsJump && ! armed && ! moving && ((sinceMove16 >= rest16 && busyShare < budget) || startled))
         {
             armed = true;
             armedSize = std::min (1.0f, escape / 80.0f * (innerLife ? 0.7f + 0.6f * arousal : 1.0f));
             armedFear = innerLife ? fear : 1.0f;
+            armedStartled = startled;
             sinceJump = 0.0f;
+            // which side's looming drove it (the window's lit path); its ears when neither eye loomed
+            const float leftLoom = std::max ({ drive[6], drive[8], drive[10] }), rightLoom = std::max ({ drive[7], drive[9], drive[11] });
+            now.cause = startled ? 4 : std::max (leftLoom, rightLoom) < 0.2f ? 3 : leftLoom >= rightLoom ? 1 : 2; // 4: the sidechain's kick startled it
         }
         if (tick)
         {
@@ -843,7 +872,7 @@ void Fly::reflexes() noexcept
             const bool big = armedSize * taste.lurch / 0.4f > 0.5f;
             const long long bar16 = std::max (4LL, std::llround (4.0 * barNow));
             const long long bigGrid = awakeNow > 0.75f ? std::max (4LL, bar16 / 2) : bar16;
-            if (armed && tickNow % (big ? bigGrid : grid) == 0)
+            if (armed && tickNow % (big && ! armedStartled ? bigGrid : grid) == 0)
             {
                 armed = false;
                 startMove (armedSize, armedFear);
@@ -913,6 +942,18 @@ void Fly::reflexes() noexcept
         now.feeling = feeling;
         now.fear = fear;
         now.move = moveNow;
+        now.armed = armed;
+        if (armed)
+        {
+            // the same lines the tick above waits for: the next one it will meet
+            const int grid = awakeNow > 0.75f ? 1 : 2;
+            const bool big = armedSize * taste.lurch / 0.4f > 0.5f;
+            const long long bar16 = std::max (4LL, std::llround (4.0 * barNow));
+            const long long g = big ? (awakeNow > 0.75f ? std::max (4LL, bar16 / 2) : bar16) : grid;
+            const long long tickAt = (long long) std::floor (beatNow * 4.0);
+            now.armedSize = armedSize;
+            now.armedLand16 = (double) ((tickAt >= 0 ? tickAt / g : (tickAt - g + 1) / g) + 1) * (double) g;
+        }
         return;
     }
     if (wantsJump)
@@ -982,6 +1023,7 @@ void Fly::reflexes() noexcept
     now.memory = memory;
     now.feeling = feeling;
     now.fear = fear;
+    now.armed = false;
 }
 void Fly::scramble (uint64_t seed)
 {

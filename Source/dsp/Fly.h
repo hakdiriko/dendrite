@@ -91,6 +91,17 @@ public:
     }
     const Taste& getTaste() const noexcept { return taste; }
 
+    // The light (3.3): the brain carries CsChrimson, so a flash of 590 nm light makes the lit neurons
+    // fire. The window says which neurons the spot covers; while it flashes they fire at hz, Poisson,
+    // as the senses fire theirs. No flash, no effect (and no random numbers drawn).
+    void setLit (const uint16_t* lit, int count) noexcept
+    {
+        litCount = std::clamp (count, 0, neurons);
+        std::copy (lit, lit + litCount, litNeurons.begin());
+    }
+    void setFlash (float hz) noexcept { flashHit = std::clamp (hz * dtSec, 0.0f, 0.5f); }
+    int litNow() const noexcept { return litCount; }
+
     // The song's clock (2.4): the beat now, in quarter notes, and the tempo. Its brain decides what
     // to do and how hard; its body does it on the grid, as a real fly's steering commands only take
     // hold at one phase of the wingbeat (the halteres keep that time). Here the song is the wingbeat.
@@ -111,6 +122,8 @@ public:
     // awake 0..1 (0 = asleep, the fly does nothing). emptyHz: where the music leaves room for the band.
     void setAwake (float awake) noexcept { awakeNow = clamp01 (awake); }
     void setEmptyHz (float hz) noexcept { emptyHz = hz; }
+    // the sidechain's kick (3.4), as it reaches its low looming eyes (0..1.2, from Kick::loom); 0: none
+    void hearKick (float loom) noexcept { kickNow = loom; }
 
     // Per sample, the input as it comes in. Returns the touch for this sample.
     const Touch& process (float left, float right) noexcept;
@@ -130,6 +143,13 @@ public:
         float feeling = 0.0f;                      // its MBONs: -1 keep away .. 1 come closer
         float fear = 0.0f;                         // 0..1: how much of what it smells now once hurt
         int move = 0;                              // which Move it is in the middle of
+        // 3.4, for the window only (reading them changes nothing it does): a move its neurons have
+        // decided but the grid has not played yet, how big, and the 16th it lands on (counted
+        // from the host's beat 0); and which eye's looming fired the giant fiber for the last move
+        bool armed = false;
+        float armedSize = 0.0f;
+        double armedLand16 = 0.0;
+        int cause = 0;                             // 0 unknown, 1 left eye, 2 right eye, 3 its ears
     };
     const Doing& doing() const noexcept { return now; }
     uint16_t takeSpikes (int neuron) noexcept { return spikes[(size_t) neuron].exchange (0, std::memory_order_relaxed); }
@@ -178,7 +198,7 @@ private:
     static constexpr float dtSec = 0.5e-3f;
     static constexpr int delaySlots = 5; // 2.5 ms from spike to the next neuron
 
-    float sr = 48000.0f, stepEvery = 24.0f, untilStep = 0.0f, awakeNow = 0.0f, emptyHz = 1000.0f;
+    float sr = 48000.0f, stepEvery = 24.0f, untilStep = 0.0f, awakeNow = 0.0f, emptyHz = 1000.0f, kickNow = 0.0f, startledFor = 0.0f;
 
     // the brain (w: every connection's strength in mV; the KC -> MBON ones change as it learns)
     std::vector<float> w;
@@ -189,6 +209,9 @@ private:
     int slot = 0;
     uint64_t rng = 0x666C792E322E3031ull, rngSeed = 0x666C792E322E3031ull;
     std::array<std::atomic<uint16_t>, neurons> spikes {};
+    std::array<uint16_t, neurons> litNeurons {};
+    int litCount = 0;
+    float flashHit = 0.0f;
 
     // the senses
     struct Ear
@@ -265,7 +288,7 @@ private:
     bool musical = true;
     double beatNow = 0.0, bpmNow = 120.0, barNow = 4.0;
     long long lastTick = -1;
-    bool armed = false;
+    bool armed = false, armedStartled = false; // armedStartled: by the kick, so it goes on the next line
     float armedSize = 0.0f, armedFear = 0.0f;
     struct Leg { float slope = 0.0f, left = 0.0f, end = 1.0f; }; // per 16th: how the heads' distance changes, for how long, where it ends
     std::array<Leg, 3> legs {};

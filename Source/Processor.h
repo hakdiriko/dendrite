@@ -4,6 +4,7 @@
 #include "dsp/Engine.h"
 #include "keep/Keep.h"
 #include "rig/Recording.h"
+#include "rig/Timeline.h"
 
 class DendriteProcessor : public juce::AudioProcessor
 {
@@ -75,12 +76,36 @@ public:
         struct Onset { float level = 0.0f; bool thrown = false; };
         juce::AbstractFifo fifo { 64 };
         std::array<Onset, 64> onsets {};
+
+        // the timeline (3.3): one frame per engine call, audio thread to message thread, lock-free.
+        // A full FIFO drops frames (the window was away for over 20 s); they are counted.
+        static constexpr int traceCapacity = 4096;
+        juce::AbstractFifo traceFifo { traceCapacity };
+        std::array<dendrite::rig::Timeline::Frame, traceCapacity> traceFrames {};
+        std::atomic<int> traceDropped { 0 };
     } display;
 
     // The fly's neurons, for the window: how often each fired since the window last asked.
     uint16_t takeFlySpikes (int neuron) noexcept { return engine.itchFly().takeSpikes (neuron); }
     // A new fly: it forgets what it learned and its moods (from the window; done at the next block).
     void forgetFly() noexcept { flyForget.store (true, std::memory_order_release); }
+    // The light (3.3): which neurons the spot covers (from the window). Taken at the next block;
+    // false while the last one has not been taken yet (the window tries again next frame).
+    bool postLit (const uint16_t* lit, int count) noexcept
+    {
+        if (litReady.load (std::memory_order_acquire) != 0)
+            return false;
+        litCount = std::clamp (count, 0, (int) litPending.size());
+        std::copy (lit, lit + litCount, litPending.begin());
+        litReady.store (1, std::memory_order_release);
+        return true;
+    }
+    int litInFly() const noexcept { return litTaken.load (std::memory_order_relaxed); }
+
+    // The fly's own numbers (3.3, the atlas): each region's, as automatable parameters. The defaults
+    // are the fly's own, so a set that never moves them sounds as before.
+    struct TasteParam { const char* id; const char* name; const char* unit; float lo, hi, Fly_Taste_default; bool log; };
+    static const std::array<TasteParam, 8> tasteParams;
 
     // keep: the last minute, on tape, and a diary of what happened (read by the window)
     dendrite::keep::Keep keep;
@@ -88,6 +113,8 @@ public:
     // The rig's recorders (3.0), message thread only: ticked 30 times a second whether or not the
     // window is open (the snapshot tool, which has no message loop, calls rigTick itself).
     dendrite::rig::Recording recording;
+    // what the fly did to your sound (3.3), fed from the display's trace FIFO by rigTick
+    dendrite::rig::Timeline timeline;
     void rigTick (double nowSeconds);
 
 private:
@@ -101,9 +128,16 @@ private:
     std::atomic<float>* bypassParam = nullptr;
     std::atomic<float>* timeParam = nullptr;
     std::atomic<float>* dryParam = nullptr;
+    std::array<std::atomic<float>*, 8> tasteParam {};
+    std::array<uint16_t, dendrite::Fly::neurons> litPending {};
+    int litCount = 0;
+    std::atomic<int> litReady { 0 }, litTaken { 0 };
 
     dendrite::Engine engine;
     dendrite::HostTime hostTime;
+    // the sidechain's piece, copied out before the output is written over it (a mono input puts the
+    // sidechain's first channel where the output's right is); sized in prepareToPlay as keep's tap
+    std::vector<float> sideLeft, sideRight;
 
     // The creature's life crosses threads here. The audio thread seals a copy into the vault
     // once per bar and after every itch (a seqlock: a reader that raced a write tries again);
@@ -125,6 +159,7 @@ private:
     // seconds (and at once after it adopts or forgets), read by the message thread to save it.
     using FlyMemory = dendrite::Fly::Memory;
     void keepFly (int samples) noexcept;  // audio thread
+    void pushTrace (int samples, const dendrite::HostTime& time) noexcept; // audio thread: one timeline frame
     void readFly (FlyMemory&) const;      // message thread
     struct FlyVault
     {
