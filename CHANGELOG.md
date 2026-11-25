@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.6.0 (the reference: every word and every cell type opens)
+
+Hakan's review of 3.5.0 (25 Nov): trace and two-photon look the same; the tracts are poor next to the demo; 2-DG is blurry and must show this session of this fly; the light does not look like light; the window is busy but not interactive (everything except the stimulus column and the monitoring side should be); search "stimulus" or "DNp01"; reference texts in their own font. Then: "proceed as you recommend".
+
+**Imaging**
+- **Two-photon is ΔF/F.** Each neuron's calcium against its own 20 s baseline, white at +100%. Trace (300 ms spikes) and two-photon now show different things: what fired, and what changed against its own normal.
+- **2-DG is this fly, this session.** Each neuron's uptake is set against what the same fly takes up on ordinary music: reference rates rendered offline from six sounds (`tools/rig/reference.py` writes `Source/flies/<fly>/Reference.cpp`). Only neurons beyond twice that light up, brighter by the log of the ratio, crisp dots instead of blur. The rail's small brain and its time-lapse use the same picture and name the types that took up most.
+- **Tracts** are the 25,000 busiest connections (synapses times the sender's spikes in the last second), refreshed five times a second and drawn as curves into float buffers with percentile tone mapping, over a faint skeleton of the 24,000 strongest. Like the imaged demo: the wiring that is talking now.
+- **The light** is a beam on the tissue (a gaussian brightening of what lies under it, with a bloom on a flash); its handles and numbers show only when the hand is near or dragging.
+
+**Focus, search and the reference**
+- **Search**: "/" (or ctrl/cmd-F, or "search" in the header) opens a field over the specimen's left. It finds the window's words (stimulus, feed, two-photon, jumpy...) and every cell type in the fly (DNp01, LPLC2, KCg-m...), with arrows and return.
+- **The focus**: picking anything makes it the focus, and every part of the window shows it. The specimen rings its neurons and dims the rest, the trace draws their mean rate over the last bars, the log keeps only its lines ("log · only DNp01"), the entry opens.
+- **The entry**: headword and text in **Source Serif 4** (OFL, embedded), numbers in Fragment Mono. Live: how many neurons, how many firing now, spikes this session, mean rate now. From the fly's wiring: whom it hears most and whom it tells most, by synapse counts, each a link to its own entry. "In dendrite": what it does here. "See also": links.
+- **Everything else links in**: a region's name on the specimen, a neuron's hover tag ("LPLC2 ›"), a reflex in the trace, a line in the log. Picking an imaging method's word switches the plate to it. The stimulus column and the monitoring side stay as they were (Hakan's exception).
+- In a small window the rail steps aside while an entry is open, so the brain keeps a useful size; closing the entry (× or Esc) brings it back.
+- The readouts now show **eyes N% fresh** (the six eye senses' freshness: eyes tire and eyes back at work) and **steer** reads the lean it really applies.
+
+**Sound** (A/B renders in the listening sheet)
+- **Lurch is a dial**, not a switch: 0 never bends the tape (a jump is only its throw), low values bend the small moves by a fourth or a fifth, 0.4 is as before (the octave, big moves on the bar line), higher values hold and throw longer. At the default the moves are identical to 3.5.
+- **Steering you can hear.** The fly's turn (its steering neurons DNa01/DNa02, left against right) now also steers the echo toward that side, up to about 9 dB between the sides, through the M/S matrix after the echo's ceiling. On material panned to one side it turns a third of the time; on centred material it drifts gently. With the itch off nothing changes.
+- **Hold it back**: a click on the armed move (the dashed bar ahead of now in the trace) stops it before it plays; the log says "held back · the move for bar N".
+
 ## 3.5.0 (the light: the hand reaches into the brain)
 
 Hakan, 2026-11-24: no X-Y controller, no goniometer of any kind; turn and zoom on the brain itself; "don't make anything cheap". From the picks page he and the team chose **A, the light** and **B, the atlas**. The sound with the hands off is unchanged (null test below). This build also carries 3.4.0 (one story) and 3.3.1 (the kick) below, merged into one release.

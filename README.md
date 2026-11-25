@@ -60,6 +60,6 @@ Design decisions are in [DECISIONS.md](DECISIONS.md); changes per version in [CH
 
 © 2026 afferent. All rights reserved. The source is public so it can be read and built, but no licence is granted to copy, modify or redistribute it.
 
-The font in `Resources/fonts/` (Fragment Mono) is under the SIL Open Font License; JUCE is used under its own licence.
+The fonts in `Resources/fonts/` (Fragment Mono, Source Serif 4) are under the SIL Open Font License; JUCE is used under its own licence.
 
 The fly's wiring comes from Janelia's male CNS connectome v1.0 (Berg et al. 2026), released under CC BY 4.0. Full credits: [packaging/CREDITS.txt](packaging/CREDITS.txt). Until 3.0 the fly came from the FlyWire connectome (CC BY-NC 4.0, non-commercial); it can still be built with `-DDENDRITE_FLY=flywire` (credits: [packaging/CREDITS-flywire.txt](packaging/CREDITS-flywire.txt)) but is not for sale without FlyWire's permission.

@@ -502,7 +502,7 @@ void Trace::paintFuture (juce::Graphics& g, const Hairline& line, const Rows& R,
     armedArea = juce::Rectangle<float> (nowX, R.fly.getY(), width, R.pitch.getBottom() - R.fly.getY());
     armedBar = bar;
     g.setColour (tone::grey (armedArea.contains (hoverAt) ? tone::live : tone::dim));
-    g.drawText (armedArea.contains (hoverAt) ? "click: hold it back" : "click to hold back",
+    g.drawText ("click: hold back",
                 juce::Rectangle<float> (tx, R.echo.getY() + 16.0f, tw, 13.0f), juce::Justification::centredLeft);
 }
 
