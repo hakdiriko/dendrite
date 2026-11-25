@@ -75,11 +75,14 @@ public:
     // the objective: magnification, and where it looks (the field's centre, as fractions of the box)
     std::atomic<float> zoom { 1.0f }, zoomX { 0.5f }, zoomY { 0.5f };
     static constexpr float minZoom = 0.5f, maxZoom = 16.0f;
+    // the light (3.3): where its spot sits, as fractions of the plate (after the turn)
+    std::atomic<float> lightX { 0.5f }, lightY { 0.5f };
 
     // the raster: populations, each a set of neurons the fly really has
     enum Population { earsLeft, earsRight, eyesLeft, eyesRight, smell, kenyon, mbon, ppl1, pam, steerLeft, steerRight, groom, giantFiber, populations };
     static const char* populationName (int p) noexcept;
     int populationSize (int p) const noexcept { return (int) members[(size_t) p].size(); }
+    const std::vector<uint16_t>& population (int p) const noexcept { return members[(size_t) p]; }
     static constexpr int rasterTicks = 1024; // about 34 s at 30 ticks a second
     int rasterLength() const noexcept { return rasterCount; }
     // ticksAgo 0 = the newest: when it was (session seconds) and each population's rate (Hz per neuron)

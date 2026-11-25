@@ -559,6 +559,22 @@ void Fly::step() noexcept
             }
         }
     }
+    // the light: while it flashes, every lit neuron fires with the flash's chance
+    if (flashHit > 0.0f && litCount > 0)
+    {
+        const uint32_t limit = (uint32_t) (flashHit * 4294967295.0f);
+        for (int k = 0; k < litCount; ++k)
+        {
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            if ((uint32_t) (rng >> 32) < limit)
+            {
+                v[litNeurons[(size_t) k]] = vThreshold + 1.0f;
+                hot[litNeurons[(size_t) k] / 16] = 1;
+            }
+        }
+    }
     auto& out = fired[(size_t) arrive];
     int count = 0;
     for (int c = 0; c < padded / 16; ++c)

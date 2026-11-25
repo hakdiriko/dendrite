@@ -87,6 +87,7 @@ void Engine::setControls (float feed, float space, bool throwHeld, int choice, b
     if (held && ! throwWasHeld)
         throwStarted = true;
     throwWasHeld = held;
+    fly.setFlash (held ? flashHz (feed) : 0.0f); // the throw is the light's flash
     const int next = std::clamp (choice, 0, frameChoices - 1);
     if (next == 0 && itchChoice != 0)
     {

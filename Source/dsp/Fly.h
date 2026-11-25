@@ -91,6 +91,17 @@ public:
     }
     const Taste& getTaste() const noexcept { return taste; }
 
+    // The light (3.3): the brain carries CsChrimson, so a flash of 590 nm light makes the lit neurons
+    // fire. The window says which neurons the spot covers; while it flashes they fire at hz, Poisson,
+    // as the senses fire theirs. No flash, no effect (and no random numbers drawn).
+    void setLit (const uint16_t* lit, int count) noexcept
+    {
+        litCount = std::clamp (count, 0, neurons);
+        std::copy (lit, lit + litCount, litNeurons.begin());
+    }
+    void setFlash (float hz) noexcept { flashHit = std::clamp (hz * dtSec, 0.0f, 0.5f); }
+    int litNow() const noexcept { return litCount; }
+
     // The song's clock (2.4): the beat now, in quarter notes, and the tempo. Its brain decides what
     // to do and how hard; its body does it on the grid, as a real fly's steering commands only take
     // hold at one phase of the wingbeat (the halteres keep that time). Here the song is the wingbeat.
@@ -189,6 +200,9 @@ private:
     int slot = 0;
     uint64_t rng = 0x666C792E322E3031ull, rngSeed = 0x666C792E322E3031ull;
     std::array<std::atomic<uint16_t>, neurons> spikes {};
+    std::array<uint16_t, neurons> litNeurons {};
+    int litCount = 0;
+    float flashHit = 0.0f;
 
     // the senses
     struct Ear

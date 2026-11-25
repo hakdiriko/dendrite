@@ -107,21 +107,21 @@ void Instruments::paint (juce::Graphics& g)
     row ("tempo", { { playing ? juce::String() : juce::String ("stopped  "), true }, { juce::String (d.bpm.load (relaxed), 1) }, { " bpm", true } },
          "the host's tempo; the delay line's heads follow it", playing ? tone::bright : tone::mid);
 
-    heading ("electrode");
+    heading ("light");
     const auto& tip = specimen.recorded();
-    row ("tip", { { "x ", true }, { juce::String (juce::roundToInt (tip.xMicrons)) }, { "  y ", true }, { juce::String (juce::roundToInt (tip.yMicrons)) }, { um, true } },
-         "the tip's place over the specimen, from the box's left and bottom edges: right is space, up is feed");
-    row ("units", { { juce::String (tip.units) }, { " in r 25" + um, true } }, "neurons within the tip's recording radius");
+    row ("spot", { { "x ", true }, { juce::String (juce::roundToInt (tip.xMicrons)) }, { "  y ", true }, { juce::String (juce::roundToInt (tip.yMicrons)) }, { um, true } },
+         "the light's centre over the specimen, from the box's left and bottom edges");
+    row ("lit", { { juce::String (tip.units) }, { " in r " + juce::String (juce::roundToInt (tip.radiusMicrons)) + um, true } }, "neurons under the light: its radius is space, and a flash fires them");
     row ("mean rate", { { juce::String (tip.meanHz, 1) }, { " Hz", true } }, "their mean firing rate over the last 300 ms");
     if (tip.busiest >= 0 && tip.busiestHz > 0.0f)
     {
         namespace id = rig::identities;
         const juce::String type (id::typeName[id::type[tip.busiest]]);
         row ("busiest", { { type.isNotEmpty() ? type : juce::String ("untyped") }, { "  ", true }, { juce::String (tip.busiestHz, 1) }, { " Hz", true } },
-             "the busiest neuron under the tip: " + juce::String (flydata::idSource) + " " + juce::String ((juce::int64) id::rootId[tip.busiest]) + ", its cell type and rate");
+             "the busiest neuron under the light: " + juce::String (flydata::idSource) + " " + juce::String ((juce::int64) id::rootId[tip.busiest]) + ", its cell type and rate");
     }
     else
-        row ("busiest", { { "-" } }, tip.units > 0 ? "none of the neurons under the tip is firing" : "no neuron under the tip", tone::mid);
+        row ("busiest", { { "-" } }, tip.units > 0 ? "none of the neurons under the light is firing" : "no neuron under the light", tone::mid);
 
     heading ("delay line");
     const float level = bypassed ? tone::dim : tone::bright;

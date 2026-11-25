@@ -4,6 +4,18 @@
 const juce::StringArray DendriteProcessor::itchNames { "off",       "1/4 bar",   "1/2 bar", "3/4 bar", "1 bar",  "1.25 bars",
                                                        "1.5 bars",  "1.75 bars", "2 bars",  "3 bars",  "4 bars", "8 bars" };
 
+// the atlas (3.3): each region's own numbers, centred on the fly's defaults (Fly::Taste)
+const std::array<DendriteProcessor::TasteParam, 8> DendriteProcessor::tasteParams { {
+    { "learn", "mushroom body learn", "", 0.0f, 0.3f, dendrite::Fly::Taste {}.learn, false },
+    { "forget", "mushroom body forget", " s", 60.0f, 3600.0f, dendrite::Fly::Taste {}.forget, true },
+    { "jumpy", "giant fiber jumpy", "x", 0.2f, 2.5f, dendrite::Fly::Taste {}.jumpy, true },
+    { "lurch", "giant fiber lurch", " oct", 0.0f, 1.0f, dendrite::Fly::Taste {}.lurch, false },
+    { "scratch", "grooming scratch", "", 0.0f, 2.0f, dendrite::Fly::Taste {}.scratch, false },
+    { "lean", "steering lean", "", 0.0f, 1.0f, dendrite::Fly::Taste {}.lean, false },
+    { "eyesTire", "eyes tire", " /s", 0.5f, 16.0f, dendrite::Fly::Taste {}.eyesTire, true },
+    { "eyesBack", "eyes back", " s", 1.0f, 30.0f, dendrite::Fly::Taste {}.eyesBack, true },
+} };
+
 namespace
 {
     // IDs and the state type are what hosts store; they never change once shipped.
@@ -33,6 +45,17 @@ namespace
         layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "time", 9 }, "time",
                                                             StringArray { "dotted", "triplet", "half" }, 0));
         layout.add (std::make_unique<AudioParameterBool> (ParameterID { "dry", 9 }, "dry", true));
+        // 3.3: the atlas, the fly's own numbers by region; the middle of each is where the fly is born
+        for (const auto& t : DendriteProcessor::tasteParams)
+        {
+            NormalisableRange<float> range (t.lo, t.hi);
+            range.setSkewForCentre (t.Fly_Taste_default);
+            const String unit (t.unit);
+            layout.add (std::make_unique<AudioParameterFloat> (
+                ParameterID { t.id, 10 }, t.name, range, t.Fly_Taste_default,
+                AudioParameterFloatAttributes().withStringFromValueFunction ([unit] (float v, int) {
+                    return String (v, v < 1.0f ? 3 : v < 100.0f ? 2 : 0) + unit; })));
+        }
         return layout;
     }
 } // namespace
@@ -66,6 +89,8 @@ DendriteProcessor::DendriteProcessor()
     bypassParam = params.getRawParameterValue ("bypass");
     timeParam = params.getRawParameterValue ("time");
     dryParam = params.getRawParameterValue ("dry");
+    for (size_t k = 0; k < tasteParams.size(); ++k)
+        tasteParam[k] = params.getRawParameterValue (tasteParams[k].id);
 
     // Every dendrite is born a creature of its own: a genome from the system's randomness.
     auto genome = (uint64_t) juce::Random::getSystemRandom().nextInt64();
@@ -290,6 +315,32 @@ void DendriteProcessor::run (juce::AudioBuffer<float>& buffer, bool forceBypass)
     {
         engine.itchFly().forget();
         flyUntilSeal = 0;
+    }
+
+    // the light's spot, when the window moved it
+    if (litReady.load (std::memory_order_acquire) == 1)
+    {
+        engine.itchFly().setLit (litPending.data(), litCount);
+        litTaken.store (litCount, std::memory_order_relaxed);
+        litReady.store (0, std::memory_order_release);
+    }
+    // the atlas: the fly's own numbers, only when one moved (a set that never moves them is untouched)
+    {
+        auto& fly = engine.itchFly();
+        auto t = fly.getTaste();
+        float* field[8] = { &t.learn, &t.forget, &t.jumpy, &t.lurch, &t.scratch, &t.lean, &t.eyesTire, &t.eyesBack };
+        bool moved = false;
+        for (size_t k = 0; k < tasteParams.size(); ++k)
+        {
+            const float v = tasteParam[k]->load();
+            if (std::abs (v - *field[k]) > 1.0e-4f * (tasteParams[k].hi - tasteParams[k].lo))
+            {
+                *field[k] = v;
+                moved = true;
+            }
+        }
+        if (moved)
+            fly.setTaste (t);
     }
 
     const int n = buffer.getNumSamples();
