@@ -1,7 +1,7 @@
 dendrite - credits and licences
 ================================
 
-dendrite (c) 2026 hakdiriko. All rights reserved.
+dendrite (c) 2026 afferent. All rights reserved.
 https://afferent.page
 
 

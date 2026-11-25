@@ -29,7 +29,7 @@ endif()
 # the state type "viber" (in the processor): none of them ever change, so saved Live
 # sets keep the device.
 juce_add_plugin(dendrite
-    COMPANY_NAME "hakdiriko"
+    COMPANY_NAME "afferent"
     BUNDLE_ID "com.hakdiriko.viber"
     PLUGIN_MANUFACTURER_CODE Hakd
     PLUGIN_CODE Vibr
