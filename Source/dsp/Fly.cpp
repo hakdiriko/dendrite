@@ -293,6 +293,7 @@ const Touch& Fly::process (float left, float right) noexcept
     touch.bandHz += touchGlide * (target.bandHz - touch.bandHz);
     touch.freeze += touchGlide * (target.freeze - touch.freeze);
     touch.lift += touchGlide * (target.lift - touch.lift);
+    touch.turn += touchGlide * (target.turn - touch.turn);
     touch.throwing = target.throwing;
     return touch;
 }
@@ -610,6 +611,14 @@ void Fly::step() noexcept
     slot = (slot + 1) % delaySlots;
 }
 
+float Fly::steerOf (float lean) noexcept
+{
+    // its turn, as the echo hears it: relative to the default lean, and a small turn already heard
+    // (a square root: a tenth of a full turn is a third of the way to the side)
+    const float x = std::clamp (lean / Taste {}.lean, -1.0f, 1.0f);
+    return std::copysign (std::sqrt (std::abs (x)), x);
+}
+
 void Fly::startMove (float size, float f) noexcept
 {
     // Every slide is chosen so that both heads bend by simple ratios of the music's own pitch:
@@ -618,6 +627,11 @@ void Fly::startMove (float size, float f) noexcept
     // and every move ends where it began or on another note value (half or double the echo's time).
     const bool down = innerLife ? uniform() < f : true;
     const bool big = size * taste.lurch / 0.4f > 0.5f;
+    // 3.6: lurch is a dial, not only a switch. Past the big/small line it stretches what a move
+    // holds, in note values (a quarter of it, half, as it is at 0.4, twice), and how long it throws,
+    // smoothly; at 0 the tape never bends, the fly only throws and holds its breath.
+    const float reach = taste.lurch / 0.4f;
+    const float holdBy = std::exp2 (std::round (std::log2 (std::clamp (reach, 0.25f, 2.0f))));
     const auto leg = [this] (int k, float slope, float sixteenths, float end) { legs[(size_t) k] = { slope, sixteenths, end }; };
     legAt = 0;
     moveSize = size;
@@ -628,7 +642,7 @@ void Fly::startMove (float size, float f) noexcept
             // rush: up an octave for an 8th, then the echo runs in double time, then falls back over a quarter
             moveNow = rush;
             leg (0, -0.25f, 2.0f, 0.5f);
-            leg (1, 0.0f, arousal > 0.6f ? 8.0f : 4.0f, 0.5f);
+            leg (1, 0.0f, (arousal > 0.6f ? 8.0f : 4.0f) * holdBy, 0.5f);
             leg (2, 0.125f, 4.0f, 1.0f);
             legCount = 3;
             throw16 = 2.0f;
@@ -657,7 +671,7 @@ void Fly::startMove (float size, float f) noexcept
         // dive: down an octave over a half note into half time, it stays there, then climbs back over a quarter
         moveNow = dive;
         leg (0, 0.125f, 8.0f, 2.0f);
-        leg (1, 0.0f, f > 0.8f ? 16.0f : 8.0f, 2.0f);
+        leg (1, 0.0f, (f > 0.8f ? 16.0f : 8.0f) * holdBy, 2.0f);
         leg (2, -0.25f, 4.0f, 1.0f);
         legCount = 3;
         throw16 = 3.0f;
@@ -744,6 +758,32 @@ void Fly::startMove (float size, float f) noexcept
             freezeIn16 = -1.0f;
         }
     }
+    if (reach >= 0.05f && reach < 0.75f && (moveNow == hop || moveNow == duck))
+    {
+        // a small lurch bends by a fourth and a fifth, not an octave (the heads still on simple ratios:
+        // the hop's up-slide puts them at 5/4 and 4/3, the duck's down-slide at 3/4 and 2/3)
+        if (moveNow == hop)
+        {
+            leg (0, -1.0f / 12.0f, 1.0f, 11.0f / 12.0f);
+            leg (1, 1.0f / 24.0f, 2.0f, 1.0f);
+        }
+        else
+        {
+            leg (0, 1.0f / 12.0f, 2.0f, 7.0f / 6.0f);
+            leg (1, -1.0f / 6.0f, 1.0f, 1.0f);
+        }
+        legCount = 2;
+    }
+    if (reach < 0.05f)
+    {
+        // lurch at (nearly) 0: no bend at all, the jump is only its throw and a held breath
+        moveNow = hold;
+        leg (0, 0.0f, 2.0f, 1.0f);
+        legCount = 1;
+        throw16 = 2.0f;
+    }
+    else if (reach != 1.0f)
+        throw16 *= std::clamp (reach, 0.5f, 2.0f); // a bigger lurch throws longer, a smaller one shorter
     lastMoves[1] = lastMoves[0];
     lastMoves[0] = moveNow;
     if (innerLife)
@@ -922,6 +962,7 @@ void Fly::reflexes() noexcept
         target.speed = 1.0f / std::clamp (stretch, 0.45f, 2.2f);
         target.feed = heldFeed;
         target.space = heldLean;
+        target.turn = steerOf (heldLean); // 3.6: and it steers the echo toward the side it turns to
         target.band = band;
         target.bandHz = heldBandHz;
         target.freeze += coeff (0.02f, dt) * ((freezing ? 1.0f : 0.0f) - target.freeze);
@@ -936,6 +977,8 @@ void Fly::reflexes() noexcept
         now.scratch = band;
         now.scratchHz = heldBandHz;
         now.turn = heldLean / std::max (0.05f, taste.lean);
+        now.lean = heldLean;
+        now.eyes = eyeFreshness();
         now.arousal = arousal;
         now.fatigue = fatigue;
         now.memory = memory;
@@ -1001,6 +1044,7 @@ void Fly::reflexes() noexcept
     target.speed = std::pow (2.0f, taste.lurch * lurch);
     target.feed = clamp01 (excited / 4.0f) * 0.18f - 0.05f;
     target.space = taste.lean * leanNow;
+    target.turn = steerOf (taste.lean * leanNow);
     target.band = band;
     // where it scratches: where the music leaves room, moved by its legs' rub, lower when scared,
     // and wandering with what its MBONs say
@@ -1018,6 +1062,8 @@ void Fly::reflexes() noexcept
     now.scratch = band;
     now.scratchHz = target.bandHz;
     now.turn = leanNow;
+    now.lean = taste.lean * leanNow;
+    now.eyes = eyeFreshness();
     now.arousal = arousal;
     now.fatigue = fatigue;
     now.memory = memory;

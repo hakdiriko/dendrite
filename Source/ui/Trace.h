@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Processor.h"
+#include "Focus.h"
 #include "Rig.h"
 
 namespace dendrite::ui
@@ -19,6 +20,8 @@ public:
     juce::String getTooltip() override;
     void mouseMove (const juce::MouseEvent& e) override;
     void mouseExit (const juce::MouseEvent&) override { hoverAt = { -1.0f, -1.0f }; }
+    void mouseDown (const juce::MouseEvent&) override; // 3.6: a reflex clicked is pinned as the focus
+    void setFocus (Focus* f) noexcept { focus = f; }
 
     static constexpr int height = 186; // the raster's height before it, so the specimen and its rail keep their room
     static constexpr int barsShown = 8;
@@ -37,8 +40,12 @@ private:
     void paintFuture (juce::Graphics&, const Hairline&, const Rows&, float nowX, float width);
     int reflexAt (juce::Point<float>) const;
     double span() const noexcept; // seconds shown
+    void paintFocus (juce::Graphics&, const Hairline&, const Rows&, float left, float right);
+    Focus* focus = nullptr;
     DendriteProcessor& processor;
     juce::SharedResourcePointer<Fonts> fonts;
     juce::Point<float> hoverAt { -1.0f, -1.0f };
+    juce::Rectangle<float> armedArea; // 3.6: the armed move's zone, where a click holds it back
+    int armedBar = 0;
 };
 } // namespace dendrite::ui

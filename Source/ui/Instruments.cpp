@@ -179,9 +179,12 @@ void Instruments::paint (juce::Graphics& g)
         row ("groom", { { juce::String (d.flyScratchHz.load (relaxed) / 1000.0f, 2) }, { " kHz", true } }, "grooming (DNg11): the band it scratches", tone::live);
     else
         row ("groom", { { "-" } }, "grooming (DNg11) is quiet", tone::mid);
-    const float turn = d.flyTurn.load (relaxed);
+    // 3.6: the lean the echo really gets (the steering lean taste included), not the steering alone
+    const float turn = d.flyLean.load (relaxed);
     row ("steer", { { juce::String (std::abs (turn), 2) }, { turn >= 0.0f ? " left" : " right", true } },
-         "steering (DNa01, DNa02): how far it leans the space, and which way", alive);
+         "steering (DNa01, DNa02): how far it leans the space now, and which way (the atlas's lean included)", alive);
+    row ("eyes", { { juce::String (juce::roundToInt (100.0f * d.flyEyes.load (relaxed))) }, { "% fresh", true } },
+         "its looming eyes (LPLC2): 100% rested, lower as hits tire them (the atlas's eyes tire and back set how fast)", alive);
 }
 
 juce::String Instruments::getTooltip()

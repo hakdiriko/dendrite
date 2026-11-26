@@ -15,6 +15,7 @@
 #pragma once
 
 #include "../Processor.h"
+#include "Focus.h"
 #include "Rig.h"
 
 namespace dendrite::ui
@@ -54,6 +55,12 @@ public:
     // seconds; a new reflex lights its own path by itself
     void lightPath (int cause, int move);
     void hideElectrodeForTools() noexcept { noElectrode = true; }        // for mockups of other controls
+    // 3.6: the focus (its neurons lit, the rest dimmed); a click on a region's name or a neuron's
+    // tag picks it; the reference's room on the left, so the brain moves over for it
+    void setFocus (Focus* f) noexcept { focus = f; }
+    void setReferenceWidth (int w);
+    std::function<void (int typeIndex)> onPickType;
+    std::function<void (const juce::String& term)> onPickTerm;
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -66,13 +73,21 @@ public:
 private:
     void renderPoints (float px);
     void renderMethod (int method, float px);
-    void renderUptake (juce::Image& into, const float* uptake, float most, bool frontal, float umPerPixel, juce::Point<float> originMicrons = {});
-    void paintTracts (juce::Graphics&, const Hairline&);
+    // 3.6: the film is crisp, each neuron where it is: grey for any uptake, bright for uptake beyond
+    // what ordinary music costs it in the same time (rig/Reference.h); dotPx: a neuron's size in pixels
+    void renderUptake (juce::Image& into, const float* uptake, double livedSeconds, bool frontal, float umPerPixel,
+                       juce::Point<float> originMicrons = {}, int dotPx = 1);
+    juce::String topTypes (const float* uptake, double livedSeconds, int count) const; // the cell types it went to most
+    // 3.6: the tracts as the demo drew them: the strongest connections as curves, a dim skeleton of
+    // the wiring (redrawn when the view changes) and a live layer lit by each sender's last second
+    void renderTracts (juce::Image::BitmapData&, int w, int h, float px);
+    void lightTissue (juce::Image::BitmapData&, int w, int h, float px, int dot); // the light on the tissue
     void paintRail (juce::Graphics&, const Hairline&);
+    bool railShown = true;
     void project();
     bool frontal() const noexcept { return std::abs (yawNow) < 0.25f && std::abs (pitchNow) < 0.25f; }
     int methodAt (juce::Point<float>) const noexcept;
-    const float* lapsePicture (double& atSeconds, float& most); // the 2-DG frame the plate shows now
+    const float* lapsePicture (double& atSeconds, double& livedSeconds); // the 2-DG frame the plate shows now
     void paintScale (juce::Graphics&, const Hairline&);
     void paintRegions (juce::Graphics&, const Hairline&);
     void paintPath (juce::Graphics&, const Hairline&);
@@ -82,6 +97,14 @@ private:
     void measureLight();
     int findHover() const;
     void paintHover (juce::Graphics&, const Hairline&);
+    void paintFocus (juce::Graphics&, const Hairline&);
+    Focus* focus = nullptr;
+    int referenceWidth = 0;
+    struct Label { juce::Rectangle<float> area; juce::String term; };
+    std::vector<Label> labels;           // the region names on screen, each a link (3.6)
+    juce::Rectangle<float> tagArea;      // the hovered neuron's tag: click opens its type
+    int tagNeuron = -1;
+    double tagSince = 0.0;
     juce::Point<float> neuronPoint (int n) const noexcept { return proj[(size_t) n]; }
     float pixelsPerMicron() const noexcept { return brain.getWidth() / widthMicrons * zoomNow; }
     // a place in the plate's microns (after the turn) to the screen, through the magnification
@@ -151,11 +174,15 @@ private:
     float yawNow = 0.0f, pitchNow = 0.0f;
     bool panning = false;
     juce::Point<float> panFrom, panCentreFrom;
-    // each neuron's strongest outputs, for the tracts: up to three targets and their synapse counts
-    static constexpr int tractsPerNeuron = 3;
-    std::vector<uint16_t> tractTo;
-    std::vector<int16_t> tractWeight;
-    std::vector<float> scratch; // the 2-DG film, before its blur
+    // the tracts (3.6): the cut's strongest connections (at most 24 from one neuron), each a curve
+    struct Tract { uint16_t from, to; float strength; }; // strength: log synapses, 0..1
+    std::vector<Tract> tracts;
+    std::vector<float> skeleton, tractLight; // the wiring at the screen's pixels, and this frame's light
+    std::array<float, 7> skeletonFor {};     // the view it was drawn for
+    float skeletonScale = 1.0f;              // its densest pixels (99.5th percentile)
+    static constexpr int tractCount = 24000, busyCount = 25000;
+    std::vector<Tract> busy; // the busiest connections now (strength: synapses x the sender's spikes, last second)
+    double busyAt = -1.0;
 
     // the rail
     juce::Rectangle<float> rail, methodList, insetArea;

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Processor.h"
+#include "ui/Focus.h"
 #include "ui/Header.h"
+#include "ui/Reference.h"
 #include "ui/Instruments.h"
 #include "ui/Log.h"
 #include "ui/Rig.h"
@@ -28,18 +30,24 @@ public:
 
     // For the snapshot tool: advance the window to a given time without a timer.
     void animateTo (double seconds);
+    bool keyPressed (const juce::KeyPress&) override; // "/" searches, escape closes
+    // the snapshot tool: open the reference on a term or a cell type, or search for some text
+    void referenceForTools (const juce::String& what, bool searchOnly);
 
 private:
     void timerCallback() override;
 
     DendriteProcessor& processor;
     dendrite::ui::LookAndFeel lookAndFeel;
+    dendrite::ui::Focus focus; // 3.6: what is picked, shared by every part
     dendrite::ui::Header header;
     dendrite::ui::Specimen specimen;
     dendrite::ui::Instruments instruments;
     dendrite::ui::Settings settings;
     dendrite::ui::Trace trace;
     dendrite::ui::Log log;
+    dendrite::ui::Reference reference;
+    void placeReference();
     juce::TooltipWindow tooltips { this, 900 };
     int frame = 0;
 

@@ -37,6 +37,10 @@ struct Fonts
     Fonts();
     juce::Typeface::Ptr mono;
     juce::Font at (float px) const { return juce::Font (juce::FontOptions (mono).withPointHeight (px)); }
+    // 3.6, the reference's voice: Source Serif 4 (small-text optical size, SIL OFL), roman and italic,
+    // for its words; numbers, ids and units stay in Fragment Mono
+    juce::Typeface::Ptr serif, serifItalic;
+    juce::Font text (float px, bool italic = false) const { return juce::Font (juce::FontOptions (italic ? serifItalic : serif).withPointHeight (px)); }
 };
 
 // type sizes, chosen at 100% Windows scaling (Hakan: 10 px there was too small to read)

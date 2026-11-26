@@ -39,6 +39,8 @@ Fonts
 -----
 Fragment Mono, (c) The Fragment Mono Project Authors, SIL Open Font License 1.1.
 The licence text is included as OFL-FragmentMono.txt.
+Source Serif 4, (c) 2014-2023 Adobe, with Reserved Font Name "Source", SIL Open Font License 1.1.
+The licence text is included as OFL-SourceSerif4.txt.
 
 
 Software

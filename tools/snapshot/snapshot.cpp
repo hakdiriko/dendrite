@@ -21,6 +21,8 @@
 //   DENDRITE_TURN=deg                  with DENDRITE_FRAMES: the yaw turns this many degrees a second
 //   DENDRITE_PLAY=bpm                  a host transport playing from bar 1 at this tempo, in 4/4
 //   DENDRITE_SIDECHAIN=kick.wav        the sidechain bus on, fed from that file (looped)
+//   DENDRITE_REFERENCE=dnp01           3.6: the reference open on a term or a cell type (the focus)
+//   DENDRITE_SEARCH=text               3.6: the search open with this typed
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
 #include "Editor.h"
@@ -159,6 +161,10 @@ int main (int argc, char** argv)
                 const auto b = s->brainArea() + s->getPosition().toFloat(); // the plate at 1x, in window pixels
                 std::printf ("brain %.2f %.2f %.2f %.2f\n", b.getX(), b.getY(), b.getWidth(), b.getHeight());
             }
+    if (const auto what = env ("DENDRITE_REFERENCE"); what.isNotEmpty())
+        editor->referenceForTools (what, false);
+    if (const auto what = env ("DENDRITE_SEARCH"); what.isNotEmpty())
+        editor->referenceForTools (what, true);
     if (const auto hover = env ("DENDRITE_HOVER"); hover.isNotEmpty())
         for (auto* c : editor->getChildren())
             if (auto* s = dynamic_cast<dendrite::ui::Specimen*> (c))

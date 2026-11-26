@@ -94,6 +94,15 @@ public:
     // The light (3.3): the brain carries CsChrimson, so a flash of 590 nm light makes the lit neurons
     // fire. The window says which neurons the spot covers; while it flashes they fire at hz, Poisson,
     // as the senses fire theirs. No flash, no effect (and no random numbers drawn).
+    // 3.6: let go of the move it has decided and waits to make (a hand held it back); its rest starts again
+    void holdBack() noexcept
+    {
+        if (armed)
+        {
+            armed = false;
+            sinceMove16 = 0.0f;
+        }
+    }
     void setLit (const uint16_t* lit, int count) noexcept
     {
         litCount = std::clamp (count, 0, neurons);
@@ -150,6 +159,10 @@ public:
         float armedSize = 0.0f;
         double armedLand16 = 0.0;
         int cause = 0;                             // 0 unknown, 1 left eye, 2 right eye, 3 its ears
+        // 3.6, for the window only: how fresh its eyes are (0 blind with tiredness .. 1 rested, the
+        // mean of its six eye senses), and how far it leans the space now (-1..1, the lean taste included)
+        float eyes = 1.0f;
+        float lean = 0.0f;
     };
     const Doing& doing() const noexcept { return now; }
     uint16_t takeSpikes (int neuron) noexcept { return spikes[(size_t) neuron].exchange (0, std::memory_order_relaxed); }
@@ -184,6 +197,13 @@ public:
 
 private:
     void step() noexcept; // 0.5 ms of brain
+    float eyeFreshness() const noexcept // the window's reading (3.6): the six eye senses' mean freshness
+    {
+        float sum = 0.0f;
+        for (int k = 6; k < 12; ++k)
+            sum += fresh[(size_t) k];
+        return sum / 6.0f;
+    }
     void reflexes() noexcept;
     void smell() noexcept; // every 5 ms
     void live() noexcept;  // every 10 ms: traces, moods, learning
@@ -285,6 +305,7 @@ private:
 
     // its body in time (2.4)
     void startMove (float size, float f) noexcept;
+    static float steerOf (float lean) noexcept;
     bool musical = true;
     double beatNow = 0.0, bpmNow = 120.0, barNow = 4.0;
     long long lastTick = -1;

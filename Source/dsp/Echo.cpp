@@ -506,6 +506,18 @@ void Echo::process (float xm, float xs, float im, float is, float& wm, float& ws
     if (outEnvS > wetCeiling)
         ws *= wetCeiling / outEnvS;
 
+    // 3.6: the fly steering: the echo comes from the side it turns to (constant power, at most
+    // about 9 dB between the sides). Left = M + S, right = M - S, so a balance moves Mid into Side.
+    if (touchNow.turn != 0.0f)
+    {
+        const float a = 0.25f * 3.14159265f * (1.0f + 0.55f * std::clamp (touchNow.turn, -1.0f, 1.0f));
+        const float gl = 1.41421356f * std::sin (a), gr = 1.41421356f * std::cos (a);
+        const float sum = 0.5f * (gl + gr), diff = 0.5f * (gl - gr);
+        const float m = wm, sd = ws;
+        wm = sum * m + diff * sd;
+        ws = diff * m + sum * sd;
+    }
+
     // space's loudness trim comes last, so the ceiling above never sees it and the Mid
     // changes with space by level only
     wm *= pTrim;
