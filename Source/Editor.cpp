@@ -30,6 +30,12 @@ DendriteEditor::DendriteEditor (DendriteProcessor& p)
             specimen.lightPath (focus.cause, focus.move);
         processor.recording.watch (focus.neurons);
     });
+    // 3.7, lights out: the header's word, "L", or the wheel pushed on past the smallest magnification
+    header.onLightsOut = [this] { setLightsOut (true); };
+    specimen.onStepBack = [this] { setLightsOut (true); };
+    benchStrip.onBench = [this] { setLightsOut (false); };
+    addChildComponent (benchStrip);
+    addMouseListener (this, true);
     setWantsKeyboardFocus (true);
 
     // any shape, up to a whole 8K screen; hosts' maximise and fullscreen work
@@ -52,6 +58,16 @@ void DendriteEditor::paint (juce::Graphics& g)
 
 void DendriteEditor::resized()
 {
+    layout();
+}
+
+void DendriteEditor::layout()
+{
+    // 3.7: as the lights go out the bench fades and the specimen grows from its place to the
+    // whole window (eased); out, the bench's parts are hidden, so nothing but the brain takes a hand
+    const float t = juce::jlimit (0.0f, 1.0f, dark);
+    const float e = t * t * (3.0f - 2.0f * t);
+    darkShown = e;
     auto r = getLocalBounds();
     header.setBounds (r.removeFromTop (Header::height));
     settings.setBounds (r.removeFromBottom (Settings::height));
@@ -59,8 +75,57 @@ void DendriteEditor::resized()
     instruments.setBounds (column.removeFromTop (Instruments::height));
     log.setBounds (column);
     trace.setBounds (r.removeFromBottom (Trace::height));
-    specimen.setBounds (r);
-    placeReference();
+    const auto all = getLocalBounds().toFloat(), bench = r.toFloat();
+    auto lerp = [e] (float a, float b) { return a + (b - a) * e; };
+    specimen.setBounds (juce::Rectangle<float> (lerp (bench.getX(), all.getX()), lerp (bench.getY(), all.getY()),
+                                                lerp (bench.getWidth(), all.getWidth()), lerp (bench.getHeight(), all.getHeight()))
+                            .toNearestInt());
+    specimen.setBare (e);
+    for (juce::Component* c : { (juce::Component*) &header, (juce::Component*) &settings, (juce::Component*) &instruments,
+                                (juce::Component*) &log, (juce::Component*) &trace })
+    {
+        c->setAlpha (1.0f - e);
+        c->setVisible (e < 0.999f);
+    }
+    benchStrip.setBounds (getLocalBounds().removeFromTop (BenchStrip::height));
+    if (e < 0.999f)
+        benchStrip.setVisible (false);
+    if (e > 0.0f)
+        reference.setVisible (false);
+    else
+        placeReference();
+}
+
+void DendriteEditor::setLightsOut (bool on)
+{
+    if (on == lightsOut)
+        return;
+    lightsOut = on;
+    if (on && reference.isVisible())
+        reference.close(); // the entry and the focus leave with the bench
+    benchStrip.setVisible (false);
+    if (isShowing())
+        grabKeyboardFocus();
+}
+
+void DendriteEditor::showWayBack (juce::Point<int> hand)
+{
+    const int edge = 28;
+    const bool near = hand.x < edge || hand.y < edge || hand.x > getWidth() - edge || hand.y > getHeight() - edge;
+    benchStrip.setVisible (lightsOut && darkShown >= 0.999f && near);
+}
+
+void DendriteEditor::mouseMove (const juce::MouseEvent& e)
+{
+    if (lightsOut)
+        showWayBack (e.getEventRelativeTo (this).getPosition());
+}
+
+void DendriteEditor::mouseExit (const juce::MouseEvent& e)
+{
+    // leaving the window across an edge counts as an edge; leaving a child inside it does not
+    if (lightsOut && ! getLocalBounds().contains (e.getEventRelativeTo (this).getPosition()))
+        benchStrip.setVisible (false);
 }
 
 void DendriteEditor::placeReference()
@@ -73,6 +138,19 @@ void DendriteEditor::placeReference()
 
 bool DendriteEditor::keyPressed (const juce::KeyPress& k)
 {
+    // 3.7: L puts the lights out and back on; escape brings the bench back first
+    if ((k.getTextCharacter() == 'l' || k.getTextCharacter() == 'L') && ! k.getModifiers().isAnyModifierKeyDown())
+    {
+        setLightsOut (! lightsOut);
+        return true;
+    }
+    if (k == juce::KeyPress::escapeKey && lightsOut)
+    {
+        setLightsOut (false);
+        return true;
+    }
+    if (lightsOut && k.getTextCharacter() == '/')
+        setLightsOut (false); // the search needs the bench: it comes back, then the field opens
     if (k.getTextCharacter() == '/' || (k.getModifiers().isCommandDown() && k.getKeyCode() == 'F'))
     {
         reference.openSearch();
@@ -106,6 +184,17 @@ void DendriteEditor::timerCallback()
 
 void DendriteEditor::animateTo (double seconds)
 {
+    // 3.7: the lights go out (or come on) over 0.6 s
+    {
+        const double dt = darkClock < 0.0 ? 0.0 : juce::jlimit (0.0, 0.2, seconds - darkClock);
+        darkClock = seconds;
+        const float goal = lightsOut ? 1.0f : 0.0f;
+        if (dark != goal)
+            dark = goal > dark ? std::min (goal, dark + (float) dt / 0.6f) : std::max (goal, dark - (float) dt / 0.6f);
+        const float t = juce::jlimit (0.0f, 1.0f, dark);
+        if (std::abs (t * t * (3.0f - 2.0f * t) - darkShown) > 1.0e-4f)
+            layout();
+    }
     // the recording itself ticks in the processor; the window only draws what it holds
     specimen.tick (seconds);
     specimen.repaint();

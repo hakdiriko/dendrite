@@ -61,6 +61,11 @@ public:
     void setReferenceWidth (int w);
     std::function<void (int typeIndex)> onPickType;
     std::function<void (const juce::String& term)> onPickTerm;
+    // 3.7, lights out: 0 the bench, 1 only the brain and the light (the window fades it in between).
+    // Bare, the plate draws no words and no numbers; the light and the brain work as always.
+    void setBare (float amount);
+    float bareness() const noexcept { return bare; }
+    std::function<void()> onStepBack; // the wheel pushed on past the smallest magnification: lights out
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -83,6 +88,9 @@ private:
     void renderTracts (juce::Image::BitmapData&, int w, int h, float px);
     void lightTissue (juce::Image::BitmapData&, int w, int h, float px, int dot); // the light on the tissue
     void paintRail (juce::Graphics&, const Hairline&);
+    float bare = 0.0f;                         // 3.7: lights out, 0..1
+    float pushedOut = 0.0f;                    // octaves the wheel pushed past the smallest magnification
+    double lastPushAt = -10.0;
     bool railShown = true;
     void project();
     bool frontal() const noexcept { return std::abs (yawNow) < 0.25f && std::abs (pitchNow) < 0.25f; }

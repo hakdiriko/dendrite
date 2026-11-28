@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.7.0 (lights out: only the brain and the light)
+
+Hakan, 28 Nov: "when we press it, we only see the brain and the light... all of the other information is gone". From the brainstorm he took the recommendation, and asked for the reflex path as lines only, "complete reductivism".
+
+- **In**: the framed word **lights out** in the header (next to search), the **L** key, or the wheel rolled out past the smallest magnification and pushed on (a stop of 1.5 octaves within a second, so zooming out never trips it).
+- **Inside**: the specimen fills the window, the header, rail, readouts, trace, log and settings fade out over 0.6 s while the brain grows. No words and no numbers. The light keeps working as before (drag = feed/space, a press in the dark throws); its handles show near the hand, its numbers do not. The reflex path is drawn as soft glowing lines with a dot at each stop, without names.
+- **Out**: bring the hand to any edge and one hairline returns with "dendrite" and **bench ↓**; click it. Esc or L also bring the bench back, and "/" comes back and opens search.
+- Opening lights out closes the entry and clears the focus. It is not saved with the set: a project always opens with the bench.
+- **Sound unchanged**: null test (`tools/nulltest`, main 90ed1cc against this branch, chords 48 kHz/512, itch on and off): 2 of 2 identical to the bit.
+
 ## 3.6.0 (the reference: every word and every cell type opens)
 
 Hakan's review of 3.5.0 (25 Nov): trace and two-photon look the same; the tracts are poor next to the demo; 2-DG is blurry and must show this session of this fly; the light does not look like light; the window is busy but not interactive (everything except the stimulus column and the monitoring side should be); search "stimulus" or "DNp01"; reference texts in their own font. Then: "proceed as you recommend".

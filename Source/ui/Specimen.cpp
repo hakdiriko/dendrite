@@ -152,6 +152,32 @@ void Specimen::resized()
 {
     // room for the region names above and below, the ticks and scale on the left and bottom
     auto r = getLocalBounds().toFloat();
+    // 3.7, lights out: the margins for names, ticks and the rail close as the bench fades, so the
+    // brain grows to the whole window
+    if (bare > 0.0f)
+    {
+        const float keep = 1.0f - bare, edge = 28.0f;
+        const auto all = r;
+        r.removeFromLeft (edge + keep * (52.0f - edge));
+        r.removeFromRight (edge + keep * (198.0f - edge));
+        r.removeFromTop (edge + keep * (72.0f - edge));
+        r.removeFromBottom (edge + keep * (84.0f - edge));
+        railShown = bare < 0.5f;
+        // the rail stays where it was while it fades, and is nothing to the hand once it has gone
+        rail = railShown ? all.withTrimmedLeft (all.getWidth() - 174.0f).withTrimmedRight (24.0f).withTrimmedTop (44.0f).withTrimmedBottom (10.0f)
+                         : juce::Rectangle<float> (all.getRight() + 24.0f, 44.0f, 0.0f, 0.0f);
+        {
+            auto c = rail;
+            c.removeFromTop (20.0f);
+            methodList = railShown ? c.removeFromTop (railRow * (float) rig::Recording::methods) : juce::Rectangle<float>();
+            c.removeFromTop (28.0f);
+            insetArea = railShown ? c.removeFromTop (std::round (c.getWidth() * heightMicrons / widthMicrons)) : juce::Rectangle<float>();
+        }
+        const float aspect = widthMicrons / heightMicrons;
+        const float w = std::min (r.getWidth(), r.getHeight() * aspect);
+        brain = juce::Rectangle<float> (w, w / aspect).withCentre (r.getCentre());
+        return;
+    }
     // with the reference open (3.6) the brain moves right of it; in a small window the rail steps
     // aside while the entry reads, so the brain keeps a useful size (closing the entry brings it back)
     r.removeFromLeft (referenceWidth > 0 ? 16.0f + (float) referenceWidth : 52.0f);
@@ -661,21 +687,57 @@ void Specimen::paint (juce::Graphics& g)
     g.drawImageTransformed (points, juce::AffineTransform::scale (1.0f / line.px)
                                         .translated (line.snap (brain.getX()) - 0.5f / line.px, line.snap (brain.getY()) - 0.5f / line.px));
     hovered = findHover();
-    paintScale (g, line);
+    // 3.7: the bench's words and numbers on the plate fade with it; bare, none are drawn at all
+    const float chrome = 1.0f - bare;
+    auto bench = [&] (auto&& draw) {
+        if (chrome <= 0.001f)
+            return;
+        if (chrome < 0.999f)
+            g.beginTransparencyLayer (chrome);
+        draw();
+        if (chrome < 0.999f)
+            g.endTransparencyLayer();
+    };
+    bench ([&] { paintScale (g, line); });
     labels.clear();
+    if (chrome <= 0.001f)
+    {
+        tagNeuron = -1;
+        tagArea = {};
+    }
     if (frontal() && std::abs (zoomNow - 1.0f) < 0.01f)
     {
-        paintRegions (g, line);
+        bench ([&] { paintRegions (g, line); });
         paintPath (g, line); // the anchors are placed on the unmagnified plate
     }
     measureLight();
-    paintSites (g, line);
-    paintFocus (g, line);
+    bench ([&] {
+        paintSites (g, line);
+        paintFocus (g, line);
+    });
     if (! noElectrode)
         paintLight (g, line);
-    paintHover (g, line);
-    if (railShown)
-        paintRail (g, line);
+    bench ([&] {
+        paintHover (g, line);
+        if (railShown)
+            paintRail (g, line);
+    });
+}
+
+void Specimen::setBare (float amount)
+{
+    amount = juce::jlimit (0.0f, 1.0f, amount);
+    if (std::abs (amount - bare) < 1.0e-4f)
+        return;
+    bare = amount;
+    if (bare > 0.5f)
+    {
+        hoverPart = Part::none;
+        tagNeuron = -1;
+        tagArea = {};
+    }
+    resized();
+    repaint();
 }
 
 void Specimen::setReferenceWidth (int w)
@@ -1134,8 +1196,29 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
             p.lineTo (stops[k].first);
     }
     p.lineTo (neck);
+    if (bare > 0.0f)
+    {
+        // 3.7, lights out: only the lines, drawn as light through tissue (a soft halo under a fine core)
+        for (const auto& [width, alpha] : { std::pair<float, float> { 9.0f, 0.05f }, { 5.0f, 0.10f }, { 2.5f, 0.22f } })
+        {
+            g.setColour (juce::Colours::white.withAlpha (alpha * fade * bare));
+            g.strokePath (p, juce::PathStrokeType (width, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+    }
     g.setColour (tone::grey (tone::live).withAlpha (fade));
-    g.strokePath (p, juce::PathStrokeType (1.5f * line.width()));
+    g.strokePath (p, juce::PathStrokeType (1.5f * line.width(), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    if (bare >= 0.999f)
+    {
+        for (const auto& s : stops) // where it passed: a point of light, no name
+        {
+            g.setColour (juce::Colours::white.withAlpha (0.25f * fade));
+            g.fillEllipse (juce::Rectangle<float> (9.0f, 9.0f).withCentre (s.first));
+            g.setColour (tone::grey (tone::live).withAlpha (fade));
+            g.fillEllipse (juce::Rectangle<float> (3.0f, 3.0f).withCentre (s.first));
+        }
+        return;
+    }
+    const float named = fade * (1.0f - bare);
     const auto small = fonts->at (type::small);
     g.setFont (small);
     for (size_t k = 0; k < stops.size(); ++k)
@@ -1143,7 +1226,7 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
         const auto at = stops[k].first;
         g.setColour (tone::black);
         g.fillRect (juce::Rectangle<float> (7.0f, 7.0f).withCentre (at));
-        g.setColour (tone::grey (tone::live).withAlpha (fade));
+        g.setColour (tone::grey (tone::live).withAlpha (named));
         g.drawRect (juce::Rectangle<float> (7.0f, 7.0f).withCentre (at), line.width());
         const float w = juce::GlyphArrangement::getStringWidth (small, stops[k].second) + 4.0f;
         const bool leftSide = at.x < brain.getCentreX() && k + 1 < stops.size();
@@ -1153,7 +1236,7 @@ void Specimen::paintPath (juce::Graphics& g, const Hairline& line)
     // what it did, under the giant fiber's name: the same move the trace below marks
     const auto gf = stops.back().first;
     const juce::String what = utf8 ("\xe2\x86\x93 ") + rig::Timeline::moveName (pathMove) + utf8 (" \xc2\xb7 the tape");
-    g.setColour (tone::grey (tone::bright).withAlpha (fade));
+    g.setColour (tone::grey (tone::bright).withAlpha (named));
     g.drawText (what, juce::Rectangle<float> (gf.x + 8.0f, gf.y + 8.0f, 200.0f, 12.0f), juce::Justification::centredLeft);
 }
 
@@ -1408,7 +1491,9 @@ void Specimen::paintLight (juce::Graphics& g, const Hairline& line)
     g.setColour (tone::grey (dragPart == Part::centre || hoverPart == Part::centre ? tone::live : tone::bright));
     g.drawRect (juce::Rectangle<float> (6.0f, 6.0f).withCentre (centre), line.width());
 
-    // what it is, beside it: size, lit, power, the flash's rate
+    // what it is, beside it: size, lit, power, the flash's rate (not with the lights out: no numbers)
+    if (bare < 0.5f)
+    {
     g.setFont (fonts->at (type::small));
     const auto dot = utf8 ("  \xc2\xb7  ");
     const juce::String l1 = "light " + microns (2.0f * spotMicrons (space)) + dot + grouped (tip.units) + " lit";
@@ -1425,8 +1510,11 @@ void Specimen::paintLight (juce::Graphics& g, const Hairline& line)
     g.setColour (tone::grey (tone::dim));
     g.drawText (l2, juce::Rectangle<float> (x, y + 14.0f, w, 14.0f), juce::Justification::centredLeft);
     }
+    }
 
-    // where it sits, marked on the calibration axes
+    // where it sits, marked on the calibration axes (they leave with the bench)
+    if (bare > 0.0f)
+        return;
     const float left = brain.getX() - 10.0f, bottom = brain.getBottom() + 10.0f;
     g.setColour (tone::grey (tone::bright));
     line.h (left - 9.0f, left, at.y);
@@ -1516,6 +1604,8 @@ void Specimen::paintSites (juce::Graphics& g, const Hairline& line)
 
 int Specimen::dialAt (juce::Point<float> p, int& which) const noexcept
 {
+    if (bare > 0.5f)
+        return -1; // lights out: the atlas's cards are not there
     for (size_t s = 0; s < sites.size(); ++s)
         if (sites[s].open)
             for (int k = 0; k < (sites[s].params[1] >= 0 ? 2 : 1); ++k)
@@ -1581,6 +1671,8 @@ void Specimen::setThrow (bool on)
 
 juce::String Specimen::getTooltip()
 {
+    if (bare > 0.5f)
+        return {}; // lights out: no words
     const auto dot = utf8 (" \xc2\xb7 ");
     if (methodAt (hoverAt) >= 0)
         return "imaging: what the plate shows of the same spikes";
@@ -1664,7 +1756,7 @@ void Specimen::mouseDown (const juce::MouseEvent& e)
     if (rail.contains (e.position))
         return;
     // 3.6: a neuron's tag opens its type; a region's name, its entry
-    if (tagNeuron >= 0 && tagArea.contains (e.position))
+    if (bare < 0.5f && tagNeuron >= 0 && tagArea.contains (e.position))
     {
         if (onPickType)
             onPickType ((int) rig::identities::type[tagNeuron]);
@@ -1881,7 +1973,24 @@ void Specimen::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheel
         return;
     }
     // anywhere else on the brain: magnify about the hand
-    setZoom (zoomNow * std::pow (2.0f, juce::jlimit (-1.0f, 1.0f, sign * delta * 2.0f)), e.position);
+    const float octaves = juce::jlimit (-1.0f, 1.0f, sign * delta * 2.0f);
+    // 3.7: pushed on out past the smallest magnification (about an octave and a half more, within a
+    // second between pushes), the bench steps away: lights out. A stop the hand must push through.
+    if (octaves < 0.0f && zoomNow <= rig::Recording::minZoom + 1.0e-3f && bare < 0.5f && onStepBack)
+    {
+        if (clockSeconds - lastPushAt > 1.0)
+            pushedOut = 0.0f;
+        lastPushAt = clockSeconds;
+        pushedOut -= octaves;
+        if (pushedOut >= 1.5f)
+        {
+            pushedOut = 0.0f;
+            onStepBack();
+        }
+        return;
+    }
+    pushedOut = 0.0f;
+    setZoom (zoomNow * std::pow (2.0f, octaves), e.position);
 }
 
 void Specimen::mouseMagnify (const juce::MouseEvent& e, float scaleFactor)

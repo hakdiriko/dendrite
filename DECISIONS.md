@@ -241,3 +241,7 @@ One line per decision, plus why. Newest at the bottom.
 - 2026-11-25: a click on the armed move holds it back (the fly's rest restarts). Why: the next bar was shown but untouchable; this is the one place the trace could act without new controls.
 - 2026-11-25: "quiet by default" and the compact bench from the design review are not built in 3.6. Why: both change the monitoring column, which Hakan asked to keep as it is.
 - 2026-11-25: no price change. Why: Hakan, "the price will come later".
+- 2026-11-28: lights out (3.7) enters by the header word, L, or a wheel push past min zoom (1.5 octaves within 1 s). Why: the brainstorm's pick; the stop keeps a zoom-out from tripping it.
+- 2026-11-28: in lights out the reflex path is lines and dots only, no names. Why: Hakan, "complete reductivism".
+- 2026-11-28: the way back is an edge hairline ("bench ↓"), Esc or L; no wheel-in exit. Why: wheel-in is magnify inside the view, so it must not also leave it.
+- 2026-11-28: lights out is not saved with the set. Why: a reopened project with no bench would look broken to someone who forgot.

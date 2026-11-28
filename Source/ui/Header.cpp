@@ -11,18 +11,19 @@ Header::Header (DendriteProcessor& p) : processor (p)
 
 void Header::mouseMove (const juce::MouseEvent& e)
 {
-    const bool over = searchArea.contains (e.position);
-    if (over != overSearch)
+    const bool over = searchArea.contains (e.position), lights = lightsArea.contains (e.position);
+    if (over != overSearch || lights != overLights)
     {
         overSearch = over;
-        setMouseCursor (over ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+        overLights = lights;
+        setMouseCursor (over || lights ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
         repaint();
     }
 }
 
 void Header::mouseExit (const juce::MouseEvent&)
 {
-    overSearch = false;
+    overSearch = overLights = false;
     repaint();
 }
 
@@ -30,6 +31,8 @@ void Header::mouseDown (const juce::MouseEvent& e)
 {
     if (searchArea.contains (e.position) && onSearch)
         onSearch();
+    else if (lightsArea.contains (e.position) && onLightsOut)
+        onLightsOut();
 }
 
 void Header::paint (juce::Graphics& g)
@@ -83,6 +86,17 @@ void Header::paint (juce::Graphics& g)
         g.drawRect (searchArea, line.width());
         g.setColour (tone::grey (overSearch ? tone::live : tone::mid));
         g.drawText (text, searchArea, juce::Justification::centred);
+        right -= tw + 10.0f;
+    }
+    // lights out (3.7): the same outline; the bench leaves, the brain and the light stay
+    {
+        const juce::String text = "lights out";
+        const float tw = width (text) + 16.0f;
+        lightsArea = juce::Rectangle<float> (right - tw, 5.0f, tw, h - 10.0f);
+        g.setColour (tone::grey (overLights ? tone::bright : tone::dim));
+        g.drawRect (lightsArea, line.width());
+        g.setColour (tone::grey (overLights ? tone::live : tone::mid));
+        g.drawText (text, lightsArea, juce::Justification::centred);
         right -= tw + 24.0f;
     }
 
