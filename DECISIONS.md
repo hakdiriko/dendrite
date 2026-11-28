@@ -245,3 +245,6 @@ One line per decision, plus why. Newest at the bottom.
 - 2026-11-28: in lights out the reflex path is lines and dots only, no names. Why: Hakan, "complete reductivism".
 - 2026-11-28: the way back is an edge hairline ("bench ↓"), Esc or L; no wheel-in exit. Why: wheel-in is magnify inside the view, so it must not also leave it.
 - 2026-11-28: lights out is not saved with the set. Why: a reopened project with no bench would look broken to someone who forgot.
+- 2026-11-28: the manual is 22 A4 pages, not one. Why: Hakan asked for a comprehensive one; one page could no longer hold the fly, imaging, the atlas, the kick and lights out.
+- 2026-11-28: the manual's text is Source Serif 4 and its labels Fragment Mono, monochrome, no red, no Urbanist. Why: it follows the window as it is since 3.0 (red and Urbanist left with the arcade) and the reference's serif since 3.6.
+- 2026-11-28: the manual's text passes slopsift (default ai-style rulepack) with 0 findings; the optional reader-first pack is not applied. Why: Hakan named slopsift against an AI feel; reader-first flags every table row and margin note as a fragment, which is the deadpan voice kept on purpose.

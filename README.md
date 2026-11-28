@@ -15,7 +15,7 @@ Since 3.0 the window is the display of an electrophysiology rig, and the fly's b
 | itch selector | how awake the fly is kept, 1/4 bar (wide awake) to 8 bars, or off (at rest) |
 | keep | lines in the log marked with a square are still on tape: drag one into Live, cut on bar lines |
 
-The one-page manual is [docs/manual/dendrite-manual.pdf](docs/manual/dendrite-manual.pdf), and it comes inside every download.
+The manual (22 pages: every control, every reading, the fly, the kick, imaging, lights out) is [docs/manual/dendrite-manual.pdf](docs/manual/dendrite-manual.pdf), and it comes inside every download.
 
 Made for Windows 11 and Ableton Live 12; macOS builds (VST3 and AU) are made too, but not code-signed.
 
