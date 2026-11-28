@@ -1,5 +1,14 @@
 # Changelog
 
+## Docs: the full manual (3.7, the plug-in does not change)
+
+Hakan, 28 Nov: "it doesn't need to be a one page manual anymore. create a comprehensive one, use slopsift to avoid ai feeling."
+
+- **22 A4 pages** replace the one page: the first minute, the window, the echo (heads, mid/side, feed and space regions, breathing, safety), the light, the throw and the flash, the fly (what it senses, its moods and memory), what it does to your echo (the seven moves, groom, steer, the afterglow), the itch selector with every awake value, the atlas (eight parameters with ranges and defaults), the kick, the six imaging methods, the trace, every instrument line, the log and keep, search and the reference, lights out, places to begin, hands and keys, and notes (host parameters, what is saved, cost, credits).
+- Same look as the window: black, five greys, Fragment Mono for labels and numbers, Source Serif 4 for the text (as in the reference). Every picture is a fresh `tools/snapshot` render of 3.7 on the groove loop (the old picture still showed the 3.0 raster). Every number was checked against the source.
+- **slopsift** 0.12.0 (npm, slopsift.dev) over the whole text, default ai-style rulepack: 0 findings (from 14 in the first draft).
+- `render_manual.js` now renders any number of pages, fails if one runs off its sheet, and writes page previews with a directory argument.
+
 ## 3.7.0 (lights out: only the brain and the light)
 
 Hakan, 28 Nov: "when we press it, we only see the brain and the light... all of the other information is gone". From the brainstorm he took the recommendation, and asked for the reflex path as lines only, "complete reductivism".

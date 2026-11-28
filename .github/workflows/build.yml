@@ -1,6 +1,6 @@
 # Builds dendrite on Windows and Linux for every push (macOS too when run by hand), checks it with
 # pluginval (strictness 10) and, on Linux, with the discovery audit. Each download carries the
-# one-page manual next to the plug-in.
+# manual next to the plug-in.
 name: build
 
 on:

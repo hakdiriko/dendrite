@@ -3,191 +3,796 @@
 <head>
 <meta charset="utf-8">
 <title>dendrite manual</title>
-<!-- One A4 page. Render to PDF with: node docs/manual/render_manual.js [preview.png] -->
+<!-- The manual, A4 pages. Render to PDF with: node docs/manual/render_manual.js [previewdir]
+     Each .page is one sheet; the script fails if anything runs off its page. -->
 <style>
   @font-face { font-family: "Fragment Mono"; font-weight: 400; src: url("../../Resources/fonts/FragmentMono-Regular.ttf"); }
+  @font-face { font-family: "Source Serif 4"; font-weight: 400; font-style: normal; src: url("../../Resources/fonts/SourceSerif4SmText-Regular.ttf"); }
+  @font-face { font-family: "Source Serif 4"; font-weight: 400; font-style: italic; src: url("../../Resources/fonts/SourceSerif4SmText-It.ttf"); }
 
-  /* the window's own light: black, then five steps of grey (live 100%, bright 72, mid 48, dim 28, floor 12) */
+  /* the window's own light: black, then five greys (live 100%, bright 72, mid 48, dim 28, floor 12) */
   :root { --black: #000; --live: #fff; --bright: #b8b8b8; --mid: #7a7a7a; --dim: #474747; --floor: #1f1f1f; }
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--black); }
-  body {
-    width: 210mm; height: 297mm; overflow: hidden;
-    padding: 10mm 14mm 7mm;
-    font-family: "Fragment Mono", monospace; font-weight: 400;
-    font-size: 7pt; line-height: 1.42; color: var(--mid);
-    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .page {
+    width: 210mm; height: 297mm; overflow: hidden; position: relative;
+    padding: 15mm 17mm 16mm;
+    break-after: page; page-break-after: always;
+    font-family: "Source Serif 4", Georgia, serif; font-size: 9.4pt; line-height: 1.5; color: var(--bright);
     display: flex; flex-direction: column;
   }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+  .body { flex: 1; min-height: 0; }
 
-  header { display: flex; align-items: baseline; border-bottom: 0.2mm solid var(--dim); padding-bottom: 2mm; }
-  h1 { font-weight: 400; font-size: 13pt; letter-spacing: 0.02em; color: var(--live); }
-  .meta { margin-left: 6mm; color: var(--mid); }
-  .meta.r { margin-left: auto; }
+  .mono, h1, h2, h3, .run, table, figcaption, .key, code, .scale, .kicker, .folio { font-family: "Fragment Mono", monospace; }
 
-  .top { margin-top: 4mm; }
-  .stage { margin-top: 4mm; display: grid; grid-template-columns: 2.15fr 1fr; gap: 6mm; align-items: start; }
-  .stage aside section + section { margin-top: 3mm; }
-  .lede { font-size: 8pt; line-height: 1.5; color: var(--bright); }
-  .lede span { display: block; }
-  .lede .soft { color: var(--mid); }
+  /* running head and folio */
+  .run { display: flex; justify-content: space-between; font-size: 6.6pt; color: var(--dim);
+         border-bottom: 0.2mm solid var(--floor); padding-bottom: 1.6mm; margin-bottom: 7mm; }
+  .folio { position: absolute; left: 17mm; right: 17mm; bottom: 9mm; display: flex; justify-content: space-between;
+           font-size: 6.6pt; color: var(--dim); border-top: 0.2mm solid var(--floor); padding-top: 1.6mm; }
 
+  h1 { font-weight: 400; font-size: 17pt; letter-spacing: 0.01em; color: var(--live); margin-bottom: 1.5mm; }
+  .kicker { font-size: 7pt; color: var(--mid); margin-bottom: 6mm; }
+  h2 { font-weight: 400; font-size: 8.6pt; color: var(--live); margin: 5.5mm 0 2mm;
+       padding-bottom: 1mm; border-bottom: 0.2mm solid var(--floor); }
+  h2:first-child { margin-top: 0; }
+  h3 { font-weight: 400; font-size: 7.6pt; color: var(--live); margin: 3.5mm 0 1mm; }
+  p + p { margin-top: 2mm; }
+  p.lede { font-size: 11.5pt; line-height: 1.45; color: var(--live); margin-bottom: 5mm; }
+  em { font-style: italic; }
+  b { font-weight: 400; color: var(--live); }
+  .key, code { font-size: 0.86em; color: var(--live); }
+  .soft { color: var(--mid); }
+  .scale { display: block; font-size: 7.2pt; color: var(--mid); margin: 1mm 0 0; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; }
+  .side { display: grid; grid-template-columns: 1fr 52mm; gap: 0 8mm; align-items: start; }
+  .note { font-family: "Fragment Mono", monospace; font-size: 7pt; line-height: 1.5; color: var(--mid);
+          border-left: 0.2mm solid var(--dim); padding-left: 3mm; }
+  .note p + p { margin-top: 1.6mm; }
+  .note b { color: var(--bright); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 7.2pt; line-height: 1.45; margin: 2mm 0 1mm; color: var(--bright); }
+  th { font-weight: 400; text-align: left; color: var(--mid); border-bottom: 0.2mm solid var(--dim); padding: 0 2mm 1mm 0; }
+  td { padding: 1.1mm 2mm 1.1mm 0; border-bottom: 0.2mm solid var(--floor); vertical-align: top; }
+  td:first-child { color: var(--live); white-space: nowrap; }
+  td.r, th.r { text-align: right; white-space: nowrap; }
+  table.prose td:last-child { font-family: "Source Serif 4", Georgia, serif; font-size: 8.6pt; line-height: 1.4; }
+
+  figure { margin: 2mm 0 3mm; }
   figure .shot { position: relative; border: 0.2mm solid var(--dim); }
   figure img { display: block; width: 100%; }
-  /* callouts: a number in a square, hairline, no glow */
-  .n {
-    position: absolute; transform: translate(-50%, -50%);
-    width: 4mm; height: 4mm; background: var(--black); border: 0.2mm solid var(--live);
-    color: var(--live); font-size: 6.4pt; display: flex; align-items: center; justify-content: center;
-  }
-  figcaption { margin-top: 1.2mm; font-size: 6.2pt; color: var(--dim); }
+  figcaption { margin-top: 1.4mm; font-size: 6.6pt; color: var(--mid); line-height: 1.45; }
+  .n { position: absolute; transform: translate(-50%, -50%); width: 4.2mm; height: 4.2mm; background: var(--black);
+       border: 0.2mm solid var(--live); color: var(--live); font-family: "Fragment Mono", monospace; font-size: 6.6pt;
+       display: flex; align-items: center; justify-content: center; }
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
+  .strip figure { margin: 0; }
 
-  main { margin-top: 3.5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm 6mm; flex: 1; min-height: 0; align-content: start; }
-  h2 {
-    display: flex; align-items: center; gap: 2mm;
-    font-weight: 400; font-size: 7.2pt; color: var(--live);
-    margin-bottom: 1.4mm; padding-bottom: 1mm; border-bottom: 0.2mm solid var(--floor);
-  }
-  h2 i { font-style: normal; color: var(--black); background: var(--live); padding: 0 0.9mm; }
-  p + p { margin-top: 1.4mm; }
-  b { font-weight: 400; color: var(--bright); }
-  .scale { display: block; color: var(--dim); }
-  .scale em { font-style: normal; color: var(--mid); }
-  .moves { display: grid; grid-template-columns: 21mm 1fr; margin: 1.2mm 0; }
-  .moves dt { color: var(--bright); }
+  ol.callouts { list-style: none; counter-reset: c; columns: 2; column-gap: 8mm; }
+  ol.callouts li { counter-increment: c; break-inside: avoid; padding-left: 7mm; position: relative; margin-bottom: 2.2mm; }
+  ol.callouts li::before { content: counter(c); position: absolute; left: 0; top: 0.4mm; width: 4mm; height: 4mm;
+       border: 0.2mm solid var(--live); color: var(--live); font-family: "Fragment Mono", monospace; font-size: 6.4pt;
+       display: flex; align-items: center; justify-content: center; }
 
-  .low { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7mm;
-         padding-top: 2.5mm; border-top: 0.2mm solid var(--dim); }
-  .tries span { display: block; color: var(--bright); }
-  .tries p + p { margin-top: 1.2mm; }
-  code { color: var(--bright); }
+  /* cover */
+  .cover { padding: 0; }
+  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
+  .cover .title { position: absolute; left: 17mm; right: 17mm; bottom: 20mm; }
+  .cover .word { font-family: "Fragment Mono", monospace; font-size: 30pt; color: var(--live); letter-spacing: 0.02em; }
+  .cover .sub { font-family: "Fragment Mono", monospace; font-size: 7.6pt; color: var(--mid); margin-top: 3mm; line-height: 1.7; }
+  .cover .top { position: absolute; left: 17mm; right: 17mm; top: 14mm; display: flex; justify-content: space-between;
+                font-family: "Fragment Mono", monospace; font-size: 7pt; color: var(--mid); }
 
-  footer {
-    margin-top: 3mm; display: flex; justify-content: space-between;
-    font-size: 6pt; color: var(--dim); border-top: 0.2mm solid var(--floor); padding-top: 1.5mm;
-  }
+  .toc { font-family: "Fragment Mono", monospace; font-size: 7.8pt; line-height: 1.95; }
+  .toc div { display: flex; border-bottom: 0.2mm solid var(--floor); }
+  .toc span:first-child { width: 9mm; color: var(--dim); }
+  .toc span:nth-child(2) { flex: 1; color: var(--bright); }
+  .toc span:last-child { color: var(--mid); }
 </style>
 </head>
 <body>
-  <header>
-    <h1>dendrite</h1>
-    <span class="meta">drosophila melanogaster · adult male · male cns v1.0</span>
-    <span class="meta r">v3.6 · vst3 · au · windows · macos</span>
-  </header>
 
-  <div class="top">
-    <p class="lede">
-      <span>a preparation. one fly's brain: 13,065 neurons, 1,763,631 connections, wired as janelia mapped them.</span>
-      <span>a signal is played to it. two tape heads, a dotted ⅛ and a ¼, carry it back, each pass further out.</span>
-      <span class="soft">the specimen answers. the rig writes it down. every number on it is measured.</span>
-    </p>
+<!-- 1 · cover -->
+<section class="page cover">
+  <img src="img/cover.png" alt="">
+  <div class="top"><span>afferent</span><span>manual · version 3.7</span></div>
+  <div class="title">
+    <div class="word">dendrite</div>
+    <div class="sub">a dub echo that grows around your head<br>
+      the itch inside it: one fly's brain, 13,065 neurons<br>
+      vst3 · au · windows · macos</div>
   </div>
+</section>
 
-  <div class="stage">
+<!-- 2 · contents -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>contents</span></div>
+  <div class="body">
+    <p class="lede">A preparation. Janelia mapped one fly's brain, and dendrite plays your music to it. Two tape heads carry the music back to you, and each pass lands a little further out. The fly listens. Sometimes it reaches in.</p>
+    <p>This manual describes version 3.7. We read every number in it from the plug-in itself. Where we measured something, it says where. Where we do not know something, it says that too.</p>
+
+    <h2>contents</h2>
+    <div class="toc">
+      <div><span>01</span><span>the first minute</span><span>3</span></div>
+      <div><span>02</span><span>the window</span><span>4</span></div>
+      <div><span>03</span><span>the echo</span><span>5</span></div>
+      <div><span>04</span><span>the light: feed and space</span><span>7</span></div>
+      <div><span>05</span><span>the throw</span><span>8</span></div>
+      <div><span>06</span><span>the fly</span><span>9</span></div>
+      <div><span>07</span><span>what the fly does to your echo</span><span>10</span></div>
+      <div><span>08</span><span>the itch selector</span><span>11</span></div>
+      <div><span>09</span><span>the atlas</span><span>12</span></div>
+      <div><span>10</span><span>the kick</span><span>13</span></div>
+      <div><span>11</span><span>imaging</span><span>14</span></div>
+      <div><span>12</span><span>the trace</span><span>15</span></div>
+      <div><span>13</span><span>the instruments</span><span>16</span></div>
+      <div><span>14</span><span>the log, and keep</span><span>17</span></div>
+      <div><span>15</span><span>search and the reference</span><span>18</span></div>
+      <div><span>16</span><span>lights out</span><span>19</span></div>
+      <div><span>17</span><span>places to begin</span><span>20</span></div>
+      <div><span>18</span><span>hands and keys</span><span>21</span></div>
+      <div><span>19</span><span>notes</span><span>22</span></div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>2</span></div>
+</section>
+
+<!-- 3 · first minute -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>01 · the first minute</span></div>
+  <div class="body">
+    <h1>the first minute</h1>
+    <div class="kicker">insert · play · throw · shape</div>
+    <div class="side">
+      <div>
+        <h2>1 · put it on a track</h2>
+        <p>Put it on the track itself, as an insert. There is no send to set up and no mix knob. Your dry track passes through untouched, and the echo is added to it.</p>
+        <p>On a return track, turn <b>dry</b> off in the bottom line. Only the echo comes out.</p>
+
+        <h2>2 · play</h2>
+        <p>Press play in your host. The defaults already work: feed at 50% (dub), space at 40% (around), the itch selector at 4 bars and the heads on dotted. The echo follows the host's tempo. When the host is stopped, it runs on a clock of its own.</p>
+
+        <h2>3 · throw</h2>
+        <p>Wait for the last hit of a phrase. Press the brain anywhere away from the light, and hold. That hit goes into the echo, louder, and stays there while you hold. Let go and it falls back over about two bars.</p>
+
+        <h2>4 · shape the light</h2>
+        <p>The round spot on the brain is the light. Drag up or down inside it: the repeats live longer or shorter. Drag its edge: they spread further around your head, or stay close. Double-click it to go back to the defaults.</p>
+        <p>That is the instrument. The rest of this manual is what the window shows, and what lives inside the itch.</p>
+      </div>
+      <div class="note">
+        <p><b>install, windows</b><br>run the installer. it puts <code>dendrite.vst3</code> in <code>C:\Program Files\Common Files\VST3</code> and removes an old <code>viber.vst3</code>.</p>
+        <p><b>install, macos</b><br><code>dendrite.vst3</code> to <code>~/Library/Audio/Plug-Ins/VST3</code>, <code>dendrite.component</code> to <code>~/Library/Audio/Plug-Ins/Components</code>. the mac builds are not signed: clear the quarantine flag once (the readme has the line).</p>
+        <p><b>in live</b><br>settings › plug-ins › use vst3 plug-in system folders, then rescan. it sits under plug-ins › vst3 › afferent › dendrite.</p>
+        <p><b>latency</b><br>none. it reports 0 samples.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>3</span></div>
+</section>
+
+<!-- 4 · the window -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>02 · the window</span></div>
+  <div class="body">
+    <h1>the window</h1>
+    <div class="kicker">an electrophysiology rig · the fly is the specimen</div>
     <figure>
       <div class="shot">
-      <img src="window.png" alt="the dendrite window">
-      <div class="n" style="left: 31%; top: 33%">1</div>
-      <div class="n" style="left: 61%; top: 44%">2</div>
-      <div class="n" style="left: 3%; top: 91%">3</div>
-      <div class="n" style="left: 74%; top: 82%">4</div>
-      <div class="n" style="left: 74%; top: 7%">5</div>
-      <div class="n" style="left: 9%; top: 74%">6</div>
+        <img src="img/bench.png" alt="the dendrite window, a groove playing">
+        <div class="n" style="left: 35.5%; top: 2.2%">1</div>
+        <div class="n" style="left: 30%; top: 45%">2</div>
+        <div class="n" style="left: 70.5%; top: 20.5%">3</div>
+        <div class="n" style="left: 12%; top: 84.5%">4</div>
+        <div class="n" style="left: 88%; top: 6.3%">5</div>
+        <div class="n" style="left: 93%; top: 79.5%">6</div>
+        <div class="n" style="left: 66%; top: 97.8%">7</div>
       </div>
-      <figcaption>a minute of a groove, itch selector ¾ bar, the light in the middle of the brain.</figcaption>
+      <figcaption>a groove at 127 bpm, 40 seconds in. the light at its defaults, the itch selector at 1 bar. the host plays.</figcaption>
     </figure>
-    <aside>
-      <section>
-        <h2>start</h2>
-        <p>put it on a track. no send, no mix knob.</p>
-        <p>play. the default works.</p>
-        <p>press the plate on the last hit of a phrase.</p>
-        <p>then shape the light.</p>
-      </section>
-      <section>
-        <h2><i>1</i>light</h2>
-        <p>a spot of 590 nm on the brain. it carries csChrimson.</p>
-        <p><b>inside, up</b>: power = feed. the repeats live longer.
-          <span class="scale">whisper <em>·</em> dub <em>·</em> drown <em>·</em> endless</span></p>
-        <p><b>its edge, out</b>: size = space. they live further away.
-          <span class="scale">inside <em>·</em> around <em>·</em> envelop <em>·</em> beyond</span></p>
-        <p>its centre moves it over other neurons. shift: fine. double-click: home.</p>
-      </section>
-    </aside>
+    <ol class="callouts">
+      <li><b>header.</b> The specimen's data, the state (recording, no input, at rest, output bypassed), the session clock, the sample rate and block size. <span class="key">search /</span> and <span class="key">lights out</span> live here.</li>
+      <li><b>the specimen.</b> The brain, with the light on it. Press here to throw, drag the light to set feed and space, drag the brain to turn it, wheel to magnify.</li>
+      <li><b>the rail.</b> The imaging method, the small 2-DG brain of this session, and the view: yaw, pitch, magnification.</li>
+      <li><b>the trace.</b> The last 8 bars: your sound, the fly, your echo, the tape's pitch.</li>
+      <li><b>the instruments.</b> Levels, tempo, the light, the delay line, the fly's state. Read-only.</li>
+      <li><b>the log.</b> Every reflex, groom, throw and switch, with the session clock. You can drag a line with a small square into Live.</li>
+      <li><b>the bottom line.</b> Itch selector, heads, dry. On the right, the output's state.</li>
+    </ol>
+    <p>Every number on the screen is measured. Nothing is drawn for decoration. Hover any line and it says what it measures. The window opens at 960 × 680, shrinks to 900 × 640, and grows to any size up to 7680 × 4320. The column on the right keeps its width; the specimen and the trace take the rest.</p>
   </div>
+  <div class="folio"><span>dendrite · manual</span><span>4</span></div>
+</section>
 
-  <main>
+<!-- 5 · the echo 1 -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>03 · the echo</span></div>
+  <div class="body">
+    <h1>the echo</h1>
+    <div class="kicker">one tape loop · two heads · mid and side</div>
+    <div class="side">
+      <div>
+        <p>There is one loop of tape and two playback heads. With the heads on <b>dotted</b>, the first reads a dotted eighth behind, the second a quarter behind. Both feed back. So every repeat splits in two, and the repeats land on the 3rd, 4th, 6th, 7th, 8th sixteenth and on. The echo thickens into its own space. There is no reverb in it.</p>
 
-    <section>
-      <h2><i>2</i>stimulus</h2>
-      <p><b>press the plate anywhere else, and hold.</b> what is playing is thrown into the delay line, louder, off to one side. the lit neurons fire for as long as you hold.</p>
-      <p><b>let go.</b> it falls home over two bars.</p>
-      <p><b>at endless, hold on.</b> it runs away. let go before it eats the room.</p>
-      <p>light at no power: only what you throw gets in. dub engineers call it a closed send.</p>
-    </section>
+        <h2>mid and side</h2>
+        <p>The loop runs in mid/side. The dotted head keeps the side as it is. The quarter head flips it to the other side. Neither of them touches the mid. So the mid is a plain branching dub echo, and nothing done to the side ever reaches it.</p>
+        <p>Sum the output to mono and you hear your dry track plus a clean dub echo, whatever the space is doing. The audit measured the side's leak into mono between −133 and −142 dB.</p>
+        <p>The space lives in the side. Every pass writes a little of the mid into the side again, so each generation of repeats steps a little further out from the middle of your head. The crossed branch mirrors it. This is the dendrite: it grows.</p>
 
-    <section>
-      <h2><i>3</i>itch selector</h2>
-      <p>how awake the fly is kept: <b>¼</b> wide awake to <b>8</b> half asleep, or <b>off</b>: at rest, its brain does not step.</p>
-      <p>it decides when, how hard, up or down. it learns what hurt it, and calms.</p>
-      <dl class="moves">
-        <dt>hop · leap</dt><dd>up, and home</dd>
-        <dt>rush</dt><dd>up into double time</dd>
-        <dt>duck · dive</dt><dd>down, breath held</dd>
-        <dt>hold · sink</dt><dd>bare keys, gently</dd>
-      </dl>
-      <p>each reflex burns a scar into the map: the 64 neurons that drove it. scars never fade, and stay with the set.</p>
-    </section>
-
-    <section>
-      <h2><i>4</i>log · keep</h2>
-      <p>every reflex, groom, throw and switch, with the session clock. newest at the bottom.</p>
-      <p>a small square: keep still has it on tape, the last minute. <b>drag the line into live</b>: that take, bar to bar. shift: everything.</p>
-      <p>files: <code>documents/dendrite/kept</code></p>
-    </section>
-
-    <section>
-      <h2><i>5</i>instruments</h2>
-      <p>levels in dBFS. each head's time and gain per pass. return, spread, diffuse, the throw, the afterglow, correlation.</p>
-      <p>the fly: how awake, its spikes per second, arousal, fatigue, fear and memory, ten minutes of each.</p>
-      <p>hover a line: what it measures.</p>
-    </section>
-
-    <section>
-      <h2><i>6</i>trace · map</h2>
-      <p><b>trace</b>: the last 8 bars. your sound, the fly, your echo, the tape's pitch. a square is a reflex; the echo it bent turns white.</p>
-      <p>hover: a neuron's id, type, rate. <b>/</b>: search any word or cell type; click a name, reflex or log line to open it.</p>
-      <p><b>the brain</b>: drag to turn. wheel: magnify; at 2.5× the fly's own numbers. <b>L</b>: lights out.</p>
-    </section>
-
-    <div class="low">
-      <section class="tries">
-        <h2>three places to begin</h2>
-        <p><span>feed 50 · space 30</span>a chord stab. throw the last one.</p>
-        <p><span>feed 70 · space 65</span>a voice, on headphones. itch off.</p>
-        <p><span>feed 25 · space 40</span>a loop. itch 4 bars. leave it be.</p>
-      </section>
-
-      <section>
-        <h2>settings line</h2>
-        <p><b>heads</b>: dotted · triplet · half. click for the next.</p>
-        <p><b>dry</b>: off on a return track.</p>
-        <p><b>output</b>: when the host bypasses it, the output goes dry and the specimen keeps recording.</p>
-      </section>
-
-      <section>
-        <h2>notes</h2>
-        <p>no latency. map <b>throw</b> to a key: ctrl+k in live.</p>
-        <p>the window is any size, up to a whole screen. the scale bar picks its length again.</p>
-        <p><b>sidechain</b>: your kick startles the fly, ducks the echo.</p>
-      </section>
+        <h2>heads</h2>
+        <p>The bottom line has three rhythms. Click the one you want.</p>
+        <table>
+          <tr><th>heads</th><th>head a</th><th>head b</th><th class="r">at 120 bpm</th></tr>
+          <tr><td>dotted</td><td>dotted ⅛</td><td>¼</td><td class="r">375 ms · 500 ms</td></tr>
+          <tr><td>triplet</td><td>¼ triplet</td><td>¼</td><td class="r">333.3 ms · 500 ms</td></tr>
+          <tr><td>half</td><td>dotted ¼</td><td>½</td><td class="r">750 ms · 1000 ms</td></tr>
+        </table>
+        <p>Dotted is the dub classic. Triplet walks the echo in threes against the beat. Half is the same shape slowed to half time.</p>
+      </div>
+      <div class="note">
+        <p><b>the tape</b><br>the tape has wow, and it moves both heads together, as a real tape's speed does. a long tail does not cancel itself.</p>
+        <p><b>the diffusers</b><br>they delay what they smear, so the heads read that much earlier. the repeats land on the beat pass after pass.</p>
+        <p><b>head a, head b</b><br>the instruments read each head's time in ms and its gain per pass in dB, as they are now.</p>
+      </div>
     </div>
-  </main>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>5</span></div>
+</section>
 
-  <footer>
-    <span>afferent.page · fly: male-cns.janelia.org, cc by 4.0 (berg et al. 2026)</span>
-    <span>windows <code>C:\Program Files\Common Files\VST3</code> · macos <code>~/Library/Audio/Plug-Ins</code></span>
-  </footer>
+<!-- 6 · the echo 2 -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>03 · the echo</span></div>
+  <div class="body">
+    <h2>feed: how long the repeats live</h2>
+    <p>Feed is how much of the echo goes round again. It passes through five regions. A small turn near a border tips the sound into the next one.</p>
+    <table class="prose">
+      <tr><th>feed</th><th>name</th><th>what happens</th></tr>
+      <tr><td>0 – 1%</td><td>off</td><td>nothing goes round. Only what you throw gets in: the dub engineer's closed send.</td></tr>
+      <tr><td>2 – 29%</td><td>whisper</td><td>a few repeats, gone within a bar or two.</td></tr>
+      <tr><td>30 – 61%</td><td>dub</td><td>the home of it. Repeats walk away and keep their shape.</td></tr>
+      <tr><td>62 – 86%</td><td>drown</td><td>the tail outlives the phrase. Chords pile into each other.</td></tr>
+      <tr><td>87 – 100%</td><td>endless</td><td>the loop sings. Held by saturation inside the loop and a limiter at the output.</td></tr>
+    </table>
+
+    <h2>space: where they live</h2>
+    <p>Space is how far each pass is pushed to the sides and how much it is smeared. It never changes the mono sum.</p>
+    <table class="prose">
+      <tr><th>space</th><th>name</th><th>what happens</th></tr>
+      <tr><td>0 – 19%</td><td>inside</td><td>the repeats stay in the middle of your head.</td></tr>
+      <tr><td>20 – 49%</td><td>around</td><td>each pass steps out a little, and the crossed one mirrors it.</td></tr>
+      <tr><td>50 – 77%</td><td>envelop</td><td>allpasses in the side's loop. Each repeat dissolves further into the space between your ears.</td></tr>
+      <tr><td>78 – 100%</td><td>beyond</td><td>a small frequency shift in the side's loop. The space turns around your head and rises, like a barber pole.</td></tr>
+    </table>
+    <p class="soft">The instruments read the two halves of it: <span class="key">spread</span> (0 to 0.34, how far each pass is pushed out) and <span class="key">diffuse</span> (0 to 0.7, how much each pass is smeared).</p>
+
+    <h2>breathing</h2>
+    <p>The echo ducks under your playing and blooms in the gaps. It also swells on its own, slowly, by up to about 3 dB. When the music stops, the feedback rises for a while (the fill), then lets go over about two bars, and the loop eases off over the next four. A tail in a break dissolves over about five bars. It never falls faster than 3 dB a beat.</p>
+
+    <h2>safety</h2>
+    <p>A ceiling keeps the loop from outgrowing what was played into it. Saturation sits inside the loop. A limiter sits at the output. Feed may self-oscillate at endless, and you can push it further with a throw. You cannot wreck a pair of speakers with it.</p>
+
+    <h2>dry, and the output</h2>
+    <p><b>dry</b> is on at 0 dB, or off for a return track. <b>output</b> on the far right is not a control. It says <span class="key">live</span>, or <span class="key">bypassed · recording</span> when the host bypasses the plug-in. Bypassed, the output goes dry and the specimen keeps recording.</p>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>6</span></div>
+</section>
+
+<!-- 7 · the light -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>04 · the light</span></div>
+  <div class="body">
+    <h1>the light: feed and space</h1>
+    <div class="kicker">590 nm · on csChrimson</div>
+    <p>In optogenetics a neuron carries a channel that opens to light. Light on it, and it fires. The brain in dendrite carries CsChrimson, which answers to orange-red light. A spot of it sits on the brain. The spot is how you play the echo.</p>
+    <figure>
+      <div class="shot"><img src="img/light.png" alt="the light on the brain, close up"></div>
+      <figcaption>the light, magnified. its handles and numbers show only when the hand is near.</figcaption>
+    </figure>
+    <div class="side">
+      <div>
+        <h2>power is feed</h2>
+        <p>Drag up or down inside the spot. Or turn the wheel over it. Up: the repeats live longer.</p>
+        <span class="scale">off · whisper · dub · drown · endless</span>
+        <h2>size is space</h2>
+        <p>Drag the spot's edge. It runs from 8 µm across, one neuron, to 150 µm across, on a log scale. Wider: the repeats live further out. Shift with the wheel over the spot changes the size too.</p>
+        <span class="scale">inside · around · envelop · beyond</span>
+        <h2>its centre moves it</h2>
+        <p>Drag the small square in the middle to put the light over other neurons. That changes nothing in the echo on its own. It changes which neurons fire when you flash (next page). The light's place is saved with the set.</p>
+      </div>
+      <div class="note">
+        <p><b>shift</b><br>while dragging: fine, a fifth of the speed.</p>
+        <p><b>double-click the spot</b><br>feed and space back to 50% and 40%.</p>
+        <p><b>automation</b><br>the light is the same two parameters, <code>feed</code> and <code>space</code>, as every version before it. automate them as usual.</p>
+        <p><b>the instruments</b><br>spot: its centre in µm. lit: how many neurons, in what radius. mean rate: theirs, over 300 ms. busiest: the busiest of them, by cell type.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>7</span></div>
+</section>
+
+<!-- 8 · the throw -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>05 · the throw</span></div>
+  <div class="body">
+    <h1>the throw</h1>
+    <div class="kicker">press the dark · hold · let go</div>
+    <div class="side">
+      <div>
+        <p>A throw is the dub engineer's move: a moment sent into the echo and left there.</p>
+        <p><b>Press the brain anywhere off the light, and hold still.</b> After 80 ms the press becomes a throw. The send opens at once. What is playing goes into the delay line, louder, and the image is pushed out to one side. The feedback rides up while you hold.</p>
+        <p><b>Let go.</b> The throw falls home over about two bars.</p>
+        <p><b>At endless, hold on.</b> The loop grows past what was played into it, into a howl the tape itself holds. Let go before it eats the room. It comes back like any throw.</p>
+        <p><b>At feed off</b> the throw still rings for about two bars. Only what you throw gets in. That is a closed send.</p>
+        <p>If the hand moves more than 4 pixels before 80 ms pass, it is not a throw. The hand has the brain, and turns it.</p>
+
+        <h2>the flash</h2>
+        <p>A throw is also a flash of the light. While you hold, the neurons under the spot fire, at 20 Hz with the light at no power, up to 100 Hz at full. They fire as the senses fire theirs, at random moments (Poisson), on the audio thread.</p>
+        <p>So where the light sits changes what the fly does next. Light the giant fiber and hold, and it leaps. Light the grooming neurons and it grooms. With no flash, nothing extra runs, and the light changes nothing but feed and space.</p>
+
+        <h2>the fly throws too</h2>
+        <p>When the fly's giant fiber fires, the fly throws the moment into the echo the same way. The instruments' <span class="key">throw</span> reads the envelope in the loop, 0 to 1, whoever threw: your press, the host's automation, or the fly.</p>
+      </div>
+      <div class="note">
+        <p><b>map it to a key</b><br><code>throw</code> is a parameter. in live: configure on the device, touch the throw so it appears, and map that slot to a key with ctrl+k.</p>
+        <p><b>in the log</b><br><code>throw · 1.3 s</code>: how long it was held.</p>
+        <p><b>runaway</b><br>a throw held long at endless is logged as a runaway, with its length.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>8</span></div>
+</section>
+
+<!-- 9 · the fly -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>06 · the fly</span></div>
+  <div class="body">
+    <h1>the fly</h1>
+    <div class="kicker">drosophila melanogaster · adult male · male cns v1.0</div>
+    <p class="lede">The itch is a fly's nervous system. We designed nothing about its wiring.</p>
+    <div class="side">
+      <div>
+        <p>Janelia mapped the whole central nervous system of one male fly, synapse by synapse (Berg et al. 2026). dendrite runs the part of it that answers music: 13,065 neurons, 1,763,631 connections, 11,887,874 synapses. Each neuron is a leaky integrate-and-fire neuron. Each connection is as strong as its synapse count, excitatory or inhibitory by its transmitter. This is how Shiu et al. (2024) ran the whole fly brain. It runs live, on the audio thread, at the sample rate of your session.</p>
+
+        <h2>what it senses</h2>
+        <p><b>Its ears.</b> Johnston's organ, in each antenna, hears the antenna move. Your left channel is its left antenna. Low vibration, sound, and the slow push of the level reach different groups of its neurons.</p>
+        <p><b>Its eyes.</b> Your hits loom at it: lows from below, highs from above. The looming neurons (LPLC2) of each eye answer. They are the giant fiber's main input.</p>
+        <p><b>Its smell.</b> The spectrum, as a few channels of its antennal lobe, reaches the mushroom body. There, a sparse set of Kenyon cells says what this sound is.</p>
+        <p>Every sense tires when the same thing keeps coming, and it recovers slowly. So the fly learns a loop and startles at what is new.</p>
+
+        <h2>its inner life</h2>
+        <p>Every neuron is a little restless: small random kicks, as real neurons have. Two moods move slowly. <b>Arousal</b> is wound up by its own jumps and settles over about 40 s. <b>Fatigue</b> is worn by busy music over about two minutes.</p>
+        <p>And it remembers. When it jumps, its punishing dopamine neurons (PPL1) fire. Where dopamine meets a Kenyon cell that was just active, that cell's synapses onto the mushroom body's output neurons weaken. A moment later its reward neurons (PAM) fire: relief. So the sounds that made it jump stop sounding safe, and the ones that passed become safe again. <b>Fear</b> is the balance of the two. It forgets over about ten minutes.</p>
+      </div>
+      <div class="note">
+        <p><b>a cut</b><br>13,065 of the male's 144,076 brain neurons: its ears, eyes, giant fiber, grooming and steering neurons, mushroom body and smell, and what lies between them.</p>
+        <p><b>memory</b><br>its 28,761 learning synapses (kenyon cell to mbon). the instruments read them against their strength at birth.</p>
+        <p><b>saved with the set</b><br>the memory and the moods, about 57 KB. the same fly remembers your session next time. it wakes rested.</p>
+        <p><b>what we do not know</b><br>what wakes it is mostly how hard the hits land. a real fly's brain was not built for music. we listen, and report.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>9</span></div>
+</section>
+
+<!-- 10 · what the fly does -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>07 · what the fly does to your echo</span></div>
+  <div class="body">
+    <h1>what the fly does to your echo</h1>
+    <div class="kicker">escape · groom · steer</div>
+    <h2>escape: the tape lurches</h2>
+    <p>The giant fiber (DNp01) is the largest descending neuron in the fly. It carries a looming shadow from the eyes, and a loud sound from the ears, down to the legs and wings in a single step. When it fires, the tape lurches, and the moment is thrown into the echo.</p>
+    <p>The brain decides when and how hard. The body does it on the grid. Every move starts on a 16th line (an 8th when the fly is half awake) and lasts an exact note value. Its fear and its arousal choose the move.</p>
+    <table class="prose">
+      <tr><th>move</th><th>when</th><th>what the tape does</th></tr>
+      <tr><td>hop</td><td>a small jump</td><td>up for a 16th, back over an 8th.</td></tr>
+      <tr><td>leap</td><td>a big jump</td><td>further up for a 16th, back down over a dotted 8th.</td></tr>
+      <tr><td>duck</td><td>a small fall</td><td>down for an 8th, back up in a 16th.</td></tr>
+      <tr><td>rush</td><td>wound up</td><td>up an octave for an 8th. The echo runs in double time for a beat or two and falls back over a quarter.</td></tr>
+      <tr><td>dive</td><td>afraid</td><td>down over a half note into half time, holds its breath for a beat, climbs back over a quarter.</td></tr>
+      <tr><td>hold</td><td>no pulse</td><td>the tape stays. A dotted 8th is thrown and the breath is held for a beat.</td></tr>
+      <tr><td>sink</td><td>no pulse</td><td>both heads fall by pure intervals for an 8th, then snap back in a 32nd.</td></tr>
+    </table>
+    <p>How far the tape bends is the atlas's <span class="key">lurch</span> (page 12). At its default the bends are about an octave, and a leap goes further. The trace prints the tape speeds a move went through, and the log its furthest pitch. On the groove in this manual a leap read <span class="key">+15.9 st</span>, and a duck <span class="key">−8.1 +9.7 st</span>: it went down, and its fast return reads as a rise.</p>
+    <p>It hears whether there is a pulse: how many 16ths of the last two bars had a hit at the top of the spectrum. In a groove it dances. On bare chords it rests about five times longer, never rushes or dives, and half its moves are a hold.</p>
+
+    <div class="cols">
+      <div>
+        <h2>groom: a band is scratched</h2>
+        <p>The grooming neurons (DNg11) drive the front legs to clean the antennae. When they fire, a narrow band of the echo is rubbed back and forth, at a frequency where your music leaves room. The log says <span class="key">groom · 4.2 kHz 0.4 s</span>.</p>
+      </div>
+      <div>
+        <h2>steer: the echo turns</h2>
+        <p>The steering neurons, DNa01 and DNa02 on each side, turn a fly toward one side. Their imbalance leans the echo's space and steers the echo toward that side, up to about 9 dB between the sides. Mono is untouched.</p>
+      </div>
+    </div>
+
+    <h2>the afterglow</h2>
+    <p>What the fly throws goes onto a tape of its own, fed by the dotted head. The first repeats land like a throw. It keeps feeding itself for about three bars, then dissolves smoothly, with no corner where it stops. Each pass is a little darker, more blurred, further out. Inside it, every partial is shifted by the same few hertz on every pass (6 Hz, growing to 12 as it fades). The tail climbs like a barber pole after a rising move and sinks after a falling one. It is gone about nine bars after the itch. The instruments' <span class="key">afterglow</span> reads how much is still sounding.</p>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>10</span></div>
+</section>
+
+<!-- 11 · itch selector -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>08 · the itch selector</span></div>
+  <div class="body">
+    <h1>the itch selector</h1>
+    <div class="kicker">how awake the fly is kept</div>
+    <div class="side">
+      <div>
+        <p>The itch selector is in the bottom line. Click it and its scale opens in place: off, then ¼ bar to 8 bars. Wide awake is on the left. Click a value, or drag along the scale. The wheel steps through it, and so do the arrow keys. Escape, a click on its name, or a moment without the hand folds it away.</p>
+        <p>Next to the choice it says how awake that keeps the fly.</p>
+        <table>
+          <tr><th>itch selector</th><th class="r">awake</th><th>itch selector</th><th class="r">awake</th></tr>
+          <tr><td>off</td><td class="r">rests</td><td>1½ bars</td><td class="r">0.68</td></tr>
+          <tr><td>¼ bar</td><td class="r">1.00</td><td>1¾ bars</td><td class="r">0.65</td></tr>
+          <tr><td>½ bar</td><td class="r">0.88</td><td>2 bars</td><td class="r">0.62</td></tr>
+          <tr><td>¾ bar</td><td class="r">0.80</td><td>3 bars</td><td class="r">0.55</td></tr>
+          <tr><td>1 bar</td><td class="r">0.75</td><td>4 bars <span class="soft">default</span></td><td class="r">0.50</td></tr>
+          <tr><td>1¼ bars</td><td class="r">0.71</td><td>8 bars</td><td class="r">0.38</td></tr>
+        </table>
+        <p>Awake, the fly moves on 16ths and leaves the music alone for about a beat after each move. When it is half awake, it moves on 8ths and leaves about a bar. At ¼ bar a move lands within a 16th of being decided. At 1 bar and slower a big move waits for the bar line.</p>
+        <p><b>Off</b>: the fly rests and its brain does not step. Nothing it does reaches the echo, and it costs almost nothing. The echo, the light and the throw work as before.</p>
+
+        <h2>the next bar</h2>
+        <p>While the host plays, the trace shows one bar after now, dashed. That is what the fly has decided and not played yet. A hollow square marks where the move will land, with the bar and beat, how soon, and its size: <span class="key">armed</span>.</p>
+        <p><b>Click the armed move to hold it back.</b> It does not play, and the fly's rest starts again. The log says <span class="key">held back · the move for bar N</span>.</p>
+      </div>
+      <div class="note">
+        <p><b>the parameter</b><br>its host name is <code>itch selector</code>; its id stays <code>frames</code>, so old sets and automation keep it.</p>
+        <p><b>one story</b><br>when the fly bends your echo, the path that made it lights on the brain for two seconds: the ears (jo), the eye whose looming fired (lplc2 left or right), the giant fiber (dnp01), down to the tape, named with the move. hover a reflex in the trace and it lights again.</p>
+        <p><b>the scars</b><br>at each reflex the 64 neurons firing hardest are burned into the brain as crosses. white when made, settled to grey within a minute, never removed. saved with the set.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>11</span></div>
+</section>
+
+<!-- 12 · the atlas -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>09 · the atlas</span></div>
+  <div class="body">
+    <h1>the atlas</h1>
+    <div class="kicker">magnified 2.5× or more · the fly's own numbers</div>
+    <div class="side">
+      <div>
+        <p>A brain atlas names its regions. Magnify the brain to 2.5× or more and five regions open small cards beside them, with the fly's own numbers. Drag a number up or down. The wheel steps it, shift finer. Double-click it and it goes back to where the fly was born.</p>
+        <p>They are eight automatable parameters. Each range is centred on the fly's default, so the middle of the travel is the fly as it came. A set that never moves them sounds as it did before they existed.</p>
+      </div>
+      <div class="note">
+        <p><b>slow numbers</b><br>these change a temperament, not a sound. give each a few bars to show itself.</p>
+      </div>
+    </div>
+    <table class="prose">
+      <tr><th>region · name</th><th style="white-space:nowrap">range</th><th class="r">default</th><th>what it does</th></tr>
+      <tr><td>mushroom body · learn</td><td class="r" style="text-align:left">0 – 0.3</td><td class="r">0.075</td><td>how fast what hurt it becomes fearful.</td></tr>
+      <tr><td>mushroom body · forget</td><td class="r" style="text-align:left">60 – 3600 s</td><td class="r">640 s</td><td>how many seconds its synapses take to drift back.</td></tr>
+      <tr><td>giant fiber · jumpy</td><td class="r" style="text-align:left">0.2 – 2.5×</td><td class="r">0.800×</td><td>how easily it fires. At 0.2 it almost never jumps; at 2.5 it jumps half again as often.</td></tr>
+      <tr><td>giant fiber · lurch</td><td class="r" style="text-align:left">0 – 1 oct</td><td class="r">0.400 oct</td><td>how far a jump bends the tape. 0: never, a jump only throws. Low: the small moves bend by a fourth or a fifth. 0.4: an octave, and the big jumps wait for a bar line. Higher: more jumps are big, and they hold and throw longer.</td></tr>
+      <tr><td>grooming · scratch</td><td>0 – 2</td><td class="r">0.950</td><td>how hard it scratches. 0: it never grooms. 2: it grooms most of the time.</td></tr>
+      <tr><td>steering · lean</td><td>0 – 1</td><td class="r">0.450</td><td>how far its steering leans the space and steers the echo. 0: never.</td></tr>
+      <tr><td>eyes · tire</td><td class="r" style="text-align:left">0.5 – 16 /s</td><td class="r">4.00 /s</td><td>how fast the looming eyes tire of hits. High: after a few bars of groove it goes blind to it, and quiet.</td></tr>
+      <tr><td>eyes · back</td><td class="r" style="text-align:left">1 – 30 s</td><td class="r">6.00 s</td><td>how long the eyes take to recover. Short: it wakes to every change. Long: one busy passage leaves it blind for bars.</td></tr>
+    </table>
+    <figure style="width: 62%">
+      <div class="shot"><img src="img/atlas.png" alt="the atlas cards at 2.8 times"></div>
+      <figcaption>magnified 2.8×. the giant fiber's card: jumpy and lurch.</figcaption>
+    </figure>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>12</span></div>
+</section>
+
+<!-- 13 · the kick -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>10 · the kick</span></div>
+  <div class="body">
+    <h1>the kick</h1>
+    <div class="kicker">a sidechain the fly hears</div>
+    <div class="side">
+      <div>
+        <p>dendrite has a sidechain input, mono or stereo, off until the host routes something into it. Give it your kick. Only the hits count. The sidechain is never heard and never enters the echo.</p>
+        <h2>in live</h2>
+        <p>On the kick's track, nothing. On dendrite's device, open the sidechain section and set <b>audio from</b> to the kick's track.</p>
+        <h2>what the fly does with it</h2>
+        <p><b>It sees each hit loom.</b> A hit's strength is its peak over 10 ms against the recent loudest hit. It looms in both of the fly's low eyes, at most as hard as a looming in the music gets, and tires them as any looming does.</p>
+        <p><b>It gets used to your kick.</b> One expectation per 16th of the bar remembers where hits come. A hit where hits always come barely startles it. A hit where none came, a fill or a ghost note, startles it hard, and so does the kick coming back after a break. Steady four on the floor goes from a full startle to about a quarter within 2 bars. Everything is forgotten over about 16 bars.</p>
+        <p><b>A big startle is an escape.</b> Above three quarters, the fly jumps on the next line, past its rest.</p>
+        <p><b>The echo ducks under each hit.</b> Never the dry. Down in 1 ms, held 15 ms, back over 80 ms when the fly is wound up and 500 ms when it is calm. Depth: 2 dB, plus up to 6 dB from its fear, plus up to 6 dB from how unexpected the hit was, times the hit's strength. 12 dB at most. With the itch off the duck is gentle, about 3 dB.</p>
+        <p>A kick hit also counts as a hit of the groove. So on bare keys with a kick under them, the fly feels inside a groove, and can dance.</p>
+      </div>
+      <div class="note">
+        <p><b>no sidechain</b><br>with no sidechain, or a silent one, the output is identical to the bit to a build without it.</p>
+        <p><b>onsets only</b><br>a 1 ms follower finds each hit: the boom (30 Hz to 5 kHz) or the beater's click above 800 Hz, so a ghost note under the last kick's boom still counts.</p>
+        <p><b>in the trace</b><br>each hit is a tick at the top of your sound. white when it startled the fly. a jump the kick caused lights its own path on the brain, labelled kick.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>13</span></div>
+</section>
+
+<!-- 14 · imaging -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>11 · imaging</span></div>
+  <div class="body">
+    <h1>imaging</h1>
+    <div class="kicker">the same spikes, seen by six instruments</div>
+    <p>The rail's <b>imaging</b> list picks how the brain is shown. Every method shows the same spikes. Each one remembers them differently. The legend and the caption under the brain change with it and say what each grey means.</p>
+    <div class="strip">
+      <figure><div class="shot"><img src="img/m-two-photon.png" alt=""></div><figcaption>two-photon</figcaption></figure>
+      <figure><div class="shot"><img src="img/m-tracts.png" alt=""></div><figcaption>tracts</figcaption></figure>
+      <figure><div class="shot"><img src="img/m-2dg.png" alt=""></div><figcaption>2-dg</figcaption></figure>
+    </div>
+    <table class="prose">
+      <tr><th>method</th><th>what it shows</th></tr>
+      <tr><td>trace</td><td>Each neuron as bright as its firing over the last 300 ms, on a log scale (1 Hz dim, 100 Hz white), over this session's exposure: every spike leaves its neuron a little brighter for good. The only method that shows the exposure and the scars. The default.</td></tr>
+      <tr><td>two-photon</td><td>Calcium, GCaMP6s, read as ΔF/F: each neuron against its own last 20 s, white at +100%. What fires steadily goes dark. Only a change lights: what the last bar woke up.</td></tr>
+      <tr><td>voltage</td><td>ASAP2f dims when the membrane fires and forgets in 2.5 ms. Every neuron glows at rest, and a spike in this frame darkens it.</td></tr>
+      <tr><td>photons</td><td>Photon counting: each spike of the last second is one grain, within 3 µm of its neuron.</td></tr>
+      <tr><td>tracts</td><td>The 25,000 busiest connections now (synapses times the sender's spikes in the last second) as curves, over a faint skeleton of the strongest wiring. The curves are drawn. The links are real.</td></tr>
+      <tr><td>2-dg</td><td>2-deoxyglucose: a sugar a neuron takes up and cannot burn. Grey where your music worked a neuron at all. Bright where it worked it more than twice what ordinary music does, measured on six ordinary sounds. This session only.</td></tr>
+    </table>
+    <h2>the small brain</h2>
+    <p class="soft">Each picture above carries the path of the fly's last move: ears, eye, giant fiber, tape. It shows for two seconds after every move.</p>
+    <p>Under the list, a small 2-DG brain shows this session's uptake, the session clock and its spike count. It is never saved: one film per session. Press it and the plate plays how the uptake built up, from the first second to now, in 8 seconds. It names the cell types that took up most.</p>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>14</span></div>
+</section>
+
+<!-- 15 · the trace -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>12 · the trace</span></div>
+  <div class="body">
+    <h1>the trace</h1>
+    <div class="kicker">what the fly does to your sound · the last 8 bars</div>
+    <figure>
+      <div class="shot"><img src="img/trace.png" alt="the trace"></div>
+      <figcaption>four rows share one time axis. now is the line on the right. the fly has decided the dashed bar after it, and you have not heard it yet.</figcaption>
+    </figure>
+    <table class="prose">
+      <tr><th>row</th><th>what it draws</th></tr>
+      <tr><td>your sound</td><td>the input. Your throws are marked under it. With a sidechain, each kick is a tick at its top.</td></tr>
+      <tr><td>the fly</td><td>a square and a line for each reflex, with its move and the tape speeds it went through. Grey ticks where it groomed. A faint line for its steer. When something is in focus, its mean rate.</td></tr>
+      <tr><td>your echo</td><td>the echo alone, without your dry. White where a reflex bent the tape.</td></tr>
+      <tr><td>tape pitch</td><td>the tape's speed in semitones, from −12 to +12. 0 is the echo as you set it.</td></tr>
+    </table>
+    <p>Levels are linear: a full row is 0 dBFS. While the host plays, the axis is the last 8 bars, numbered. When it stops, the trace shows the last 16 seconds and says <span class="key">host stopped</span>.</p>
+    <p>Hover anywhere for the bar, the levels, the tape speed and the move at that moment. Hover a reflex and the path that made it lights on the brain again. Click a reflex to open it in the reference.</p>
+    <p class="soft">Each mark is measured. The engine reports each block's loudest input and echo sample and its clock, and hands them to the window without a lock. The window keeps the last minute in 10 ms bins.</p>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>15</span></div>
+</section>
+
+<!-- 16 · instruments -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>13 · the instruments</span></div>
+  <div class="body">
+    <h1>the instruments</h1>
+    <div class="kicker">the column on the right · read-only · hover a line: what it measures</div>
+    <table class="prose">
+      <tr><th>line</th><th>unit</th><th>what it reads</th></tr>
+      <tr><td colspan="3" class="soft">stimulus</td></tr>
+      <tr><td>input</td><td>dBFS</td><td>the track's level, rms over 300 ms. What the fly hears.</td></tr>
+      <tr><td>output</td><td>dBFS</td><td>what leaves the plug-in, rms over 300 ms, after the limiter.</td></tr>
+      <tr><td>tempo</td><td>bpm</td><td>the host's tempo, and whether it plays.</td></tr>
+      <tr><td colspan="3" class="soft">light</td></tr>
+      <tr><td>spot</td><td>µm</td><td>the light's centre, from the box's left and bottom edges.</td></tr>
+      <tr><td>lit</td><td>n in r µm</td><td>the neurons under the light, and its radius.</td></tr>
+      <tr><td>mean rate</td><td>Hz</td><td>their mean firing over the last 300 ms.</td></tr>
+      <tr><td>busiest</td><td>type · Hz</td><td>the busiest neuron under the light, by cell type.</td></tr>
+      <tr><td colspan="3" class="soft">delay line</td></tr>
+      <tr><td>head a, head b</td><td>ms · dB</td><td>each head's delay, and its gain on each pass round the loop.</td></tr>
+      <tr><td>return</td><td>dB</td><td>the echo coming back into the output now, with its ducking and breath.</td></tr>
+      <tr><td>spread</td><td>0 – 0.34</td><td>set by space: how far each pass is pushed to the sides.</td></tr>
+      <tr><td>diffuse</td><td>0 – 0.7</td><td>set by space: how much each pass is smeared.</td></tr>
+      <tr><td>throw</td><td>0 – 1</td><td>the throw's envelope in the loop: a press, automation, or the fly.</td></tr>
+      <tr><td>afterglow</td><td>0 – 1</td><td>how much of the last itch's afterglow is still sounding.</td></tr>
+      <tr><td>correlation</td><td>−1 – +1</td><td>the output's left/right correlation over 300 ms. +1 mono, 0 wide, below 0 out of phase.</td></tr>
+      <tr><td colspan="3" class="soft">specimen</td></tr>
+      <tr><td>awake</td><td>0 – 1</td><td>how awake the itch selector keeps the fly. At rest when it is off.</td></tr>
+      <tr><td>firing</td><td>spikes/s</td><td>the whole cut brain's spikes per second, now.</td></tr>
+      <tr><td>arousal</td><td>0 – 1</td><td>how wound up it is. Each escape winds it; it calms over about 40 s.</td></tr>
+      <tr><td>fatigue</td><td>0 – 1</td><td>how tired: how busy its brain has been over about two minutes.</td></tr>
+      <tr><td>fear</td><td>0 – 1</td><td>how much of what it smells now once hurt it.</td></tr>
+      <tr><td>memory</td><td>share</td><td>its 28,761 learning synapses against their strength at birth.</td></tr>
+      <tr><td>escape</td><td>move · st</td><td>the giant fiber fired: the move, and the tape's speed now in semitones.</td></tr>
+      <tr><td>groom</td><td>kHz</td><td>the band it scratches.</td></tr>
+      <tr><td>steer</td><td>0 – 1 · side</td><td>how far it leans now, and which way, the atlas's lean included.</td></tr>
+      <tr><td>eyes</td><td>% fresh</td><td>its looming eyes: 100% rested, lower as hits tire them.</td></tr>
+    </table>
+    <p class="soft">Arousal, fatigue, fear and memory draw their last ten minutes beside the number. There is no decay time. A formula from the heads' gains alone would ignore the tape's losses and call a dying tail sustained.</p>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>16</span></div>
+</section>
+
+<!-- 17 · log and keep -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>14 · the log, and keep</span></div>
+  <div class="body">
+    <h1>the log, and keep</h1>
+    <div class="kicker">every event · the last minute, on tape</div>
+    <div class="side">
+      <div>
+        <h2>the log</h2>
+        <p>The log writes down the session, newest at the bottom, with the session clock. A reflex with its move and furthest pitch. A groom with its band and length. A throw and a runaway with their length. Every switch the hand or the host turns. Input lost, and back. A move held back.</p>
+        <p>Click a line to open it in the reference. When something is in focus, the log keeps only its lines and says so: <span class="key">log · only DNp01 · giant fiber</span>.</p>
+
+        <h2>keep</h2>
+        <p>dendrite keeps the last minute. It records about 60 seconds on two tapes: everything it plays, and the itch on its own, with no dry and no echo. Next to that it keeps a diary of every itch, throw and runaway.</p>
+        <p>A line with a <b>small square</b> in front of it is still on tape. <b>Drag the line into Live.</b> You get that take, cut from the bar line before it to the bar line after its tail. For an itch, that is the itch alone. <b>Hold shift</b> to get everything that played over those bars.</p>
+        <p>A line older than the last minute loses its square. It is no longer on tape.</p>
+      </div>
+      <div class="note">
+        <p><b>the files</b><br><code>Documents/dendrite/kept/</code><br>32-bit float wav, a whole number of bars, tempo and metre in the acid chunk. never deleted by dendrite.</p>
+        <p><b>the names</b><br><code>dendrite · 2 bars · 124 bpm · 21-43-07.wav</code><br>the clock time is when it happened.</p>
+        <p><b>live on windows</b><br>dendrite gives live's window the focus before a drag starts. live can crash when another window has it.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>17</span></div>
+</section>
+
+<!-- 18 · search and the reference -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>15 · search and the reference</span></div>
+  <div class="body">
+    <h1>search and the reference</h1>
+    <div class="kicker">every word in the window · every cell type in the fly</div>
+    <figure>
+      <div class="shot"><img src="img/reference.png" alt="the reference open on DNp01"></div>
+      <figcaption>the entry for dnp01, the giant fiber. the brain rings its neurons; the trace draws their rate; the log keeps only their lines.</figcaption>
+    </figure>
+    <div class="side">
+      <div>
+        <p>Press <span class="key">/</span>, or ctrl+F (cmd+F on a Mac), or click <span class="key">search /</span> in the header. A field opens over the left of the brain. It finds the window's own words (stimulus, feed, two-photon, jumpy) and every cell type in the fly (DNp01, LPLC2, KCg-m). Arrows to move, return to open.</p>
+        <h2>the focus</h2>
+        <p>Whatever you pick becomes the focus, and every part of the window shows it. The brain rings its neurons and dims the rest. The trace draws their mean rate. The log keeps only their lines. The entry opens.</p>
+        <h2>the entry</h2>
+        <p>A headword and a text, in this face. Live numbers: how many neurons, how many firing now, spikes this session, mean rate now. From the fly's wiring: whom it hears most and whom it tells most, by synapse count, each a link to its own entry. Then what it does in dendrite, and links to see also.</p>
+        <p>Region names on the brain, a neuron's hover tag, a reflex in the trace and a line in the log all open entries. Picking an imaging method's word switches the brain to it. Close with × or Escape.</p>
+      </div>
+      <div class="note">
+        <p><b>hover a neuron</b><br>its janelia body id, cell type, transmitter, class, side, its rate now, its neighbours within 5 µm and its scars.</p>
+        <p><b>small windows</b><br>while an entry is open the rail steps aside, so the brain keeps a useful size.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>18</span></div>
+</section>
+
+<!-- 19 · lights out -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>16 · lights out</span></div>
+  <div class="body">
+    <h1>lights out</h1>
+    <div class="kicker">only the brain and the light</div>
+    <figure>
+      <div class="shot"><img src="img/lightsout.png" alt="lights out"></div>
+      <figcaption>lights out, on tracts. a reflex's path: lines and a dot at each stop, no names.</figcaption>
+    </figure>
+    <div class="cols">
+      <div>
+        <h2>in</h2>
+        <p>Click <span class="key">lights out</span> in the header, or press <span class="key">L</span>. Or roll the wheel out to the smallest magnification and keep pushing: about an octave and a half more within a second. The stop is there so zooming out never trips it.</p>
+        <p>The bench fades over 0.6 s while the brain grows to fill the window. No words, no numbers.</p>
+      </div>
+      <div>
+        <h2>inside</h2>
+        <p>The light works as before. Drag it for feed and space; press the dark to throw. Its handles show near the hand, its numbers do not. A reflex's path is drawn as soft lines with a dot at each stop.</p>
+        <h2>out</h2>
+        <p>Bring the hand to any edge: one hairline returns, with <span class="key">bench ↓</span>. Click it. <span class="key">Escape</span> or <span class="key">L</span> also bring the bench back. <span class="key">/</span> brings it back and opens search.</p>
+      </div>
+    </div>
+    <p class="soft">Lights out is not saved with the set. A project always opens with the bench. The sound does not change: it is a view.</p>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>19</span></div>
+</section>
+
+<!-- 20 · places to begin -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>17 · places to begin</span></div>
+  <div class="body">
+    <h1>places to begin</h1>
+    <div class="kicker">starting points · not presets</div>
+    <table class="prose">
+      <tr><th>feed · space</th><th>material</th><th>try</th></tr>
+      <tr><td>50 · 30</td><td>a chord stab</td><td>Throw the last one of the phrase. Let go on the downbeat.</td></tr>
+      <tr><td>70 · 65</td><td>a voice, on headphones</td><td>Itch off. Move the light's edge slowly while it sings.</td></tr>
+      <tr><td>25 · 40</td><td>a loop</td><td>Itch at 4 bars. Leave it alone for two minutes and read the log.</td></tr>
+      <tr><td>0 · 50</td><td>drums</td><td>Feed off. Throw only the snares you want. A closed send.</td></tr>
+      <tr><td>90 · 85</td><td>a pad</td><td>Endless, beyond. Hold a throw until it howls, then let go.</td></tr>
+      <tr><td>55 · 45</td><td>bare keys, a kick on the sidechain</td><td>Itch at 1 bar. The kick gives it a pulse to dance on.</td></tr>
+      <tr><td>45 · 40</td><td>a groove</td><td>Put the light on the giant fiber. Flash it on the fourth beat.</td></tr>
+      <tr><td>50 · 40</td><td>anything</td><td>Magnify to 2.5×. Set lurch to 0: the fly throws, and never bends the tape.</td></tr>
+    </table>
+    <h2>on a return track</h2>
+    <p>Put dendrite on a return, turn <b>dry</b> off, send to it from several tracks. The fly hears the sum of the sends, so it reacts to the mix you build.</p>
+    <h2>taking the result</h2>
+    <p>When the fly does something you want, drag its line from the log into an audio track in Live. It arrives on the bar lines, at your tempo. Build on it.</p>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>20</span></div>
+</section>
+
+<!-- 21 · hands and keys -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>18 · hands and keys</span></div>
+  <div class="body">
+    <h1>hands and keys</h1>
+    <div class="kicker">everything the hand can do</div>
+    <table class="prose">
+      <tr><th>where</th><th>hand</th><th>what happens</th></tr>
+      <tr><td>inside the light</td><td>drag up / down · wheel</td><td>feed</td></tr>
+      <tr><td>the light's edge</td><td>drag · shift+wheel</td><td>space</td></tr>
+      <tr><td>the light's centre</td><td>drag</td><td>moves the light over other neurons</td></tr>
+      <tr><td>the light</td><td>double-click</td><td>feed 50%, space 40%</td></tr>
+      <tr><td>any drag</td><td>hold shift</td><td>fine: a fifth of the speed</td></tr>
+      <tr><td>the brain, off the light</td><td>press and hold still</td><td>throw, and a flash of the light</td></tr>
+      <tr><td>the brain</td><td>drag</td><td>turn it. A flick keeps it turning and slows. Right-drag or ctrl-drag also turns.</td></tr>
+      <tr><td>the brain</td><td>wheel · pinch</td><td>magnify about the hand, 0.5× to 16×</td></tr>
+      <tr><td>the brain</td><td>alt-drag · middle button</td><td>move the stage</td></tr>
+      <tr><td>the brain</td><td>double-click</td><td>home: frontal and whole</td></tr>
+      <tr><td>the brain at 0.5×</td><td>keep wheeling out</td><td>lights out</td></tr>
+      <tr><td>an atlas number</td><td>drag · wheel · double-click</td><td>change it · step it · the fly's default</td></tr>
+      <tr><td>a region name, a neuron tag</td><td>click</td><td>open its entry</td></tr>
+      <tr><td>the small 2-dg brain</td><td>press</td><td>the session's time-lapse, 8 s</td></tr>
+      <tr><td>the armed move</td><td>click</td><td>hold it back</td></tr>
+      <tr><td>a log line with a square</td><td>drag into live · shift</td><td>that take · everything over those bars</td></tr>
+      <tr><td>itch selector</td><td>click · drag · wheel · arrows</td><td>open the scale · choose · step</td></tr>
+    </table>
+    <table class="prose">
+      <tr><th>key</th><th></th><th>what happens</th></tr>
+      <tr><td>/</td><td></td><td>search. In lights out: back to the bench, and search.</td></tr>
+      <tr><td>ctrl+F · cmd+F</td><td></td><td>search</td></tr>
+      <tr><td>L</td><td></td><td>lights out, and back</td></tr>
+      <tr><td>escape</td><td></td><td>close the entry · leave lights out · fold the itch scale</td></tr>
+    </table>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>21</span></div>
+</section>
+
+<!-- 22 · notes -->
+<section class="page">
+  <div class="run"><span>dendrite</span><span>19 · notes</span></div>
+  <div class="body">
+    <h1>notes</h1>
+    <div class="kicker">parameters · state · cost · credits</div>
+    <h2>parameters the host sees</h2>
+    <table>
+      <tr><th>name</th><th>id</th><th>values</th><th class="r">default</th></tr>
+      <tr><td>feed</td><td>feed</td><td>0 – 100%, named off … endless</td><td class="r">50%</td></tr>
+      <tr><td>space</td><td>space</td><td>0 – 100%, named inside … beyond</td><td class="r">40%</td></tr>
+      <tr><td>throw</td><td>throw</td><td>on / off</td><td class="r">off</td></tr>
+      <tr><td>itch selector</td><td>frames</td><td>off, ¼ bar … 8 bars</td><td class="r">4 bars</td></tr>
+      <tr><td>time</td><td>time</td><td>dotted, triplet, half</td><td class="r">dotted</td></tr>
+      <tr><td>dry</td><td>dry</td><td>on / off</td><td class="r">on</td></tr>
+      <tr><td>bypass</td><td>bypass</td><td>on / off</td><td class="r">off</td></tr>
+      <tr><td>the atlas</td><td>learn … eyesBack</td><td>eight, page 12</td><td class="r">the fly's own</td></tr>
+    </table>
+    <div class="cols">
+      <div>
+        <h2>saved with the set</h2>
+        <p>The parameters, the light's place, the imaging method and the view, the exposure and the scars, and the fly's memory and moods. Not saved: the 2-DG film, the trace, lights out, the search.</p>
+        <h2>cost</h2>
+        <p>The fly is the heavy part. It was measured at 10 to 12.5% of one core at 48 kHz on the earlier, smaller fly; the male costs about a quarter more. Its busiest moments land in single blocks. At 192 kHz use a buffer of 512 samples or more, or set the itch to off. Off, its brain does not step.</p>
+        <h2>sample rates</h2>
+        <p>We tested it from 44.1 to 192 kHz, at odd block sizes, in 3/4, 6/8 and 7/8, with tempo changes, loop jumps and the host stopped.</p>
+      </div>
+      <div>
+        <h2>credits</h2>
+        <p class="soft">The fly: Janelia male CNS v1.0, male-cns.janelia.org, CC BY 4.0. Berg et al. 2026. The model of the brain follows Shiu et al. 2024. Every download carries <span class="key">CREDITS.txt</span>.</p>
+        <p class="soft">Type: Fragment Mono and Source Serif 4, both under the SIL Open Font License.</p>
+        <p class="soft">dendrite is made by afferent. afferent.page</p>
+        <h2>older versions</h2>
+        <p class="soft">Sets saved with earlier versions open with their settings. Since 3.1 the fly is Janelia's male. A set from before that keeps its settings, and its fly starts fresh once.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>dendrite · manual</span><span>22</span></div>
+</section>
+
 </body>
 </html>
