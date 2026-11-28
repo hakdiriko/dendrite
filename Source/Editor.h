@@ -5,6 +5,7 @@
 #include "ui/Header.h"
 #include "ui/Reference.h"
 #include "ui/Instruments.h"
+#include "ui/LightsOut.h"
 #include "ui/Log.h"
 #include "ui/Rig.h"
 #include "ui/Settings.h"
@@ -33,6 +34,11 @@ public:
     bool keyPressed (const juce::KeyPress&) override; // "/" searches, escape closes
     // the snapshot tool: open the reference on a term or a cell type, or search for some text
     void referenceForTools (const juce::String& what, bool searchOnly);
+    // 3.7, lights out: only the brain and the light; the bench fades away (0.6 s) and comes back
+    void setLightsOut (bool on);
+    bool lightsAreOut() const noexcept { return lightsOut; }
+    void mouseMove (const juce::MouseEvent&) override; // the hand at an edge brings the way back
+    void mouseExit (const juce::MouseEvent&) override;
 
 private:
     void timerCallback() override;
@@ -48,6 +54,13 @@ private:
     dendrite::ui::Log log;
     dendrite::ui::Reference reference;
     void placeReference();
+    void layout();                 // the bench, or the brain alone, or between (dark)
+    void showWayBack (juce::Point<int> hand);
+    dendrite::ui::BenchStrip benchStrip;
+    bool lightsOut = false;
+    float dark = 0.0f;             // 0 the bench .. 1 lights out, moved at 1 / 0.6 s
+    float darkShown = -1.0f;       // the eased value the window was last laid out at
+    double darkClock = -1.0;
     juce::TooltipWindow tooltips { this, 900 };
     int frame = 0;
 

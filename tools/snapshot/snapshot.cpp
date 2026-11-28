@@ -23,6 +23,8 @@
 //   DENDRITE_SIDECHAIN=kick.wav        the sidechain bus on, fed from that file (looped)
 //   DENDRITE_REFERENCE=dnp01           3.6: the reference open on a term or a cell type (the focus)
 //   DENDRITE_SEARCH=text               3.6: the search open with this typed
+//   DENDRITE_LIGHTS_OUT=1              3.7: lights out from the start (the bench fades in the first 0.6 s)
+//                                      (DENDRITE_SCRIPT also takes "t key 0 0 L": a key to the window)
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "Processor.h"
 #include "Editor.h"
@@ -165,6 +167,8 @@ int main (int argc, char** argv)
         editor->referenceForTools (what, false);
     if (const auto what = env ("DENDRITE_SEARCH"); what.isNotEmpty())
         editor->referenceForTools (what, true);
+    if (env ("DENDRITE_LIGHTS_OUT").isNotEmpty())
+        editor->setLightsOut (true);
     if (const auto hover = env ("DENDRITE_HOVER"); hover.isNotEmpty())
         for (auto* c : editor->getChildren())
             if (auto* s = dynamic_cast<dendrite::ui::Specimen*> (c))
@@ -215,8 +219,14 @@ int main (int argc, char** argv)
         {
             target = specimen;
             for (auto* c : editor->getChildren())
-                if (c->getBounds().toFloat().contains (a.at))
+                if (c->isVisible() && c->getBounds().toFloat().contains (a.at))
                     target = c;
+        }
+        if (a.kind == "key")
+        {
+            editor->keyPressed (a.more == "esc" ? juce::KeyPress (juce::KeyPress::escapeKey)
+                                                : juce::KeyPress ((int) a.more[0], {}, (juce::juce_wchar) a.more[0]));
+            return;
         }
         auto* specimen = target;
         const auto p = specimen->getLocalPoint (editor, a.at);
@@ -233,7 +243,13 @@ int main (int argc, char** argv)
         if (a.kind == "down") specimen->mouseDown (ev);
         else if (a.kind == "drag") specimen->mouseDrag (ev);
         else if (a.kind == "up") { specimen->mouseUp (ev); held = {}; }
-        else if (a.kind == "move") specimen->mouseMove (ev);
+        else if (a.kind == "move")
+        {
+            specimen->mouseMove (ev);
+            // the window listens to every move too (lights out: the hand at an edge)
+            editor->mouseMove (juce::MouseEvent (src, a.at, held, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, editor, editor, juce::Time::getCurrentTime(),
+                                                 a.at, juce::Time::getCurrentTime(), 1, false));
+        }
         else if (a.kind == "wheel")
         {
             juce::MouseWheelDetails w {};
